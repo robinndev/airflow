@@ -12,6 +12,9 @@ const SECTIONS: Record<string, { title: string; description: string }> = {
   search: { title: "Character search", description: "Filter by tags, species, traits and price." },
   literatures: { title: "Literatures", description: "Stories, lore and worldbuilding docs." },
   worlds: { title: "Worlds", description: "Shared universes and the characters who live there." },
+  commissions: { title: "Open commissions", description: "Artists taking requests right now." },
+  adoptables: { title: "Adoptables", description: "Original characters looking for a new home." },
+  saved: { title: "Saved", description: "Posts, services and characters you bookmarked." },
 };
 
 export function generateStaticParams() {
@@ -35,7 +38,7 @@ async function ExploreSection({ params }: Pick<PageProps<"/explore/[section]">, 
 
   return (
     <main className="mx-auto max-w-xl px-4 py-24 text-center">
-      <p className="rounded-full bg-ice px-3 py-1 text-xs font-semibold tracking-wide text-[#0670d0] uppercase inline-block">
+      <p className="rounded-full bg-ice px-3 py-1 text-xs font-semibold tracking-wide text-ocean-ink uppercase inline-block">
         Coming soon
       </p>
       <h1 className="mt-5 font-display text-3xl font-extrabold tracking-tight text-ink">

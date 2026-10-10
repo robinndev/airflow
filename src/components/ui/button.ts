@@ -6,8 +6,8 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary: "bg-accent text-on-accent hover:brightness-[0.94] active:brightness-90",
-  secondary: "border border-border bg-white text-ink hover:border-sky/60 hover:bg-ice/60",
-  soft: "bg-ice text-ink hover:bg-[#dcefff]",
+  secondary: "border border-border bg-surface text-ink hover:border-sky/60 hover:bg-ice/60",
+  soft: "bg-ice text-ink hover:bg-ice-strong",
   ghost: "text-muted hover:bg-ice hover:text-ink",
 };
 

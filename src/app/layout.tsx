@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { themeScript } from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,6 +16,15 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+// Ember's display face. Not preloaded: Aqua visitors never download it.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: { default: "Artiflow", template: "%s · Artiflow" },
@@ -24,10 +34,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // The inline theme script sets data-theme before hydration, hence the warning opt-out.
     <html
       lang="en"
-      className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${inter.variable} ${plusJakartaSans.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

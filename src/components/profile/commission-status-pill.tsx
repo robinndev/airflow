@@ -3,13 +3,13 @@ import type { CommissionStatus } from "@/lib/profile/types";
 const styles: Record<CommissionStatus, { label: string; dot: string; pill: string }> = {
   open: {
     label: "Commissions open",
-    dot: "bg-[#12b5c4]",
-    pill: "bg-mint/12 text-[#0b6f7a]",
+    dot: "bg-mint-dot",
+    pill: "bg-mint/12 text-mint-ink",
   },
   waitlist: {
     label: "Waitlist only",
     dot: "bg-lilac",
-    pill: "bg-lilac/12 text-[#5d54d6]",
+    pill: "bg-lilac/12 text-lilac-ink",
   },
   closed: {
     label: "Commissions closed",

@@ -27,7 +27,7 @@ export function HeaderShell({ overlay, children }: { overlay: boolean; children:
   return (
     <header
       data-solid={solid}
-      className="group/header sticky top-0 z-40 border-b transition-[background-color,border-color] duration-200 data-[solid=false]:border-transparent data-[solid=true]:border-border/80 data-[solid=true]:bg-white"
+      className="group/header sticky top-0 z-40 border-b transition-[background-color,border-color] duration-200 data-[solid=false]:border-transparent data-[solid=true]:border-border/80 data-[solid=true]:bg-surface"
     >
       {children}
     </header>

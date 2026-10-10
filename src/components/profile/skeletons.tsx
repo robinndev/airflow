@@ -16,7 +16,7 @@ export function ProfileSkeleton() {
         <BannerScrims />
       </div>
       <div className="mx-auto max-w-[1184px] px-4 sm:px-6 lg:px-8">
-        <div className="-mt-14 size-28 rounded-full bg-[#dcefff] ring-[5px] ring-white sm:-mt-20 sm:size-38" />
+        <div className="-mt-14 size-28 rounded-full bg-ice-strong ring-[5px] ring-surface sm:-mt-20 sm:size-38" />
         <div className={`mt-4 h-8 w-56 rounded-input ${pulse}`} />
         <div className={`mt-2 h-4 w-32 rounded-input ${pulse}`} />
         <div className={`mt-5 h-4 w-full max-w-xl rounded-input ${pulse}`} />
@@ -37,7 +37,7 @@ export function FeedSkeleton() {
   return (
     <div aria-busy aria-label="Loading posts" className="grid gap-5">
       {[0, 1].map((i) => (
-        <div key={i} className="rounded-card border border-border bg-white p-5">
+        <div key={i} className="rounded-card border border-border bg-surface p-5">
           <div className="flex items-center gap-3">
             <div className={`size-11 rounded-full ${pulse}`} />
             <div className="grid gap-1.5">

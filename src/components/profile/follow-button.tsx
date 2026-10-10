@@ -5,7 +5,7 @@ import { useState } from "react";
 import { buttonClasses } from "@/components/ui/button";
 
 // UI-only until follows are persisted (Phase 2 in the blueprint).
-export function FollowButton({ handle }: { handle: string }) {
+export function FollowButton({ handle, compact = false }: { handle: string; compact?: boolean }) {
   const [following, setFollowing] = useState(false);
 
   return (
@@ -16,7 +16,8 @@ export function FollowButton({ handle }: { handle: string }) {
       onClick={() => setFollowing((f) => !f)}
       className={buttonClasses({
         variant: following ? "secondary" : "primary",
-        className: "min-w-28",
+        size: compact ? "sm" : "md",
+        className: compact ? "h-8 min-w-22 px-3 text-xs" : "min-w-28",
       })}
     >
       {following ? <Check aria-hidden /> : <Plus aria-hidden />}

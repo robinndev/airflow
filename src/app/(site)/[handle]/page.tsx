@@ -49,7 +49,7 @@ async function OwnerComposer({ profile }: { profile: ArtistProfile }) {
 
 function EmptyFeed({ name }: { name: string }) {
   return (
-    <div className="rounded-card border border-dashed border-border bg-white px-6 py-14 text-center">
+    <div className="rounded-card border border-dashed border-border bg-surface px-6 py-14 text-center">
       <p className="font-display text-lg font-bold text-ink">No posts yet</p>
       <p className="mt-1 text-sm text-muted">
         When {name} shares artwork, sketches or updates, they&apos;ll show up here.

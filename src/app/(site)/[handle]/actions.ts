@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/profile/mock-db";
-import { postsTag, profileTag } from "@/lib/profile/queries";
+import { FEED_TAG, postsTag, profileTag } from "@/lib/profile/queries";
 import { getViewer, PREVIEW_AS_VISITOR_COOKIE } from "@/lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -81,6 +81,7 @@ export async function createPost(
   });
 
   updateTag(postsTag(handle));
+  updateTag(FEED_TAG);
   return { ok: true };
 }
 
@@ -109,6 +110,61 @@ export async function updateProfileImage(
   };
 
   updateTag(profileTag(handle));
+  updateTag(FEED_TAG); // Feed cards embed the author's avatar.
+  return { ok: true };
+}
+
+const requestSchema = z.object({
+  serviceId: z.string().min(1, "Choose what you'd like to request."),
+  description: z
+    .string()
+    .trim()
+    .min(20, "Tell the artist a bit more — at least 20 characters.")
+    .max(2000, "Keep it under 2,000 characters."),
+  usage: z.enum(["personal", "commercial"]),
+  budget: z.enum(["under-50", "50-150", "150-300", "300-plus"]).optional(),
+  deadline: z.iso.date().optional(),
+  references: z.string().trim().max(1000).optional(),
+  acceptedTerms: z.literal("on", { error: "Please accept the artist's terms first." }),
+});
+
+export async function submitCommissionRequest(
+  handle: string,
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const optional = (key: string) => formData.get(key) || undefined;
+  const parsed = requestSchema.safeParse({
+    serviceId: formData.get("serviceId"),
+    description: formData.get("description"),
+    usage: formData.get("usage"),
+    budget: optional("budget"),
+    deadline: optional("deadline"),
+    references: optional("references"),
+    acceptedTerms: formData.get("acceptedTerms"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+
+  const { serviceId } = parsed.data;
+  if (
+    serviceId !== "custom" &&
+    !db.services.some((s) => s.id === serviceId && s.ownerHandle === handle)
+  ) {
+    return { ok: false, error: "That service is no longer available." };
+  }
+
+  const viewer = await getViewer();
+  db.requests.push({
+    id: `req_${crypto.randomUUID()}`,
+    artistHandle: handle,
+    requesterHandle: viewer?.handle ?? null,
+    ...parsed.data,
+    acceptedTerms: true,
+    createdAt: new Date().toISOString(),
+  });
+
   return { ok: true };
 }
 

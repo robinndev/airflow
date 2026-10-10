@@ -75,7 +75,7 @@ export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={pending}
-          className="absolute right-3 bottom-3 inline-flex h-9 items-center gap-2 rounded-full bg-white/90 px-3.5 text-sm font-semibold text-ink shadow-soft transition hover:bg-white disabled:opacity-80 sm:right-[max(1.5rem,calc((100vw-1184px)/2+1.5rem))] sm:bottom-4"
+          className="absolute right-3 bottom-3 inline-flex h-9 items-center gap-2 rounded-full bg-surface/90 px-3.5 text-sm font-semibold text-ink shadow-soft transition hover:bg-surface disabled:opacity-80 sm:right-[max(1.5rem,calc((100vw-1184px)/2+1.5rem))] sm:bottom-4"
         >
           {pending ? (
             <LoaderCircle aria-hidden className="size-4 animate-spin" />
@@ -91,7 +91,7 @@ export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot
           disabled={pending}
           aria-label={label}
           title={label}
-          className="absolute right-1 bottom-1 grid size-9 place-items-center rounded-full bg-white text-ink shadow-lift ring-1 ring-border transition hover:bg-ice sm:right-2 sm:bottom-2"
+          className="absolute right-1 bottom-1 grid size-9 place-items-center rounded-full bg-surface text-ink shadow-lift ring-1 ring-border transition hover:bg-ice sm:right-2 sm:bottom-2"
         >
           {pending ? (
             <LoaderCircle aria-hidden className="size-4 animate-spin" />
@@ -106,7 +106,7 @@ export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot
         aria-live="polite"
         className={
           error
-            ? `absolute z-10 rounded-input bg-ink px-3 py-2 text-xs font-medium text-white shadow-lift ${
+            ? `absolute z-10 rounded-input bg-ink px-3 py-2 text-xs font-medium text-on-ink shadow-lift ${
                 slot === "banner" ? "right-3 bottom-15 sm:right-6" : "top-full left-0 mt-2 w-56"
               }`
             : "sr-only"

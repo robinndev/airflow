@@ -1,8 +1,9 @@
-import Image from "next/image";
 import { Suspense } from "react";
+import { ArtworkCard } from "@/components/profile/artwork-card";
+import { GalleryFilter } from "@/components/profile/gallery-filter";
 import { SectionHeader } from "@/components/profile/section-header";
 import { FeedSkeleton } from "@/components/profile/skeletons";
-import { getProfile, normalizeHandle } from "@/lib/profile/queries";
+import { getArtworks, normalizeHandle } from "@/lib/profile/queries";
 
 export const metadata = { title: "Gallery" };
 
@@ -15,30 +16,37 @@ export default function GalleryPage({ params }: PageProps<"/[handle]/gallery">) 
 }
 
 async function Gallery({ params }: Pick<PageProps<"/[handle]/gallery">, "params">) {
-  const profile = await getProfile(normalizeHandle((await params).handle));
-  if (!profile) return null;
+  const handle = normalizeHandle((await params).handle);
+  const artworks = await getArtworks(handle);
+
+  const counts = {
+    all: artworks.length,
+    commission: artworks.filter((a) => a.kind === "commission").length,
+    personal: artworks.filter((a) => a.kind === "personal").length,
+    adoptable: artworks.filter((a) => a.kind === "adoptable").length,
+  };
 
   return (
     <section>
       <SectionHeader
-        handle={profile.handle}
+        handle={handle}
         title="Gallery"
-        description="Collections, tags and filters are coming next — here's a preview."
+        description="Finished pieces, commissions and adoptables."
       />
-      <ul className="columns-2 gap-3 sm:columns-3">
-        {profile.gallery.preview.map((image) => (
-          <li key={image.src} className="mb-3 break-inside-avoid">
-            <Image
-              src={image.src}
-              alt={image.alt}
-              width={image.width}
-              height={image.height}
-              sizes="(min-width: 1024px) 260px, 50vw"
-              className="h-auto w-full rounded-card border border-border bg-ice"
-            />
-          </li>
-        ))}
-      </ul>
+      {artworks.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border bg-surface px-6 py-14 text-center">
+          <p className="font-display text-lg font-bold text-ink">No artworks yet</p>
+          <p className="mt-1 text-sm text-muted">Uploaded pieces will show up here.</p>
+        </div>
+      ) : (
+        <GalleryFilter counts={counts}>
+          <ul className="columns-2 gap-4 sm:columns-3 sm:gap-5">
+            {artworks.map((artwork, i) => (
+              <ArtworkCard key={artwork.id} artwork={artwork} priority={i < 3} />
+            ))}
+          </ul>
+        </GalleryFilter>
+      )}
     </section>
   );
 }

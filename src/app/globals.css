@@ -1,45 +1,163 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #173b5b;
+/*
+ * Two themes, one design system. Components only use semantic tokens
+ * (bg-surface, text-ink, bg-ocean…); each theme maps them to its own palette.
+ *   Aqua  — light: fresh, open, creative.
+ *   Ember — dark: bold, expressive, immersive.
+ * The theme is applied as `data-theme` on <html> before first paint (see
+ * src/lib/theme.ts). Any element can opt into the other theme with the same
+ * attribute — the theme picker previews use this.
+ */
+:root,
+[data-theme="aqua"] {
+  color-scheme: light;
 
-  --color-ocean: #0788f9;
-  --color-sky: #35bdf5;
-  --color-mint: #21d4e5;
-  --color-lilac: #8b83f6;
-  --color-ice: #eaf6ff;
-  --color-ink: #173b5b;
-  --color-muted: #64839d;
-  --color-border: #d5e7f5;
+  --canvas: #f6fbff;
+  --surface: #ffffff;
+  --ice: #eaf6ff;
+  --ice-strong: #dcefff;
+  --ice-blue: #eaf0ff;
+  --ice-lilac: #f2eeff;
+  --border: #d5e7f5;
+  --ink: #173b5b;
+  --on-ink: #ffffff;
+  --muted: #64839d;
+  --scrim: #173b5b;
+  /* Physical paper (stickers, hang tags, paint chips) stays light in both themes. */
+  --paper: #ffffff;
+  --on-paper: #173b5b;
+  --paper-muted: #64839d;
+
+  --ocean: #0788f9;
+  --ocean-ink: #0670d0;
+  --sky: #35bdf5;
+  --sky-ink: #0b6a96;
+  --on-sky: #173b5b;
+  --mint: #21d4e5;
+  --mint-strong: #0d8f9c;
+  --mint-ink: #0b6f7a;
+  --mint-dot: #12b5c4;
+  --on-mint: #173b5b;
+  --lilac: #8b83f6;
+  --lilac-ink: #5d54d6;
+
+  --like: #e2457a;
+  --star: #f5b301;
+  --danger: #c2334d;
+
+  --display-font: var(--font-plus-jakarta-sans);
+  /* Paper texture under hand-made surfaces (see the `grain` utility). */
+  --grain-opacity: 0.5;
+  --grain-blend: multiply;
+  --shadow-rgb: 23 59 91;
+  --shadow-soft-v: 0 1px 2px rgb(23 59 91 / 0.04), 0 4px 16px rgb(23 59 91 / 0.05);
+  --shadow-lift-v: 0 2px 4px rgb(23 59 91 / 0.05), 0 12px 32px rgb(23 59 91 / 0.08);
+  /* Category orbs: how much of the pastel bubble shows through the surface. */
+  --orb-mix: 100%;
+  --orb-highlight: 0.9;
 
   /* Per-profile overrides are set inline on the profile root (see appearance.ts). */
-  --profile-accent: var(--color-ocean);
-  --profile-accent-strong: #0670d0;
+  --profile-accent: var(--ocean);
+  --profile-accent-strong: var(--ocean-ink);
   --profile-on-accent: #ffffff;
   --profile-radius-action: 12px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+[data-theme="ember"] {
+  color-scheme: dark;
 
-  --color-ocean: var(--color-ocean);
-  --color-sky: var(--color-sky);
-  --color-mint: var(--color-mint);
-  --color-lilac: var(--color-lilac);
-  --color-ice: var(--color-ice);
-  --color-ink: var(--color-ink);
-  --color-muted: var(--color-muted);
-  --color-border: var(--color-border);
-  --color-canvas: #f6fbff;
+  --canvas: #0b101c; /* Night */
+  --surface: #171c2b; /* Charcoal */
+  --ice: #1f2537;
+  --ice-strong: #2a3146;
+  --ice-blue: #1d1a2e;
+  --ice-lilac: #221a33;
+  --border: #272d40;
+  --ink: #f4f5fa; /* Cloud */
+  --on-ink: #0b101c;
+  --muted: #a8b0c2; /* Ash */
+  --scrim: #05070d;
+  --paper: #f4f5fa;
+  --on-paper: #0b101c;
+  --paper-muted: #5b6275;
+
+  --ocean: #ff3948; /* Ember Red */
+  --ocean-ink: #ff6b76;
+  --sky: #ff762e; /* Flame Orange */
+  --sky-ink: #ff9a5e;
+  --on-sky: #0b101c;
+  --mint: #f04488; /* Blaze Pink */
+  --mint-strong: #ff6aa5;
+  --mint-ink: #ff86b6;
+  --mint-dot: #f04488;
+  --on-mint: #ffffff;
+  --lilac: #9857f5; /* Ember Violet */
+  --lilac-ink: #b98dff;
+
+  --like: #ff5c93;
+  --star: #ffb627;
+  --danger: #ff6b78;
+
+  --display-font: var(--font-space-grotesk);
+  --grain-opacity: 0.35;
+  --grain-blend: screen;
+  --shadow-rgb: 0 0 0;
+  --shadow-soft-v: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+  --shadow-lift-v: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
+  --orb-mix: 34%;
+  --orb-highlight: 0.08;
+
+  --profile-accent: var(--ocean);
+  --profile-accent-strong: var(--ocean-ink);
+  --profile-on-accent: #ffffff;
+  --profile-radius-action: 12px;
+}
+
+/* `dark:` targets Ember, not the OS setting (the user picks the theme). */
+@custom-variant dark (&:where([data-theme="ember"], [data-theme="ember"] *));
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ice: var(--ice);
+  --color-ice-strong: var(--ice-strong);
+  --color-ice-blue: var(--ice-blue);
+  --color-ice-lilac: var(--ice-lilac);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+  --color-muted: var(--muted);
+  --color-scrim: var(--scrim);
+  --color-paper: var(--paper);
+  --color-on-paper: var(--on-paper);
+  --color-paper-muted: var(--paper-muted);
+
+  --color-ocean: var(--ocean);
+  --color-ocean-ink: var(--ocean-ink);
+  --color-sky: var(--sky);
+  --color-sky-ink: var(--sky-ink);
+  --color-on-sky: var(--on-sky);
+  --color-mint: var(--mint);
+  --color-mint-strong: var(--mint-strong);
+  --color-mint-ink: var(--mint-ink);
+  --color-mint-dot: var(--mint-dot);
+  --color-on-mint: var(--on-mint);
+  --color-lilac: var(--lilac);
+  --color-lilac-ink: var(--lilac-ink);
+
+  --color-like: var(--like);
+  --color-star: var(--star);
+  --color-danger: var(--danger);
 
   --color-accent: var(--profile-accent);
   --color-accent-strong: var(--profile-accent-strong);
   --color-on-accent: var(--profile-on-accent);
 
   --font-sans: var(--font-inter);
-  --font-display: var(--font-plus-jakarta-sans);
+  --font-display: var(--display-font);
+  /* The artist's hand: annotations, signatures, sticky notes. Loaded per page. */
+  --font-hand: var(--font-caveat), "Bradley Hand", cursive;
 
   --radius-input: 10px;
   --radius-button: 12px;
@@ -47,19 +165,87 @@
   --radius-panel: 24px;
   --radius-action: var(--profile-radius-action);
 
-  --shadow-soft: 0 1px 2px rgb(23 59 91 / 0.04), 0 4px 16px rgb(23 59 91 / 0.05);
-  --shadow-lift: 0 2px 4px rgb(23 59 91 / 0.05), 0 12px 32px rgb(23 59 91 / 0.08);
+  --animate-pop: pop 0.35s ease-out;
+  --animate-spin-slow: spin 32s linear infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-swing: swing 1.6s ease-in-out;
+  /* Five words, 2.5s each — see <RotatingWord>. */
+  --animate-word-cycle: word-cycle 12.5s cubic-bezier(0.65, 0, 0.35, 1) infinite both;
+
+  @keyframes pop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.35);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+
+  @keyframes swing {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: 7deg;
+    }
+    55% {
+      rotate: -4deg;
+    }
+    80% {
+      rotate: 2deg;
+    }
+  }
+
+  @keyframes word-cycle {
+    0% {
+      opacity: 0;
+      transform: translateY(0.45em) rotate(3deg);
+    }
+    4%,
+    18% {
+      opacity: 1;
+      transform: none;
+    }
+    21%,
+    100% {
+      opacity: 0;
+      transform: translateY(-0.45em) rotate(-3deg);
+    }
+  }
+
+  --shadow-soft: var(--shadow-soft-v);
+  --shadow-lift: var(--shadow-lift-v);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 @layer base {
+  /* Tailwind v4 resets buttons to the default cursor; restore the pointer app-wide. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="radio"],
+  summary {
+    cursor: pointer;
+  }
+
   :focus-visible {
-    outline: 2px solid var(--color-ocean);
+    outline: 2px solid var(--ocean);
     outline-offset: 2px;
   }
 
@@ -72,3 +258,76 @@ body {
     }
   }
 }
+
+/* Lock page scroll while a modal dialog (e.g. the commission request panel) is open. */
+html:has(dialog[open]:modal) {
+  overflow: hidden;
+}
+
+/*
+ * Theme switch: the new theme grows as a circle from the picker
+ * (`--theme-x/--theme-y` are set by the theme menu right before the swap).
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-reveal 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0));
+  }
+  to {
+    clip-path: circle(150vmax at var(--theme-x, 50%) var(--theme-y, 0));
+  }
+}
+
+/*
+ * Paper grain behind hand-made surfaces. The noise sits under the content
+ * (z-index -1 in its own stacking context), so artwork is never textured.
+ */
+@utility grain {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+  }
+}
+
+/* Hand-drawn strokes that draw themselves in once (paths need pathLength="1"). */
+@utility scribble-in {
+  & :is(path, line, polyline) {
+    stroke-dasharray: 1;
+    animation: scribble 0.9s 0.35s cubic-bezier(0.6, 0, 0.3, 1) backwards;
+  }
+}
+
+@keyframes scribble {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scribble-in :is(path, line, polyline) {
+    animation: none;
+  }
+}
+

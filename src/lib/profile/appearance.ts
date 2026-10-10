@@ -30,12 +30,14 @@ export function resolveAppearance(profile: ArtistProfile): ResolvedAppearance {
   };
 }
 
-// `on` is the text color placed on top of the accent; light accents get ink.
+// Accents point at theme tokens, so an artist's pick renders in the active
+// theme's palette (Aqua ocean → Ember red, sky → flame, mint → blaze, lilac →
+// violet). `strong` is the readable text tone; `on` is text placed on the accent.
 const ACCENTS: Record<AccentColor, { base: string; strong: string; on: string }> = {
-  ocean: { base: "#0788f9", strong: "#0670d0", on: "#ffffff" },
-  sky: { base: "#35bdf5", strong: "#0f86bd", on: "#173b5b" },
-  mint: { base: "#21d4e5", strong: "#0d8f9c", on: "#173b5b" },
-  lilac: { base: "#8b83f6", strong: "#5d54d6", on: "#ffffff" },
+  ocean: { base: "var(--ocean)", strong: "var(--ocean-ink)", on: "#ffffff" },
+  sky: { base: "var(--sky)", strong: "var(--sky-ink)", on: "var(--on-sky)" },
+  mint: { base: "var(--mint)", strong: "var(--mint-strong)", on: "var(--on-mint)" },
+  lilac: { base: "var(--lilac)", strong: "var(--lilac-ink)", on: "#ffffff" },
 };
 
 const BUTTON_RADII: Record<ButtonShape, string> = {

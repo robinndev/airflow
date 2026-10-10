@@ -46,7 +46,7 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
                 image={profile.avatar}
                 size={152}
                 preload
-                className="size-28 shadow-lift ring-[5px] ring-white sm:size-38"
+                className="size-28 shadow-lift ring-[5px] ring-surface sm:size-38"
               />
               {profile.plan === "pro" && <ProStar />}
               <Suspense>
@@ -72,11 +72,6 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
                   </>
                 )}
               </p>
-              {profile.availability && (
-                <div className="mt-3">
-                  <AvailabilityBadge handle={profile.handle} note={profile.availability.note} />
-                </div>
-              )}
             </div>
           </div>
 
@@ -95,7 +90,12 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
             <p className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80">{profile.bio}</p>
             <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
               <li>
-                <CommissionStatusPill status={profile.commissions.status} />
+                {/* Availability is the headline status; commission details live in the sidebar. */}
+                {profile.availability ? (
+                  <AvailabilityBadge handle={profile.handle} note={profile.availability.note} />
+                ) : (
+                  <CommissionStatusPill status={profile.commissions.status} />
+                )}
               </li>
               {profile.location && (
                 <li className="inline-flex items-center gap-1.5">
@@ -110,7 +110,7 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
             </ul>
           </div>
 
-          <dl className="flex gap-1 rounded-card border border-border bg-white p-1.5 shadow-soft">
+          <dl className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft">
             <Stat label="Followers" value={profile.stats.followers} />
             <Stat label="Following" value={profile.stats.following} />
             <Stat label="Artworks" value={profile.stats.artworks} />
@@ -127,11 +127,11 @@ export function BannerScrims() {
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ink/45 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-scrim/45 to-transparent"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink/20 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-scrim/20 to-transparent"
       />
       <div id={HEADER_SENTINEL_ID} aria-hidden className="absolute inset-x-0 bottom-0 h-px" />
     </>

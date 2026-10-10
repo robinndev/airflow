@@ -16,9 +16,11 @@ type PostComposerProps = {
   handle: string;
   displayName: string;
   avatar: ImageAsset;
+  /** "card" on profiles; "inline" sits flush inside the home timeline. */
+  variant?: "card" | "inline";
 };
 
-export function PostComposer({ handle, displayName, avatar }: PostComposerProps) {
+export function PostComposer({ handle, displayName, avatar, variant = "card" }: PostComposerProps) {
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [body, setBody] = useState("");
@@ -62,7 +64,11 @@ export function PostComposer({ handle, displayName, avatar }: PostComposerProps)
     <form
       action={formAction}
       aria-label="Create a post"
-      className="rounded-card border border-border bg-white shadow-soft transition-shadow focus-within:border-sky/70 focus-within:shadow-lift"
+      className={
+        variant === "card"
+          ? "rounded-card border border-border bg-surface shadow-soft transition-shadow focus-within:border-sky/70 focus-within:shadow-lift"
+          : "border-b border-border bg-surface"
+      }
     >
       <div className="flex gap-3 px-5 pt-5">
         <Avatar image={avatar} size={44} className="size-11" />
@@ -98,7 +104,7 @@ export function PostComposer({ handle, displayName, avatar }: PostComposerProps)
               type="button"
               onClick={() => setImage(null)}
               aria-label="Remove image"
-              className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-ink/70 text-white transition-colors hover:bg-ink"
+              className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-scrim/70 text-white transition-colors hover:bg-scrim"
             >
               <X aria-hidden className="size-4" />
             </button>
@@ -160,17 +166,11 @@ export function PostComposer({ handle, displayName, avatar }: PostComposerProps)
           {image ? "Replace image" : "Add image"}
         </button>
 
-        <p role="status" aria-live="polite" className="min-w-0 flex-1 truncate text-xs text-[#c2334d]">
+        <p role="status" aria-live="polite" className="min-w-0 flex-1 truncate text-xs text-danger">
           {error}
         </p>
 
-        {remaining <= 200 && (
-          <span
-            className={`text-xs tabular-nums ${remaining < 0 ? "text-[#c2334d]" : "text-muted"}`}
-          >
-            {remaining}
-          </span>
-        )}
+        {body.length > 0 && <CharacterRing used={body.length} max={MAX_LENGTH} />}
 
         <button
           type="submit"
@@ -186,5 +186,50 @@ export function PostComposer({ handle, displayName, avatar }: PostComposerProps)
         </button>
       </div>
     </form>
+  );
+}
+
+/** Fills as you type; turns amber near the limit and shows the count in the last 20. */
+function CharacterRing({ used, max }: { used: number; max: number }) {
+  const remaining = max - used;
+  const radius = 9;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.min(1, used / max);
+  const color = remaining < 0 ? "var(--danger)" : remaining <= 100 ? "var(--star)" : "var(--ocean)";
+  const showCount = remaining <= 20;
+
+  return (
+    <span
+      role="meter"
+      aria-label="Characters used"
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={used}
+      className="relative grid size-7 shrink-0 place-items-center"
+    >
+      <svg viewBox="0 0 24 24" className={`size-7 -rotate-90 transition-transform ${showCount ? "scale-110" : ""}`} aria-hidden>
+        <circle cx="12" cy="12" r={radius} fill="none" strokeWidth="2.5" className="stroke-border" />
+        <circle
+          cx="12"
+          cy="12"
+          r={radius}
+          fill="none"
+          style={{ stroke: color }}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
+          className="transition-[stroke-dashoffset,stroke] duration-150"
+        />
+      </svg>
+      {showCount && (
+        <span
+          className="absolute text-[0.625rem] font-semibold tabular-nums"
+          style={{ color }}
+        >
+          {remaining}
+        </span>
+      )}
+    </span>
   );
 }

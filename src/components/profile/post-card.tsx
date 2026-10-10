@@ -15,7 +15,7 @@ export function PostCard({ post, author }: { post: Post; author: PostAuthor }) {
     <article
       id={post.id}
       aria-labelledby={`${post.id}-author`}
-      className="scroll-mt-24 rounded-card border border-border bg-white shadow-soft"
+      className="scroll-mt-24 rounded-card border border-border bg-surface shadow-soft"
     >
       {post.pinned && (
         <p className="flex items-center gap-1.5 px-5 pt-4 text-xs font-semibold text-muted">
@@ -79,7 +79,9 @@ export function PostCard({ post, author }: { post: Post; author: PostAuthor }) {
 
       {post.media.length > 0 && (
         <div className="px-3 pt-4 sm:px-5">
-          <PostMedia media={post.media} />
+          <div className="overflow-hidden rounded-[14px]">
+            <PostMedia media={post.media} />
+          </div>
         </div>
       )}
 

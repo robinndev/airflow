@@ -38,7 +38,7 @@ export function PostActions({ postId, handle, likes, comments }: PostActionsProp
         aria-pressed={liked}
         aria-label={liked ? "Unlike" : "Like"}
         onClick={() => setLiked((v) => !v)}
-        className={`${action} ${liked ? "text-[#e2457a] hover:text-[#e2457a]" : ""}`}
+        className={`${action} ${liked ? "text-like hover:text-like" : ""}`}
       >
         <Heart
           aria-hidden

@@ -7,6 +7,12 @@ export type ImageAsset = {
   height: number;
   /** CSS object-position used when the image is cropped (e.g. avatars). */
   focus?: string;
+  /**
+   * Dominant colors, most prominent first, with flat backdrops (white paper,
+   * cream) left out. Extracted on upload; powers palette browsing, character
+   * swatches and the placeholder tint while the image loads.
+   */
+  palette?: string[];
 };
 
 export type AccentColor = "ocean" | "sky" | "mint" | "lilac";
@@ -43,6 +49,11 @@ export type CommissionStatus = "open" | "waitlist" | "closed";
 
 export type CommissionSummary = {
   status: CommissionStatus;
+  rating?: { average: number; count: number };
+  /** Message shown to buyers before they request (terms, expectations). */
+  note?: string;
+  /** Artist's Terms of Service, accepted before every request. */
+  terms?: { title: string; items: string[] }[];
   slotsTotal: number;
   slotsTaken: number;
   startingPriceUsd: number;
@@ -94,7 +105,77 @@ export type ArtistProfile = {
   appearance: ProfileAppearance;
 };
 
+export type UsageRights = {
+  personal: boolean;
+  commercialContent: boolean;
+  commercialMerch: boolean;
+};
+
+export type CommissionService = {
+  id: string;
+  ownerHandle: string;
+  category: string;
+  title: string;
+  usage: UsageRights;
+  discountPercent?: number;
+  description: string;
+  priceFromUsd: number;
+  turnaround: string;
+  includes: string[];
+  examples: ImageAsset[];
+  popular?: boolean;
+};
+
+export type Review = {
+  id: string;
+  artistHandle: string;
+  author: string;
+  authorAvatar?: ImageAsset;
+  rating: number;
+  text: string;
+  serviceTitle: string;
+  createdAt: string;
+};
+
+export type CommissionBudget = "under-50" | "50-150" | "150-300" | "300-plus";
+export type CommissionUsage = "personal" | "commercial";
+
+export type CommissionRequest = {
+  id: string;
+  artistHandle: string;
+  requesterHandle: string | null;
+  /** A service id, or "custom". */
+  serviceId: string;
+  description: string;
+  usage: CommissionUsage;
+  budget?: CommissionBudget;
+  deadline?: string;
+  references?: string;
+  acceptedTerms: true;
+  createdAt: string;
+};
+
+export type ArtworkKind = "commission" | "personal" | "adoptable";
+
+export type Artwork = {
+  id: string;
+  ownerHandle: string;
+  title: string;
+  image: ImageAsset;
+  kind: ArtworkKind;
+  /** Commissions: who it was made for. */
+  client?: string;
+  /** Adoptables: listing state. */
+  adopt?: { priceUsd: number; status: "available" | "sold" };
+  likes: number;
+  createdAt: string;
+};
+
 export type PostKind = "finished" | "wip" | "sketch" | "update";
+
+export type PostEmbed =
+  | { type: "service"; serviceId: string }
+  | { type: "adoptable"; artworkId: string };
 
 export type Post = {
   id: string;
@@ -106,6 +187,11 @@ export type Post = {
   pinned?: boolean;
   likes: number;
   comments: number;
+  /** Marketplace card attached to the post (a service or an adoptable). */
+  embed?: PostEmbed;
+  /** Repost with comment. */
+  quotePostId?: string;
+  topComment?: { author: string; text: string };
 };
 
 /** Public author info embedded in each post card. */

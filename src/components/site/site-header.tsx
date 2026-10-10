@@ -1,11 +1,14 @@
 import { Suspense, type ReactNode } from "react";
 import { Bell, MessageCircle, ShoppingBag } from "lucide-react";
+import { getNotifications } from "@/lib/notifications";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
 import { AccountMenu } from "./account-menu";
 import { CopyLinkButton } from "./copy-link-button";
 import { ExploreMenu } from "./explore-menu";
 import { HeaderShell } from "./header-shell";
+import { NotificationsMenu } from "./notifications-menu";
+import { ThemeMenu } from "./theme-menu";
 import { Logo } from "./logo";
 
 type SiteHeaderProps = {
@@ -23,7 +26,7 @@ export function SiteHeader({ overlay = false, handle }: SiteHeaderProps) {
         <div
           className={`flex min-w-0 items-center ${
             overlay
-              ? "text-white [text-shadow:0_1px_8px_rgb(23_59_91/0.45)] group-data-[solid=true]/header:text-ink group-data-[solid=true]/header:[text-shadow:none] [&>a]:text-inherit"
+              ? "text-white [text-shadow:0_1px_8px_rgb(var(--shadow-rgb)/0.45)] group-data-[solid=true]/header:text-ink group-data-[solid=true]/header:[text-shadow:none] [&>a]:text-inherit"
               : ""
           }`}
         >
@@ -38,18 +41,25 @@ export function SiteHeader({ overlay = false, handle }: SiteHeaderProps) {
           )}
         </div>
 
-        <nav aria-label="Main" className="ml-auto flex items-center gap-2">
+        <nav aria-label="Main" className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ExploreMenu />
           <CircleButton label="Cart" className="hidden sm:grid">
             <ShoppingBag aria-hidden />
           </CircleButton>
-          <CircleButton label="Messages">
+          <CircleButton label="Messages" className="hidden sm:grid">
             <MessageCircle aria-hidden />
           </CircleButton>
-          <CircleButton label="Notifications" dot>
-            <Bell aria-hidden />
-          </CircleButton>
-          <Suspense fallback={<div className="h-10 w-[4.75rem] rounded-full bg-white/60" />}>
+          <ThemeMenu />
+          <Suspense
+            fallback={
+              <CircleButton label="Notifications">
+                <Bell aria-hidden />
+              </CircleButton>
+            }
+          >
+            <NotificationsBell />
+          </Suspense>
+          <Suspense fallback={<div className="h-10 w-[4.75rem] rounded-full bg-surface/60" />}>
             <ViewerMenu />
           </Suspense>
         </nav>
@@ -60,12 +70,10 @@ export function SiteHeader({ overlay = false, handle }: SiteHeaderProps) {
 
 function CircleButton({
   label,
-  dot,
   className = "grid",
   children,
 }: {
   label: string;
-  dot?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -74,14 +82,16 @@ function CircleButton({
       type="button"
       aria-label={label}
       title={label}
-      className={`relative size-10 place-items-center rounded-full bg-white/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-white group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice [&_svg]:size-[1.125rem] ${className}`}
+      className={`relative size-10 place-items-center rounded-full bg-surface/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice [&_svg]:size-[1.125rem] ${className}`}
     >
       {children}
-      {dot && (
-        <span className="absolute top-2 right-2 size-2 rounded-full bg-mint ring-2 ring-white" />
-      )}
     </button>
   );
+}
+
+async function NotificationsBell() {
+  const viewer = await getViewer();
+  return <NotificationsMenu items={viewer ? await getNotifications(viewer.handle) : null} />;
 }
 
 async function ViewerMenu() {

@@ -4,11 +4,11 @@
  */
 import { mkdir, writeFile, access } from "node:fs/promises";
 import path from "node:path";
-import { demoImages } from "../src/lib/profile/demo-images.ts";
+import { demoImages, demoPool } from "../src/lib/profile/demo-images.ts";
 
 const root = path.join(import.meta.dirname, "..", "public");
 
-for (const image of Object.values(demoImages)) {
+for (const image of [...Object.values(demoImages), ...demoPool]) {
   const target = path.join(root, image.src);
   try {
     await access(target);

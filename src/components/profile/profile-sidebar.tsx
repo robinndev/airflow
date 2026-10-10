@@ -36,8 +36,8 @@ function CardHeading({
 }
 
 const STATUS_DOT = {
-  open: { label: "Open", dot: "bg-[#12b5c4]", text: "text-[#0b6f7a]" },
-  waitlist: { label: "Waitlist", dot: "bg-lilac", text: "text-[#5d54d6]" },
+  open: { label: "Open", dot: "bg-mint-dot", text: "text-mint-ink" },
+  waitlist: { label: "Waitlist", dot: "bg-lilac", text: "text-lilac-ink" },
   closed: { label: "Closed", dot: "bg-muted", text: "text-muted" },
 } as const;
 
@@ -50,7 +50,7 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
   return (
     <section
       aria-labelledby="commissions-heading"
-      className="rounded-card border border-border bg-white p-4 shadow-soft"
+      className="rounded-card border border-border bg-surface p-4 shadow-soft"
     >
       <div className="flex items-center justify-between gap-3">
         <CardHeading id="commissions-heading" icon={<Brush />} title="Commissions" />
@@ -119,7 +119,7 @@ function GalleryCard({ profile }: { profile: ArtistProfile }) {
     <Link
       href={`/${handle}/gallery`}
       aria-label={`Gallery, ${gallery.total} artworks`}
-      className="group block rounded-card border border-border bg-white p-4 shadow-soft transition-[border-color,box-shadow] hover:border-sky/60 hover:shadow-lift"
+      className="group block rounded-card border border-border bg-surface p-4 shadow-soft transition-[border-color,box-shadow] hover:border-sky/60 hover:shadow-lift"
     >
       <div className="flex items-center justify-between">
         <CardHeading icon={<LayoutGrid />} title="Gallery" />
@@ -146,7 +146,7 @@ function GalleryCard({ profile }: { profile: ArtistProfile }) {
               className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
             />
             {i === tiles.length - 1 && hidden > 0 && (
-              <span className="absolute inset-0 grid place-items-center bg-ink/50 font-display text-sm font-bold text-white">
+              <span className="absolute inset-0 grid place-items-center bg-scrim/50 font-display text-sm font-bold text-white">
                 +{hidden + 1}
               </span>
             )}
@@ -161,7 +161,7 @@ function LinksCard({ profile }: { profile: ArtistProfile }) {
   return (
     <section
       aria-labelledby="links-heading"
-      className="rounded-card border border-border bg-white p-4 shadow-soft"
+      className="rounded-card border border-border bg-surface p-4 shadow-soft"
     >
       <CardHeading id="links-heading" icon={<Link2 />} title="Links" />
       <ul className="mt-2 -mx-1 grid">
@@ -197,7 +197,7 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
   }[commissions.status];
 
   const tile =
-    "flex items-center gap-3 rounded-card border border-border bg-white p-3 shadow-soft transition-colors hover:border-sky/60";
+    "flex items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-soft transition-colors hover:border-sky/60";
 
   return (
     <nav aria-label={`${profile.displayName}'s shortcuts`} className="grid gap-3">
@@ -237,7 +237,7 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
                 href={link.url}
                 target="_blank"
                 rel="me noopener noreferrer"
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3.5 text-sm font-medium text-ink transition-colors hover:bg-ice"
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-sm font-medium text-ink transition-colors hover:bg-ice"
               >
                 <SocialIcon platform={link.platform} className="size-4 text-muted" />
                 {link.label}

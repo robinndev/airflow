@@ -14,7 +14,7 @@ export function ProStar({ size = "lg" }: { size?: keyof typeof SIZES }) {
   return (
     <span
       title="Pro artist"
-      className={`pointer-events-auto absolute z-10 top-[14.6%] left-[85.4%] grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-gradient-to-br from-lilac to-ocean text-white shadow-soft ring-white ${SIZES[size]}`}
+      className={`pointer-events-auto absolute z-10 top-[14.6%] left-[85.4%] grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-gradient-to-br from-lilac to-ocean text-white shadow-soft ring-surface ${SIZES[size]}`}
     >
       <Star
         aria-hidden

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, LogOut, Menu, Palette, Settings, UserRound, Wallet } from "lucide-react";
+import { LogIn, LogOut, Menu, MessageCircle, Palette, Settings, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import type { ImageAsset } from "@/lib/profile/types";
@@ -30,7 +30,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
         type="button"
         popoverTarget={MENU_ID}
         aria-label="Account menu"
-        className="flex h-10 items-center gap-1.5 rounded-full bg-white/75 pr-3 pl-1 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-white group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice"
+        className="flex h-10 items-center gap-1.5 rounded-full bg-surface/75 pr-3 pl-1 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice"
       >
         {viewer ? (
           <Avatar image={viewer.avatar} size={32} className="size-8" />
@@ -46,7 +46,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
         id={MENU_ID}
         popover="auto"
         onClick={closeOnSelect}
-        className="fixed inset-auto top-[4.5rem] right-[max(1rem,calc((100vw-1184px)/2+1.5rem))] m-0 w-64 rounded-[20px] border border-border bg-white p-2 text-ink shadow-lift"
+        className="fixed inset-auto top-[4.5rem] right-[max(1rem,calc((100vw-1184px)/2+1.5rem))] m-0 w-64 rounded-[20px] border border-border bg-surface p-2 text-ink shadow-lift"
       >
         {viewer ? (
           <>
@@ -66,10 +66,15 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 <Palette aria-hidden />
                 Customize profile
                 {viewer.isPro && (
-                  <span className="ml-auto rounded-full bg-lilac/12 px-2 py-0.5 text-[0.6875rem] font-semibold text-[#5d54d6]">
+                  <span className="ml-auto rounded-full bg-lilac/12 px-2 py-0.5 text-[0.6875rem] font-semibold text-lilac-ink">
                     Pro
                   </span>
                 )}
+              </button>
+              {/* Messages lives in the header on larger screens. */}
+              <button type="button" className={`${item} sm:hidden`}>
+                <MessageCircle aria-hidden />
+                Messages
               </button>
               <button type="button" className={item}>
                 <Wallet aria-hidden />
