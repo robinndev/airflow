@@ -56,6 +56,10 @@
   /* Category orbs: how much of the pastel bubble shows through the surface. */
   --orb-mix: 100%;
   --orb-highlight: 0.9;
+  /* Feed light: artwork colors re-lit as pale washes (OKLCH lightness / max chroma). */
+  --ambient-l: 0.9;
+  --ambient-c: 0.075;
+  --ambient-alpha: 0.95;
 
   /* Per-profile overrides are set inline on the profile root (see appearance.ts). */
   --profile-accent: var(--ocean);
@@ -107,6 +111,10 @@
   --shadow-lift-v: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
   --orb-mix: 34%;
   --orb-highlight: 0.08;
+  /* In the dark the same colors glow instead of tint. */
+  --ambient-l: 0.52;
+  --ambient-c: 0.17;
+  --ambient-alpha: 0.4;
 
   --profile-accent: var(--ocean);
   --profile-accent-strong: var(--ocean-ink);
@@ -171,6 +179,35 @@
   --animate-swing: swing 1.6s ease-in-out;
   /* Five words, 2.5s each — see <RotatingWord>. */
   --animate-word-cycle: word-cycle 12.5s cubic-bezier(0.65, 0, 0.35, 1) infinite both;
+  /* Paint flicked off a like (each drop sets --dx/--dy). */
+  --animate-splat: splat 0.7s cubic-bezier(0.15, 0.8, 0.3, 1) forwards;
+  /* Two copies of the track scroll by half their width, seamlessly. */
+  --animate-marquee: marquee 48s linear infinite;
+  /* Auth desk (keyframes live with the cutting-mat utilities below). */
+  --animate-stamp: stamp-in 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  --animate-shake: shake 0.4s ease-in-out;
+
+  @keyframes splat {
+    0% {
+      translate: 0 0;
+      scale: 0.3;
+      opacity: 1;
+    }
+    65% {
+      opacity: 1;
+    }
+    100% {
+      translate: var(--dx) var(--dy);
+      scale: 1;
+      opacity: 0;
+    }
+  }
+
+  @keyframes marquee {
+    to {
+      translate: -50% 0;
+    }
+  }
 
   @keyframes pop {
     0% {
@@ -308,9 +345,9 @@ html:has(dialog[open]:modal) {
   }
 }
 
-/* Hand-drawn strokes that draw themselves in once (paths need pathLength="1"). */
+/* Hand-drawn strokes that draw themselves in once (shapes need pathLength="1"). */
 @utility scribble-in {
-  & :is(path, line, polyline) {
+  & :is(path, line, polyline, circle, ellipse) {
     stroke-dasharray: 1;
     animation: scribble 0.9s 0.35s cubic-bezier(0.6, 0, 0.3, 1) backwards;
   }
@@ -326,8 +363,182 @@ html:has(dialog[open]:modal) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scribble-in :is(path, line, polyline) {
+  .scribble-in :is(path, line, polyline, circle, ellipse) {
     animation: none;
   }
 }
 
+
+/*
+ * Feed light. The room takes on the colors of the artwork in view: three
+ * registered colors (so they can transition) re-lit in OKLCH to a pale wash
+ * in Aqua and a low glow in Ember. Hue comes from the art; lightness and
+ * strength come from the theme, so text contrast never depends on the art.
+ */
+@property --light-a {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #35bdf5;
+}
+@property --light-b {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8b83f6;
+}
+@property --light-c {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #21d4e5;
+}
+
+@utility ambient-light {
+  --wash-a: oklch(from var(--light-a) var(--ambient-l) min(c, var(--ambient-c)) h / var(--ambient-alpha));
+  --wash-b: oklch(from var(--light-b) var(--ambient-l) min(c, var(--ambient-c)) h / var(--ambient-alpha));
+  --wash-c: oklch(from var(--light-c) var(--ambient-l) min(c, var(--ambient-c)) h / var(--ambient-alpha));
+  background-color: var(--canvas);
+  background-image:
+    radial-gradient(52% 58% at 8% 22%, var(--wash-a), transparent 72%),
+    radial-gradient(48% 62% at 94% 38%, var(--wash-b), transparent 70%),
+    radial-gradient(70% 48% at 50% 104%, var(--wash-c), transparent 72%);
+  transition:
+    --light-a 1.6s ease,
+    --light-b 1.6s 0.12s ease,
+    --light-c 1.6s 0.24s ease;
+}
+
+/* An artwork's own light falling on the wall behind it (set --glow on the frame). */
+@utility art-glow {
+  box-shadow:
+    0 1px 2px rgb(var(--shadow-rgb) / 0.12),
+    0 36px 70px -28px oklch(from var(--glow, var(--ocean)) min(l, 0.55) c h / 0.7),
+    0 18px 40px -24px rgb(var(--shadow-rgb) / 0.35);
+}
+
+/* Sketchbook paper: a faint dot grid printed on the page. */
+@utility dot-paper {
+  background-color: var(--paper);
+  background-image: radial-gradient(color-mix(in oklab, var(--paper-muted) 28%, transparent) 1px, transparent 1.4px);
+  background-size: 16px 16px;
+  background-position: 8px 8px;
+}
+
+/*
+ * The auth desk: a self-healing cutting mat. One grid cell is 24px, a major
+ * line every 5 cells; the rulers' ticks line up with the grid from the same
+ * origin (--mat-o, the rulers' thickness).
+ */
+@utility mat-grid {
+  --mat-o: 28px;
+  --mat-line: color-mix(in oklab, var(--ink) 6%, transparent);
+  --mat-line-strong: color-mix(in oklab, var(--ink) 11%, transparent);
+  background-image:
+    linear-gradient(var(--mat-line-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mat-line-strong) 1px, transparent 1px),
+    linear-gradient(var(--mat-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mat-line) 1px, transparent 1px);
+  background-size:
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-position: var(--mat-o) var(--mat-o);
+}
+
+@utility ruler-x {
+  --tick: color-mix(in oklab, var(--ink) 32%, transparent);
+  background-image:
+    linear-gradient(90deg, var(--tick) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tick) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tick) 1px, transparent 1px);
+  background-size:
+    120px 13px,
+    24px 8px,
+    12px 4px;
+  background-position: 28px 100%;
+  background-repeat: repeat-x;
+}
+
+@utility ruler-y {
+  --tick: color-mix(in oklab, var(--ink) 32%, transparent);
+  background-image:
+    linear-gradient(var(--tick) 1px, transparent 1px),
+    linear-gradient(var(--tick) 1px, transparent 1px),
+    linear-gradient(var(--tick) 1px, transparent 1px);
+  background-size:
+    13px 120px,
+    8px 24px,
+    4px 12px;
+  background-position: 100% 28px;
+  background-repeat: repeat-y;
+}
+
+/* A print pulled off the top of the stack and slipped under the others. */
+@keyframes print-shuffle {
+  0% {
+    transform: var(--pose-from);
+    z-index: 60;
+  }
+  45% {
+    transform: translate(-62%, -3%) rotate(-13deg);
+    z-index: 60;
+  }
+  55% {
+    z-index: 0;
+  }
+  100% {
+    transform: var(--pose);
+    z-index: 0;
+  }
+}
+
+/* The invite envelope: flap swings open, the card slides out. */
+@keyframes flap-open {
+  to {
+    transform: rotateX(180deg);
+  }
+}
+
+@keyframes letter-out {
+  from {
+    transform: translateY(70%);
+  }
+  to {
+    transform: translateY(-38%);
+  }
+}
+
+/* Rubber stamps and wax seals land with a little thump. */
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    scale: 1.8;
+  }
+  60% {
+    opacity: 1;
+    scale: 0.94;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes shake {
+  20%,
+  60% {
+    translate: -4px 0;
+  }
+  40%,
+  80% {
+    translate: 4px 0;
+  }
+}
+
+
+/* Primed canvas: a faint woven texture on paper (the sign-up canvas). */
+@utility canvas-weave {
+  background-color: var(--paper);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.025) 0 1px, transparent 1px 3px);
+}

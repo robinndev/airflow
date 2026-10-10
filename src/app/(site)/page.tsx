@@ -1,85 +1,112 @@
 import Link from "next/link";
-import { Fragment, Suspense } from "react";
-import { Sparkles } from "lucide-react";
-import { FeedNav } from "@/components/feed/feed-nav";
-import { FeedPost } from "@/components/feed/feed-post";
-import {
-  FeedSearch,
-  OpenCommissions,
-  SuggestedArtists,
-  TrendingTags,
-} from "@/components/feed/feed-widgets";
-import { ViewerCard } from "@/components/feed/viewer-card";
-import { PostComposer } from "@/components/profile/post-composer";
+import { Caveat } from "next/font/google";
+import { Fragment, Suspense, type ReactNode } from "react";
+import { HandNote, Scribble, Sparkle } from "@/components/explore/doodles";
+import { ArtPost } from "@/components/feed/art-post";
+import { CanvasComposer } from "@/components/feed/canvas-composer";
+import { FeedFilters, type FeedTab } from "@/components/feed/feed-filters";
+import { FeedLight } from "@/components/feed/feed-light";
+import { FEED_LIGHT_ID, type LightStop } from "@/components/feed/light";
+import { OpenStudios, StudioVisit, TagMarquee } from "@/components/feed/interludes";
+import { parseStage, STAGES } from "@/components/feed/stages";
+import { notePalette, StudioNote } from "@/components/feed/studio-note";
 import { SiteHeader } from "@/components/site/site-header";
-import { getFeed, getProfile } from "@/lib/profile/queries";
+import { buttonClasses } from "@/components/ui/button";
+import { getExploreData, TAGS } from "@/lib/explore";
+import { glowOf } from "@/lib/palette";
+import { getAllProfiles, getFeed, getProfile, type FeedEntry } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
 import { getFollowing } from "@/lib/social";
 
+// The artist's handwriting: margin notes, signatures, asides.
+const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
+
+const container = "mx-auto w-full max-w-[1120px] px-4 sm:px-6";
+
 /*
- * Home feed, timeline-style. The three-column shell and cached widgets
- * prerender; the post list depends on the viewer (tab, follows, composer)
- * and streams in behind <Suspense>.
+ * Home feed, hung like an exhibition. The room is lit by the artwork in view
+ * (#feed-light), pieces alternate sides like plates in an art book, and
+ * discovery comes as interludes between them. The masthead prerenders; the
+ * pieces depend on the viewer (tab, stage, follows) and stream in.
  */
-
-type Tab = "for-you" | "following";
-
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
     <>
-      <SiteHeader />
-      <div className="mx-auto grid w-full max-w-[1184px] justify-center gap-6 sm:px-6 lg:grid-cols-[14rem_minmax(0,38rem)_20rem] xl:gap-8">
-        <aside className="hidden lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-4rem)] lg:flex-col lg:justify-between lg:py-5">
-          <FeedNav />
-          <Suspense fallback={<div className="h-14 animate-pulse rounded-full bg-surface" />}>
-            <ViewerCard />
-          </Suspense>
-        </aside>
+      <SiteHeader frosted />
+      <main className={`${hand.variable} relative isolate flex-1 overflow-x-clip pb-32`}>
+        <div id={FEED_LIGHT_ID} aria-hidden className="ambient-light pointer-events-none fixed inset-0 -z-10">
+          <div className="grain size-full" />
+        </div>
 
-        <main className="min-h-[calc(100dvh-4rem)] min-w-0 border-border bg-surface sm:border-x">
-          <h1 className="sr-only">Home feed</h1>
-          <Suspense fallback={<TimelineSkeleton />}>
+        <header className={`${container} relative pt-10 sm:pt-14`}>
+          <p className="flex items-center gap-2 text-[0.625rem] font-bold tracking-[0.18em] text-muted uppercase">
+            <span aria-hidden className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-mint opacity-70" />
+              <span className="relative inline-flex size-2 rounded-full bg-mint-dot" />
+            </span>
+            The studio feed
+          </p>
+          <h1 className="mt-3 max-w-3xl font-display text-[2.5rem] leading-[1] font-extrabold tracking-[-0.035em] text-ink sm:text-[3.5rem]">
+            Fresh off the{" "}
+            <span className="relative inline-block font-hand text-[1.3em] leading-[0.8] font-bold tracking-normal text-ocean">
+              easel.
+              <Scribble className="absolute -bottom-1.5 left-[-4%] w-[108%] text-mint" />
+            </span>
+          </h1>
+          <p className="mt-5 max-w-lg text-[0.9375rem] leading-relaxed text-muted sm:text-base">
+            Sketches, works in progress and finished pieces, hung the moment they leave the studio. The room
+            takes the color of whatever you&apos;re looking at.
+          </p>
+          <Sparkle className="absolute top-12 right-[8%] hidden size-6 text-lilac sm:block" />
+          <Sparkle className="absolute top-32 right-[16%] hidden size-3.5 text-mint sm:block" />
+        </header>
+
+        <div className={`${container} mt-10`}>
+          <Suspense fallback={<FeedSkeleton />}>
             <Feed searchParams={searchParams} />
           </Suspense>
-        </main>
-
-        <aside className="hidden lg:sticky lg:top-16 lg:grid lg:max-h-[calc(100dvh-4rem)] lg:gap-4 lg:self-start lg:overflow-y-auto lg:py-5 lg:[scrollbar-width:none]">
-          <FeedSearch />
-          <Suspense fallback={<div className="h-64 animate-pulse rounded-[20px] bg-surface" />}>
-            <SuggestedArtists />
-          </Suspense>
-          <OpenCommissions />
-          <TrendingTags />
-          <p className="px-3 text-xs leading-relaxed text-muted">
-            Terms · Privacy · Help · © 2026 Artiflow
-          </p>
-        </aside>
-      </div>
+        </div>
+      </main>
     </>
   );
 }
 
 async function Feed({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const params = await searchParams;
-  const tab: Tab = params.feed === "following" ? "following" : "for-you";
+  const tab: FeedTab = params.feed === "following" ? "following" : "for-you";
+  const stage = parseStage(params.stage);
   const viewer = await getViewer();
-  const [entries, viewerProfile] = await Promise.all([
+  const [entries, viewerProfile, profiles, explore] = await Promise.all([
     getFeed(),
     viewer ? getProfile(viewer.handle) : null,
+    getAllProfiles(),
+    getExploreData(),
   ]);
 
   const following = new Set(viewer ? [viewer.handle, ...getFollowing(viewer.handle)] : []);
-  const visible =
-    tab === "following" ? entries.filter((e) => following.has(e.author.handle)) : entries;
+  const visible = entries.filter(
+    (e) => (tab === "for-you" || following.has(e.author.handle)) && (!stage || e.post.kind === stage),
+  );
+  const newcomer = profiles.find((p) => !following.has(p.handle));
+  const studios = explore.studios.filter((s) => s.status !== "soon").slice(0, 4);
+
+  // Interludes slot in after these positions, when the feed is long enough.
+  const interludes: Record<number, ReactNode> = {
+    1: <OpenStudios studios={studios} />,
+    4: newcomer && <StudioVisit profile={newcomer} />,
+    7: <TagMarquee tags={TAGS.slice(0, 12)} />,
+  };
+
+  // Pieces alternate sides; notes don't count, so the rhythm holds around them.
+  const flipped = visible.map((_, i) => visible.slice(0, i).filter((e) => e.post.media.length > 0).length % 2 === 1);
 
   return (
     <>
-      <FeedTabs tab={tab} />
+      <FeedFilters tab={tab} stage={stage} />
 
       {viewerProfile && (
-        <div id="composer" className="scroll-mt-32">
-          <PostComposer
-            variant="inline"
+        <div className="mt-8">
+          <CanvasComposer
             handle={viewerProfile.handle}
             displayName={viewerProfile.displayName}
             avatar={viewerProfile.avatar}
@@ -88,91 +115,94 @@ async function Feed({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
       )}
 
       {visible.length === 0 ? (
-        <div className="px-6 py-16 text-center">
-          <p className="font-display text-lg font-bold text-ink">Nothing here yet</p>
-          <p className="mt-1 text-sm text-muted">
-            Follow some artists and their posts will show up here.
-          </p>
-        </div>
+        <EmptyWall following={tab === "following"} stage={stage ? STAGES[stage].filter.toLowerCase() : null} />
       ) : (
-        visible.map((entry, i) => (
-          <Fragment key={entry.post.id}>
-            <FeedPost entry={entry} />
-            {/* Phones don't get the sidebar, so suggestions live inline. */}
-            {i === 1 && (
-              <div className="lg:hidden">
-                <Suspense>
-                  <SuggestedArtists variant="strip" />
-                </Suspense>
-              </div>
-            )}
-          </Fragment>
-        ))
+        <div className="mt-16 flex flex-col gap-24 lg:gap-36">
+          {visible.map((entry, i) => (
+            <Fragment key={entry.post.id}>
+              {entry.post.media.length > 0 ? (
+                <ArtPost entry={entry} flip={flipped[i]} priority={i === 0} />
+              ) : (
+                <StudioNote entry={entry} />
+              )}
+              {interludes[i]}
+            </Fragment>
+          ))}
+          <FeedEnd />
+        </div>
       )}
 
-      {visible.length > 0 && (
-        <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-          <span className="grid size-12 place-items-center rounded-full bg-ice text-accent-strong">
-            <Sparkles aria-hidden className="size-5" />
-          </span>
-          <p className="font-display font-bold text-ink">You&apos;re all caught up</p>
-          <Link
-            href="/explore/popular"
-            className="text-sm font-semibold text-accent-strong hover:underline"
-          >
-            Explore popular art
-          </Link>
-        </div>
-      )}
+      <FeedLight stops={visible.flatMap(toLightStop)} />
     </>
   );
 }
 
-function FeedTabs({ tab }: { tab: Tab }) {
-  const tabs: { key: Tab; label: string; href: string }[] = [
-    { key: "for-you", label: "For you", href: "/" },
-    { key: "following", label: "Following", href: "/?feed=following" },
+function toLightStop(entry: FeedEntry): LightStop[] {
+  const swatches = entry.post.media[0]?.palette ?? notePalette(entry);
+  if (swatches.length === 0) return [];
+  return [
+    {
+      id: entry.post.id,
+      glow: glowOf(swatches),
+      swatches,
+      label: `${entry.author.displayName} · ${STAGES[entry.post.kind].label}`,
+    },
   ];
+}
+
+function FeedEnd() {
   return (
-    <div className="sticky top-16 z-20 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur-md sm:px-5">
-      <nav aria-label="Feed type" className="grid grid-cols-2 rounded-full bg-ice p-1">
-        {tabs.map(({ key, label, href }) => {
-          const active = key === tab;
-          return (
-            <Link
-              key={key}
-              href={href}
-              scroll={false}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-full py-2 text-center text-sm font-semibold transition-all ${
-                active
-                  ? "bg-surface text-ink shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.08),0_2px_8px_rgb(var(--shadow-rgb)/0.06)]"
-                  : "text-muted hover:text-ink"
-              }`}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+    <div className="flex flex-col items-center pt-8 text-center">
+      <HandNote tone="accent" className="-rotate-3 text-[2.75rem]">
+        fin.
+      </HandNote>
+      <p className="mt-3 font-display text-2xl font-extrabold tracking-tight text-ink">You&apos;ve seen every new piece.</p>
+      <p className="mt-2 max-w-sm text-[0.9375rem] text-muted">
+        Go find someone new to follow — the Explore wall is always hanging something.
+      </p>
+      <Link href="/explore" className={buttonClasses({ size: "lg", className: "mt-6" })}>
+        Wander the Explore wall
+      </Link>
     </div>
   );
 }
 
-function TimelineSkeleton() {
+function EmptyWall({ following, stage }: { following: boolean; stage: string | null }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center py-24 text-center">
+      <HandNote className="-rotate-2 text-[1.75rem]">an empty wall…</HandNote>
+      <p className="mt-3 font-display text-2xl font-extrabold tracking-tight text-ink">
+        {stage ? `No ${stage} here yet` : "Nothing hanging here yet"}
+      </p>
+      <p className="mt-2 text-[0.9375rem] text-muted">
+        {following
+          ? "Follow a few artists and their new work will be hung here first."
+          : "Check back soon — artists post new work every day."}
+      </p>
+      <Link href="/explore" className={buttonClasses({ variant: "secondary", className: "mt-6" })}>
+        Find artists to follow
+      </Link>
+    </div>
+  );
+}
+
+function FeedSkeleton() {
   return (
     <div aria-busy aria-label="Loading feed">
-      <div className="h-[3.875rem] border-b border-border" />
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="flex gap-3 border-b border-border px-5 py-4">
-          <div className="size-11 shrink-0 animate-pulse rounded-full bg-ice" />
-          <div className="flex-1">
-            <div className="h-4 w-40 animate-pulse rounded-input bg-ice" />
-            <div className="mt-3 h-4 w-11/12 animate-pulse rounded-input bg-ice" />
-            <div className="mt-4 aspect-[4/3] animate-pulse rounded-[18px] bg-ice" />
-          </div>
+      <div className="flex justify-between gap-6">
+        <div className="h-8 w-56 animate-pulse rounded-input bg-ice" />
+        <div className="hidden h-9 w-96 animate-pulse rounded-full bg-ice md:block" />
+      </div>
+      <div className="mt-8 h-[5.5rem] animate-pulse rounded-panel bg-ice/70" />
+      <div className="mt-24 grid gap-14 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="ml-auto aspect-4/5 w-full max-w-[34rem] animate-pulse rounded-[10px] bg-ice" />
+        <div className="self-center">
+          <div className="h-11 w-44 animate-pulse rounded-full bg-ice" />
+          <div className="mt-6 h-6 w-full animate-pulse rounded-input bg-ice" />
+          <div className="mt-2 h-6 w-2/3 animate-pulse rounded-input bg-ice" />
+          <div className="mt-6 h-16 w-full animate-pulse rounded-input bg-ice/70" />
         </div>
-      ))}
+      </div>
     </div>
   );
 }

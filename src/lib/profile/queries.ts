@@ -21,12 +21,15 @@ export type ResolvedEmbed =
       service: CommissionService;
       status: ArtistProfile["commissions"]["status"];
       slotsLeft: number;
+      slotsTotal: number;
     }
   | { type: "adoptable"; artwork: Artwork };
 
 export type FeedEntry = {
   post: Post;
   author: PostAuthor;
+  /** The author's commission status, so the feed can point buyers at open studios. */
+  studio: { status: ArtistProfile["commissions"]["status"]; slotsLeft: number };
   embed?: ResolvedEmbed;
   quote?: { post: Post; author: PostAuthor };
   commentAuthor?: PostAuthor;
@@ -114,7 +117,7 @@ export async function getFeed(): Promise<FeedEntry[]> {
       const owner = service && profiles.get(service.ownerHandle);
       if (!service || !owner) return undefined;
       const { status, slotsTotal, slotsTaken } = owner.commissions;
-      return { type: "service", service, status, slotsLeft: Math.max(0, slotsTotal - slotsTaken) };
+      return { type: "service", service, status, slotsTotal, slotsLeft: Math.max(0, slotsTotal - slotsTaken) };
     }
     if (post.embed?.type === "adoptable") {
       const { artworkId } = post.embed;
@@ -128,13 +131,18 @@ export async function getFeed(): Promise<FeedEntry[]> {
     .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
     .flatMap((post): FeedEntry[] => {
       const author = toAuthor(post.authorHandle);
-      if (!author) return [];
+      const commissions = profiles.get(post.authorHandle)?.commissions;
+      if (!author || !commissions) return [];
       const quoted = post.quotePostId ? db.posts.find((p) => p.id === post.quotePostId) : undefined;
       const quotedAuthor = quoted && toAuthor(quoted.authorHandle);
       return [
         {
           post: { ...post, pinned: false },
           author,
+          studio: {
+            status: commissions.status,
+            slotsLeft: Math.max(0, commissions.slotsTotal - commissions.slotsTaken),
+          },
           embed: resolveEmbed(post),
           quote: quoted && quotedAuthor ? { post: quoted, author: quotedAuthor } : undefined,
           commentAuthor: post.topComment && toAuthor(post.topComment.author),
@@ -147,19 +155,6 @@ export async function getAllProfiles(): Promise<ArtistProfile[]> {
   "use cache";
   cacheLife("hours");
   return db.profiles;
-}
-
-/** Open services across artists, for the feed's sidebar. */
-export async function getOpenServices(limit = 3) {
-  "use cache";
-  cacheLife("hours");
-  const open = new Set(
-    db.profiles.filter((p) => p.commissions.status === "open").map((p) => p.handle),
-  );
-  return db.services
-    .filter((s) => open.has(s.ownerHandle))
-    .toSorted((a, b) => Number(b.popular ?? false) - Number(a.popular ?? false))
-    .slice(0, limit);
 }
 
 /** Profiles prerendered at build time; everything else gets the App Shell. */

@@ -22,7 +22,7 @@ const SECTIONS: { title: string; items: ExploreItem[] }[] = [
     title: "Characters",
     items: [
       { href: "/explore/popular", label: "Popular", hint: "Trending this week", icon: Flame },
-      { href: "/explore/feed", label: "Feed", hint: "From artists you follow", icon: Rss },
+      { href: "/?feed=following", label: "Feed", hint: "From artists you follow", icon: Rss },
       { href: "/explore/recent", label: "Recent", hint: "Freshly uploaded", icon: Clock },
       { href: "/explore/search", label: "Search", hint: "Filter by tags & traits", icon: Search },
     ],

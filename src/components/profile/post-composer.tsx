@@ -16,15 +16,26 @@ type PostComposerProps = {
   handle: string;
   displayName: string;
   avatar: ImageAsset;
-  /** "card" on profiles; "inline" sits flush inside the home timeline. */
+  /** "card" on profiles; "inline" sits flush inside a list. */
   variant?: "card" | "inline";
+  /** Preselected post type (the home feed's canvas opens straight into one). */
+  initialKind?: PostKind;
+  /** Called after a post is published (e.g. to close a dialog). */
+  onPosted?: () => void;
 };
 
-export function PostComposer({ handle, displayName, avatar, variant = "card" }: PostComposerProps) {
+export function PostComposer({
+  handle,
+  displayName,
+  avatar,
+  variant = "card",
+  initialKind = "finished",
+  onPosted,
+}: PostComposerProps) {
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [body, setBody] = useState("");
-  const [kind, setKind] = useState<PostKind>("finished");
+  const [kind, setKind] = useState<PostKind>(initialKind);
   const [image, setImage] = useState<DownscaledImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [preparingImage, setPreparingImage] = useState(false);
@@ -35,6 +46,7 @@ export function PostComposer({ handle, displayName, avatar, variant = "card" }: 
       if (result.ok) {
         setBody("");
         setImage(null);
+        onPosted?.();
       }
       return result;
     },

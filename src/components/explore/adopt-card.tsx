@@ -9,7 +9,7 @@ import { Stamp } from "./stamp";
 const HOLE = "radial-gradient(circle at 50% 13px, transparent 4px, black 4.5px)";
 
 /** Paper price tag hanging from the card on a string; swings on hover. */
-function HangTag({ sale }: { sale: AdoptSale }) {
+export function HangTag({ sale }: { sale: AdoptSale }) {
   const tag =
     sale.type === "flat"
       ? { kicker: "Flatsale", value: formatUsd(sale.priceUsd), extra: null }

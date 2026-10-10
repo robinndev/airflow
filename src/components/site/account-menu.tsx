@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LogIn, LogOut, Menu, MessageCircle, Palette, Settings, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
+import { signOut } from "@/app/(auth)/actions";
 import { Avatar } from "@/components/ui/avatar";
 import type { ImageAsset } from "@/lib/profile/types";
 
@@ -85,23 +86,23 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 Settings
               </button>
             </div>
-            <div className="mt-2 border-t border-border pt-2">
-              <button type="button" className={item}>
+            <form action={signOut} className="mt-2 border-t border-border pt-2">
+              <button type="submit" className={item}>
                 <LogOut aria-hidden />
                 Sign out
               </button>
-            </div>
+            </form>
           </>
         ) : (
           <>
-            <button type="button" className={item}>
+            <Link href="/sign-in" className={item}>
               <LogIn aria-hidden />
               Sign in
-            </button>
-            <button type="button" className={item}>
+            </Link>
+            <Link href="/join" className={item}>
               <UserRound aria-hidden />
               Create an account
-            </button>
+            </Link>
           </>
         )}
       </div>

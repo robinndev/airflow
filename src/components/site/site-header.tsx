@@ -16,11 +16,13 @@ type SiteHeaderProps = {
   overlay?: boolean;
   /** Shows `/handle` + copy-link next to the logo. */
   handle?: string;
+  /** Translucent once solid, so the page's color shows through. */
+  frosted?: boolean;
 };
 
-export function SiteHeader({ overlay = false, handle }: SiteHeaderProps) {
+export function SiteHeader({ overlay = false, handle, frosted = false }: SiteHeaderProps) {
   return (
-    <HeaderShell overlay={overlay}>
+    <HeaderShell overlay={overlay} frosted={frosted}>
       <div className="mx-auto flex h-16 max-w-[1184px] items-center gap-2 px-4 sm:px-6">
         {/* Over a banner the wordmark turns white; the scrim keeps it legible. */}
         <div

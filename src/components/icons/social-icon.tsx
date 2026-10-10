@@ -78,3 +78,26 @@ export function SocialIcon({
   if (platform === "website") return <Globe aria-hidden {...props} />;
   return glyphs[platform](props);
 }
+
+/* Sign-in providers, on the same grid. */
+
+export function GoogleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 12.2a8 8 0 1 1-2.4-5.9" />
+      <path d="M20 12h-7.5" />
+    </Svg>
+  );
+}
+
+export function DiscordIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8.6 6.2A15 15 0 0 0 5 7.5C3 10.6 2.4 13.6 2.7 16.6a14 14 0 0 0 4.6 2.2l1.1-1.8" />
+      <path d="M15.4 6.2A15 15 0 0 1 19 7.5c2 3.1 2.6 6.1 2.3 9.1a14 14 0 0 1-4.6 2.2l-1.1-1.8" />
+      <path d="M7.5 16.2c2.9 1.4 6.1 1.4 9 0M8.5 7.4c2.4-.7 4.6-.7 7 0" />
+      <circle cx="9.3" cy="12.4" r="1" fill="currentColor" stroke="none" />
+      <circle cx="14.7" cy="12.4" r="1" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}

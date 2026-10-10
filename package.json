@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "demo:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-demo-art.ts",
+    "demo:palettes": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/extract-palettes.ts",
     "predev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-demo-art.ts"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

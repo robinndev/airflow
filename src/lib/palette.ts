@@ -88,6 +88,23 @@ function hueFamily(hue: number): HueFamily {
   return "blue";
 }
 
+/**
+ * The colors an artwork "lights the room" with: its most saturated swatches,
+ * nudged toward the prominent ones. Flat greys make a dull glow, so they sink.
+ */
+export function glowOf(palette: string[] = [], count = 3): string[] {
+  const ranked = palette
+    .slice(0, RANK_WEIGHT.length)
+    .map((hex, i) => {
+      const [, a, b] = toLab(hex);
+      return { hex, score: Math.hypot(a, b) * (1 - i * 0.08) };
+    })
+    .toSorted((x, y) => y.score - x.score)
+    .map((c) => c.hex);
+  if (ranked.length === 0) return [];
+  return Array.from({ length: count }, (_, i) => ranked[i % ranked.length]);
+}
+
 export function moodsOf(palette: string[] = []): MoodSlug[] {
   const colors = palette.slice(0, RANK_WEIGHT.length).map((hex, i) => {
     const [L, a, b] = toLab(hex);

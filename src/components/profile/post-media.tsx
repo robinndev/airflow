@@ -87,7 +87,7 @@ function Tile({
   );
 }
 
-function Lightbox({
+export function Lightbox({
   dialogRef,
   media,
   index,

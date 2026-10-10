@@ -7,7 +7,6 @@ import { buttonClasses } from "@/components/ui/button";
 // Placeholder for discovery (blueprint §7). Static route, so it wins over /[handle].
 const SECTIONS: Record<string, { title: string; description: string }> = {
   popular: { title: "Popular characters", description: "What the community is loving this week." },
-  feed: { title: "Your feed", description: "New characters from artists you follow." },
   recent: { title: "Recent characters", description: "Freshly uploaded, newest first." },
   search: { title: "Character search", description: "Filter by tags, species, traits and price." },
   literatures: { title: "Literatures", description: "Stories, lore and worldbuilding docs." },

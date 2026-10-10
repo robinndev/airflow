@@ -8,7 +8,8 @@ import type { ImageAsset } from "./types";
  * deployment; replace with uploads from consenting artists before going live.
  *
  * `palette` was extracted once from the downloaded files (k-means in Lab,
- * flat backdrops dropped) — the same step real uploads will run.
+ * flat backdrops dropped) — the same step real uploads will run. Regenerate
+ * or verify with `npm run demo:palettes` (scripts/extract-palettes.ts).
  */
 
 type DemoImage = ImageAsset & { remote: string; source: string };
