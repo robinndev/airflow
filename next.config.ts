@@ -3,7 +3,8 @@ import type { NextConfig } from "next";
 const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname : null;
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // The e2e suite builds into its own folder so it never clobbers `next dev` (see playwright.config.ts).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   cacheComponents: true,
   partialPrefetching: true,
   images: {

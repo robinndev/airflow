@@ -42,3 +42,9 @@ next-env.d.ts
 
 # third-party demo artwork (npm run demo:art) — never commit
 /public/demo-art/
+
+# e2e tests (npm run test:e2e)
+/.next-e2e/
+/test-results/
+/playwright-report/
+/playwright/.cache/
