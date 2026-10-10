@@ -790,7 +790,6 @@ html:has(dialog[open]:modal) {
   background-image: var(--profile-bg-image, none);
   background-size: cover;
   background-position: center top;
-  background-attachment: fixed;
   color: var(--ink);
 }
 

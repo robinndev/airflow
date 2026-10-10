@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, LogOut, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
+import { Frame, LogIn, LogOut, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
 import { Avatar } from "@/components/ui/avatar";
@@ -71,6 +71,10 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                     Pro
                   </span>
                 )}
+              </Link>
+              <Link href="/shop" className={item}>
+                <Frame aria-hidden />
+                Frame shop
               </Link>
               <Link href="/plans" className={item}>
                 <Sparkles aria-hidden />
