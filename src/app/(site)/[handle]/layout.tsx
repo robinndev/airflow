@@ -5,6 +5,10 @@ import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileShortcutsCompact, ProfileSidebar } from "@/components/profile/profile-sidebar";
 import { ProfileSkeleton } from "@/components/profile/skeletons";
 import { SiteHeader } from "@/components/site/site-header";
+import { scopeCustomCss } from "@/lib/customization/css";
+import { profileFontVariables } from "@/lib/customization/fonts";
+import { customizationFor } from "@/lib/customization/model";
+import { canvasData, canvasStyle } from "@/lib/customization/style";
 import { appearanceStyle, resolveAppearance } from "@/lib/profile/appearance";
 import { getFeaturedHandles, getProfile, normalizeHandle } from "@/lib/profile/queries";
 
@@ -44,7 +48,7 @@ export async function generateMetadata({
 
 export default function ProfileLayout({ params, children }: LayoutProps<"/[handle]">) {
   return (
-    <div className="pb-24">
+    <div>
       <Suspense fallback={<ProfileSkeleton />}>
         <ProfileFrame params={params}>{children}</ProfileFrame>
       </Suspense>
@@ -60,30 +64,45 @@ async function ProfileFrame({
   if (!profile) notFound();
 
   const appearance = resolveAppearance(profile);
-  const sidebarRight = appearance.sidebarPosition === "right";
+  // What the artist designed, minus anything their plan doesn't include.
+  const custom = customizationFor(profile);
+  const sidebarRight = custom.layout.sidebar === "right";
 
   return (
-    <div style={appearanceStyle(appearance)}>
+    <div style={appearanceStyle(appearance)} className={profileFontVariables}>
       <SiteHeader overlay handle={profile.handle} />
-      <ProfileHero profile={profile} appearance={appearance} />
-
+      {/*
+        The canvas: the artist's palette, background and custom CSS apply
+        only in here, never to the header. It slides under the floating
+        header (-mt-16) so the banner stays full-bleed.
+      */}
       <div
-        className={`mx-auto mt-8 grid max-w-[1184px] gap-6 px-4 sm:px-6 lg:px-8 ${
-          sidebarRight
-            ? "lg:grid-cols-[minmax(0,1fr)_300px]"
-            : "lg:grid-cols-[300px_minmax(0,1fr)]"
-        }`}
+        data-profile-canvas={profile.handle}
+        {...canvasData(custom)}
+        style={canvasStyle(custom)}
+        className="-mt-16 min-h-dvh pb-24"
       >
-        <aside
-          aria-label={`${profile.displayName}'s shortcuts`}
-          className={`hidden lg:sticky lg:top-24 lg:block lg:self-start ${sidebarRight ? "lg:order-last" : ""}`}
+        {custom.css && <style>{scopeCustomCss(custom.css, profile.handle)}</style>}
+        <ProfileHero profile={profile} appearance={appearance} custom={custom} />
+
+        <div
+          className={`mx-auto mt-8 grid max-w-[1184px] gap-6 px-4 sm:px-6 lg:px-8 ${
+            sidebarRight
+              ? "lg:grid-cols-[minmax(0,1fr)_300px]"
+              : "lg:grid-cols-[300px_minmax(0,1fr)]"
+          }`}
         >
-          <ProfileSidebar profile={profile} />
-        </aside>
-        <div className="lg:hidden">
-          <ProfileShortcutsCompact profile={profile} />
+          <aside
+            aria-label={`${profile.displayName}'s shortcuts`}
+            className={`hidden lg:sticky lg:top-24 lg:block lg:self-start ${sidebarRight ? "lg:order-last" : ""}`}
+          >
+            <ProfileSidebar profile={profile} />
+          </aside>
+          <div className="lg:hidden">
+            <ProfileShortcutsCompact profile={profile} />
+          </div>
+          <main className="min-w-0">{children}</main>
         </div>
-        <main className="min-w-0">{children}</main>
       </div>
     </div>
   );

@@ -5,7 +5,8 @@ const base =
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-action font-semibold whitespace-nowrap transition-[background-color,filter,border-color,color] duration-150 select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-[1.125em] [&_svg]:shrink-0";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-on-accent hover:brightness-[0.94] active:brightness-90",
+  // `action-primary` lets a profile restyle its primary buttons (outline/soft, see globals.css).
+  primary: "action-primary bg-accent text-on-accent hover:brightness-[0.94] active:brightness-90",
   secondary: "border border-border bg-surface text-ink hover:border-sky/60 hover:bg-ice/60",
   soft: "bg-ice text-ink hover:bg-ice-strong",
   ghost: "text-muted hover:bg-ice hover:text-ink",

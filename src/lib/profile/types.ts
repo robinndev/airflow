@@ -1,3 +1,6 @@
+import type { Board } from "@/lib/customization/about";
+import type { Customization } from "@/lib/customization/model";
+
 export type Plan = "free" | "pro";
 
 export type ImageAsset = {
@@ -103,6 +106,13 @@ export type ArtistProfile = {
   };
   links: SocialLink[];
   appearance: ProfileAppearance;
+  /**
+   * Full customization as saved (src/lib/customization). Gate it with the
+   * plan before applying (`gateCustomization`); absent = defaults.
+   */
+  customization?: Customization;
+  /** The About board; absent or empty = no About tab content yet. */
+  about?: Board;
 };
 
 export type UsageRights = {

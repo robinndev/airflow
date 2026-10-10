@@ -1,4 +1,6 @@
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
+import { readBoard } from "@/lib/customization/about";
+import { readCustomization } from "@/lib/customization/model";
 import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { createSupabasePublic } from "@/lib/supabase/server";
 import { defaultArt } from "./default-art";
@@ -21,6 +23,9 @@ export type AccountRow = {
   avatar: StoredImage | null;
   banner: StoredImage | null;
   plan: "free" | "flow_plus";
+  /** Only on full profile reads (PROFILE_COLUMNS), not on post/comment authors. */
+  customization?: unknown;
+  about?: unknown;
 };
 
 type PostRow = {
@@ -41,6 +46,10 @@ type PostRow = {
 
 export const ACCOUNT_COLUMNS = "id, handle, display_name, bio, created_at, avatar, banner, plan";
 const COLUMNS = ACCOUNT_COLUMNS;
+/** A whole profile page: also its customization and About board (can be large, so not joined into posts). */
+const PROFILE_COLUMNS = `${ACCOUNT_COLUMNS}, customization, about`;
+/** Postgres "undefined column": the database predates a migration the code already knows. */
+const MISSING_COLUMN = "42703";
 const POST_COLUMNS = `id, kind, body, image_path, image_width, image_height, image_palette, images, quote_post_id, quote_demo_post_id, created_at, author:profiles!inner(${COLUMNS})`;
 
 /** Lets demo-only setups (no Supabase keys yet) keep working. */
@@ -48,15 +57,20 @@ export const configured = () => Boolean(SUPABASE_URL && SUPABASE_PUBLIC_KEY);
 
 export async function fetchAccount(handle: string): Promise<ArtistProfile | null> {
   if (!configured()) return null;
-  const { data, error } = await createSupabasePublic().from("profiles").select(COLUMNS).eq("handle", handle).maybeSingle();
+  const query = (columns: string) => createSupabasePublic().from("profiles").select(columns).eq("handle", handle).maybeSingle<AccountRow>();
+  let { data, error } = await query(PROFILE_COLUMNS);
+  // A database without the customization migration yet: load the profile without it.
+  if (error?.code === MISSING_COLUMN) ({ data, error } = await query(COLUMNS));
   if (error) throw new Error(`Couldn't load @${handle}: ${error.message}`);
   return data ? toArtistProfile(data) : null;
 }
 
 export async function fetchAccounts(handles: string[]): Promise<ArtistProfile[]> {
   if (!configured() || handles.length === 0) return [];
-  const { data, error } = await createSupabasePublic().from("profiles").select(COLUMNS).in("handle", handles);
-  if (error) throw new Error(`Couldn't load profiles: ${error.message}`);
+  const query = (columns: string) => createSupabasePublic().from("profiles").select(columns).in("handle", handles).returns<AccountRow[]>();
+  let { data, error } = await query(PROFILE_COLUMNS);
+  if (error?.code === MISSING_COLUMN) ({ data, error } = await query(COLUMNS));
+  if (error || !data) throw new Error(`Couldn't load profiles: ${error?.message}`);
   return data.map(toArtistProfile);
 }
 
@@ -170,5 +184,7 @@ function toArtistProfile(row: AccountRow): ArtistProfile {
     gallery: { total: 0, preview: [] },
     links: [],
     appearance: { accent: art.accent, bannerFocusY: 50 },
+    ...(row.customization !== undefined && { customization: readCustomization(row.customization) }),
+    ...(row.about !== undefined && { about: readBoard(row.about) }),
   };
 }

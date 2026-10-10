@@ -1,9 +1,12 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
+import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { Avatar } from "@/components/ui/avatar";
 import { HEADER_SENTINEL_ID } from "@/components/site/header-shell";
 import { formatCompact, formatMonthYear } from "@/lib/format";
+import type { Customization } from "@/lib/customization/model";
+import { nameStyle } from "@/lib/customization/style";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
 import { AvailabilityBadge } from "./availability-badge";
 import { CommissionStatusPill } from "./commission-status-pill";
@@ -12,16 +15,24 @@ import { OwnerImageControls, ProfileActions } from "./profile-actions";
 type ProfileHeroProps = {
   profile: ArtistProfile;
   appearance: ResolvedAppearance;
+  /** Already gated by plan (see customizationFor). */
+  custom: Customization;
 };
 
-export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
+export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
+  const name = nameStyle(custom);
   return (
     <section aria-labelledby="profile-name" className="relative">
       {/*
-        Full-bleed banner that sits under the floating header (-mt-16).
+        Full-bleed banner under the floating header (the profile canvas
+        around it is pulled up by -mt-16).
         It's the LCP element, so it loads eagerly with high priority.
       */}
-      <div className="relative -mt-16 h-[clamp(15rem,30vw,24rem)] overflow-hidden bg-ice">
+      {/* Painted in the banner's own dominant color while it loads, so a reload never flashes light. */}
+      <div
+        className="relative h-[clamp(15rem,30vw,24rem)] overflow-hidden bg-ice"
+        style={{ backgroundColor: profile.banner.palette?.[0] }}
+      >
         <Image
           src={profile.banner.src}
           alt={profile.banner.alt}
@@ -41,12 +52,14 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
             <div className="group/avatar relative -mt-14 w-fit shrink-0 sm:-mt-20">
-              <Avatar
-                image={profile.avatar}
-                size={152}
-                preload
-                className="size-28 shadow-lift ring-[5px] ring-surface sm:size-38"
-              />
+              <FramedAvatar frame={custom.frame}>
+                <Avatar
+                  image={profile.avatar}
+                  size={152}
+                  preload
+                  className="size-28 shadow-lift ring-[5px] ring-surface sm:size-38"
+                />
+              </FramedAvatar>
               <Suspense>
                 <OwnerImageControls handle={profile.handle} slot="avatar" />
               </Suspense>
@@ -56,7 +69,8 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1
                   id="profile-name"
-                  className="font-display text-[1.75rem] leading-tight font-extrabold tracking-tight text-ink sm:text-[2rem]"
+                  style={name.style}
+                  className={`font-display text-[calc(1.75rem*var(--name-scale,1))] leading-tight font-extrabold tracking-tight text-ink sm:text-[calc(2rem*var(--name-scale,1))] ${name.className}`}
                 >
                   {profile.displayName}
                 </h1>

@@ -775,3 +775,246 @@ html:has(dialog[open]:modal) {
     animation: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+ * Profile customization (src/lib/customization/*). The canvas wraps the
+ * profile below the header: it carries the artist's palette as variables,
+ * clips everything custom CSS can do (contain: paint) and never stacks above
+ * site chrome (isolation).
+ * ------------------------------------------------------------------------ */
+
+[data-profile-canvas] {
+  contain: paint;
+  isolation: isolate;
+  background-color: var(--canvas);
+  background-image: var(--profile-bg-image, none);
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  color: var(--ink);
+}
+
+[data-profile-canvas][data-pattern="dots"] {
+  background-image:
+    radial-gradient(color-mix(in oklab, var(--ink) 16%, transparent) 1.2px, transparent 1.6px),
+    var(--profile-bg-image, none);
+  background-size: 22px 22px, cover;
+}
+
+[data-profile-canvas][data-pattern="grid"] {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--ink) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--ink) 9%, transparent) 1px, transparent 1px),
+    var(--profile-bg-image, none);
+  background-size: 28px 28px, 28px 28px, cover;
+}
+
+[data-profile-canvas][data-pattern="paper"] {
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in oklab, var(--ocean) 22%, transparent) 31px 32px),
+    var(--profile-bg-image, none);
+  background-size: auto, cover;
+}
+
+[data-profile-canvas][data-pattern="stars"] {
+  background-image:
+    radial-gradient(color-mix(in oklab, var(--ink) 55%, transparent) 1px, transparent 1.5px),
+    radial-gradient(color-mix(in oklab, var(--ocean) 70%, transparent) 1.4px, transparent 2px),
+    var(--profile-bg-image, none);
+  background-size: 37px 41px, 89px 97px, cover;
+  background-position: 0 0, 19px 23px, center;
+}
+
+[data-profile-canvas][data-pattern="hearts"] {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 27c-6-4-9-7-9-10.5a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1C29 20 26 23 20 27z' fill='%23ff7aa8' fill-opacity='0.22'/%3E%3C/svg%3E"),
+    var(--profile-bg-image, none);
+  background-size: 40px 40px, cover;
+}
+
+/* Button styles (Flow+). Primary actions carry the `action-primary` marker. */
+[data-button-style="outline"] .action-primary {
+  background-color: transparent;
+  color: var(--profile-accent-strong);
+  box-shadow: inset 0 0 0 2px var(--profile-accent);
+}
+
+[data-button-style="soft"] .action-primary {
+  background-color: color-mix(in oklab, var(--profile-accent) 16%, var(--surface));
+  color: var(--profile-accent-strong);
+}
+
+/* Display name effects. */
+.name-gradient {
+  background-image: var(--name-gradient);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.name-glow {
+  text-shadow:
+    0 0 12px color-mix(in oklab, var(--profile-accent) 70%, transparent),
+    0 0 28px color-mix(in oklab, var(--profile-accent) 45%, transparent);
+}
+
+.name-gradient.name-glow {
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--profile-accent) 60%, transparent));
+  text-shadow: none;
+}
+
+/* A die-cut border from stacked shadows: works on solid and gradient names alike. */
+.name-sticker {
+  filter: drop-shadow(0.05em 0 0 var(--surface)) drop-shadow(-0.05em 0 0 var(--surface))
+    drop-shadow(0 0.05em 0 var(--surface)) drop-shadow(0 -0.05em 0 var(--surface))
+    drop-shadow(0.05em 0.07em 0 color-mix(in oklab, var(--ink) 30%, transparent));
+}
+
+.name-outline {
+  -webkit-text-stroke: 0.035em currentColor;
+  color: transparent;
+}
+
+.name-gradient.name-outline {
+  -webkit-text-stroke: 0.035em var(--profile-accent);
+}
+
+.name-shimmer {
+  animation: name-shimmer 3.5s linear infinite;
+}
+
+.name-shimmer:not(.name-gradient) {
+  background-image: linear-gradient(100deg, currentColor 40%, color-mix(in oklab, currentColor 30%, white) 50%, currentColor 60%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes name-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Avatar frames (src/components/frames/avatar-frame.tsx). */
+.frame-spin {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: frame-spin var(--frame-dur, 8s) linear infinite;
+}
+
+.frame-flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: frame-flicker 1.1s ease-in-out infinite alternate;
+}
+
+.frame-drift {
+  animation: frame-drift 5.5s linear infinite;
+}
+
+.frame-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: frame-twinkle 2.4s ease-in-out infinite;
+}
+
+.frame-pulse {
+  animation: frame-pulse 2.2s ease-in-out infinite;
+}
+
+.frame-drip {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: frame-drip 3s ease-in-out infinite;
+}
+
+@keyframes frame-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes frame-flicker {
+  0% {
+    scale: 1 0.82;
+    opacity: 0.85;
+  }
+  100% {
+    scale: 0.92 1.12;
+    opacity: 1;
+  }
+}
+
+@keyframes frame-drift {
+  0% {
+    translate: 0 -6px;
+    rotate: 0deg;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    translate: 14px 70px;
+    rotate: 200deg;
+    opacity: 0;
+  }
+}
+
+@keyframes frame-twinkle {
+  0%,
+  100% {
+    scale: 0.6;
+    opacity: 0.4;
+  }
+  50% {
+    scale: 1.15;
+    opacity: 1;
+  }
+}
+
+@keyframes frame-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes frame-drip {
+  0%,
+  100% {
+    scale: 1 0.85;
+  }
+  50% {
+    scale: 1 1.12;
+  }
+}
+
+/* The About board (src/components/about/*): 1000 board units across the container. */
+.about-board {
+  container-type: inline-size;
+}
+
+.about-board-inner {
+  --u: calc(100cqw / 1000);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame-spin,
+  .frame-flicker,
+  .frame-drift,
+  .frame-twinkle,
+  .frame-pulse,
+  .frame-drip,
+  .name-shimmer {
+    animation: none;
+  }
+}

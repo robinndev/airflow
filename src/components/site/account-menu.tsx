@@ -63,7 +63,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 <UserRound aria-hidden />
                 Your profile
               </Link>
-              <button type="button" className={item}>
+              <Link href="/customize" className={item}>
                 <Palette aria-hidden />
                 Customize profile
                 {viewer.isPro && (
@@ -71,7 +71,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                     Pro
                   </span>
                 )}
-              </button>
+              </Link>
               <Link href="/plans" className={item}>
                 <Sparkles aria-hidden />
                 Plans

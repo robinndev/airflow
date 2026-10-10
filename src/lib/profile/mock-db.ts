@@ -201,6 +201,37 @@ const profiles: ArtistProfile[] = [
     gallery: { total: 210, preview: [art.shopKeeper, art.kitchenMorning, art.snowVillage] },
     links: [{ platform: "kofi", label: "Ko-fi", url: "https://ko-fi.com/" }],
     appearance: { accent: "lilac", bannerFocusY: 40, buttonShape: "pill" },
+    // Demo of a fully decorated Flow+ profile (src/lib/customization).
+    customization: {
+      theme: { preset: "sakura" },
+      background: { pattern: "hearts" },
+      name: { font: "hand", gradient: ["#ff7aa8", "#c04dff"], effect: "sticker" },
+      buttons: { shape: "sketch", style: "solid" },
+      layout: { sidebar: "left" },
+      frame: "kitty",
+    },
+    about: {
+      height: 1080,
+      background: "transparent",
+      blocks: [
+        { id: "hello", type: "text", x: 60, y: 40, w: 520, h: 96, rotate: -3, z: 4, text: "hi, i'm pebble! ♡", font: "hand", size: 64, align: "left", color: "#c04dff", background: "transparent" },
+        { id: "intro", type: "text", x: 60, y: 150, w: 440, h: 150, rotate: 0, z: 2, text: "I draw tiny round creatures and far too many bunnies. Commissions open whenever the sticker shop restocks!", font: "sans", size: 20, align: "left" },
+        { id: "tape-1", type: "sticker", sticker: "tape", color: "#ffe9a8", x: 30, y: 128, w: 120, h: 50, rotate: -14, z: 8 },
+        { id: "pic-bunny", type: "image", image: { path: art.pinkBunny.src, width: art.pinkBunny.width, height: art.pinkBunny.height }, alt: "Pink bunny sketch", frame: "polaroid", x: 580, y: 40, w: 300, h: 360, rotate: 5, z: 3 },
+        { id: "heart-1", type: "sticker", sticker: "heart", color: "#ff6fa5", x: 860, y: 16, w: 96, h: 96, rotate: 12, z: 6 },
+        { id: "likes", type: "list", title: "Likes", items: ["Strawberry milk", "Rainy café days", "Plushies (too many)", "Pastel everything", "Your OCs!!"], marker: "heart", x: 60, y: 330, w: 300, h: 300, rotate: -2, z: 3, font: "sans", size: 19, align: "left", background: "#fff0f6" },
+        { id: "star-1", type: "sticker", sticker: "star", color: "#ffd166", x: 320, y: 300, w: 72, h: 72, rotate: -10, z: 6 },
+        { id: "dni", type: "list", title: "DNI", items: ["Reposting art without credit", "AI image generators", "Mean comments"], marker: "cross", x: 390, y: 350, w: 280, h: 230, rotate: 2, z: 3, font: "sans", size: 19, align: "left", background: "#f1edff" },
+        { id: "pic-plush", type: "image", image: { path: art.plushBunny.src, width: art.plushBunny.width, height: art.plushBunny.height }, alt: "Plush bunny", frame: "tape", x: 700, y: 440, w: 260, h: 260, rotate: -4, z: 2 },
+        { id: "paw-1", type: "sticker", sticker: "paw", color: "#b892ff", x: 610, y: 630, w: 84, h: 84, rotate: 14, z: 6 },
+        { id: "facts", type: "list", title: "Fun facts", items: ["Left-handed artist", "Owns 3 cats, draws 30", "Still can't draw hands (working on it)"], marker: "star", x: 60, y: 670, w: 420, h: 220, rotate: 1, z: 3, font: "sans", size: 19, align: "left", background: "#eaf6ff" },
+        { id: "pic-kitchen", type: "image", image: { path: art.kitchenMorning.src, width: art.kitchenMorning.width, height: art.kitchenMorning.height }, alt: "A cozy kitchen morning", frame: "round", x: 510, y: 740, w: 220, h: 220, rotate: 0, z: 2 },
+        { id: "sparkle-1", type: "sticker", sticker: "sparkle", color: "#5ee7ff", x: 720, y: 735, w: 70, h: 70, rotate: 0, z: 6 },
+        { id: "bubble", type: "sticker", sticker: "speech", color: "#ffffff", x: 740, y: 860, w: 230, h: 180, rotate: -3, z: 4 },
+        { id: "thanks", type: "text", x: 762, y: 892, w: 190, h: 96, rotate: -3, z: 5, text: "thank u for\nvisiting!!", font: "hand", size: 30, align: "center", color: "#5a2236", background: "transparent" },
+        { id: "status", type: "html", html: "<div style=\"background:linear-gradient(90deg,#ff7aa8,#c04dff);color:#fff;font:700 15px system-ui;padding:12px 16px;border-radius:16px\">✿ currently: drawing bunnies</div>", x: 60, y: 920, w: 400, h: 64, rotate: 0, z: 2 },
+      ],
+    },
   },
 ];
 

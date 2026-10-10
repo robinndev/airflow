@@ -3,12 +3,13 @@ import type { ImageAsset } from "@/lib/profile/types";
 
 /*
  * Uploaded art lives in the public `art` bucket, one folder per account:
- * art/<user id>/{posts,avatar,banner}/<uuid>.<ext>. Storage policies only let
+ * art/<user id>/{posts,avatar,banner,about}/<uuid>.<ext> (about = About board and
+ * profile background images). Storage policies only let
  * people write inside their own folder.
  */
 
 export const ART_BUCKET = "art";
-export type ArtFolder = "posts" | "avatar" | "banner";
+export type ArtFolder = "posts" | "avatar" | "banner" | "about";
 
 /** What we store about an uploaded image (`profiles.avatar`, post image columns). */
 export type StoredImage = { path: string; width: number; height: number; palette?: string[] | null };

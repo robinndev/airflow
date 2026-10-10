@@ -22,10 +22,10 @@ export async function ProfileActions({ handle }: { handle: string }) {
           <Pencil aria-hidden />
           Edit profile
         </button>
-        <button type="button" className={buttonClasses({ variant: "soft" })}>
+        <Link href="/customize" className={buttonClasses({ variant: "soft" })}>
           <Palette aria-hidden />
           Customize
-        </button>
+        </Link>
         <PreviewToggle enabled={false} />
       </>
     );
