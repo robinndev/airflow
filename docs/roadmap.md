@@ -34,7 +34,7 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | ↳ **Commission flow: request → proposal → payment → delivery** | Slots, artist review (accept / decline / waitlist), proposal + payment link by email, order tracking, delivery, credit on both sides | **Planned (P1)** | Stakeholder request, 2026-10-10, checked against VGen's docs. The payment step depends on the payments provider. See the [brief](#brief-commission-flow-request--proposal--payment--delivery). |
 | Discovery & search | Explore, search, filters, tags | Prototype | `/explore` built (studios, adoptables, palette wall). Search input isn't wired; `/explore/[section]` pages are placeholders. |
 | Checkout & orders | 10% fee, order history, minimal refund/dispute flow | Needs decision | Payments provider. Commissions pay through the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
-| Media upload & delivery | Limits, validation, thumbnails, CDN, metadata stripping | Planned | |
+| Media upload & delivery | Limits, validation, thumbnails, CDN, metadata stripping | **Built (first pass)** | Supabase Storage, public `art` bucket, one folder per account (policies: write/delete only your own). The browser resizes (posts 2400px, cover 2400px, picture 512px), re-encodes to WebP (strips EXIF) and **extracts the palette** before uploading straight to storage (no server hop, 10 MB cap). Next/Image serves them. Open: delete an account's files when the account is deleted; moderation/scanning. |
 | Admin & moderation | Reports, takedowns, essential analytics | Needs decision | Moderation policy. |
 
 Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode) and a chronological **home feed** (`/`).
@@ -43,7 +43,7 @@ Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode)
 
 | Item | Status | Notes |
 | ---- | ------ | ----- |
-| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. Price and exact scope open (blueprint: US$5/mo). The free/paid split is already modeled in `ProfileAppearance`; code still says `pro`. |
+| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. Price and exact scope open (blueprint: US$5/mo). **Decided perk: animated GIF profile picture and cover** (free accounts: still images), enforced in the database. `profiles.plan` (`free`/`flow_plus`) is set by the team with `npm run plans` until billing exists. Code still calls it `pro`. |
 | Higher tier (name TBD): live streaming, everything in Flow+, future features | Needs decision | Requested 2026-10-10. Needs a streaming provider and pricing. |
 | Real-time chat (buyer ↔ artist) | Planned | |
 | Notifications | Prototype | Header menu on mock data (`src/lib/notifications.ts`). A minimal in-app + email slice moves to Phase 1 for ["Notify me"](#brief-notify-me-when-a-service-reopens) and the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
@@ -282,6 +282,7 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 | 2026-10-10 | "Wait list" as on VGen: on a closed commission type, buyers click "notify me when this reopens", and everyone interested is notified when the artist reopens it. | Phase 1 → [brief](#brief-notify-me-when-a-service-reopens), named **Notify me**: research showed VGen's Waitlist is a request queue, which we keep as a status. Minimal notifications pulled forward from Phase 2. |
 | 2026-10-10 | Sign-in and sign-up screens that feel artistic, not generic. Sign-up asks "do you have an invite code from another artist?" | Phase 1 → Auth & accounts, Prototype at `/sign-in` and `/join`. Invites → [brief](#brief-artist-invite-codes). |
 | 2026-10-10 | Invites aren't per-account codes: they're random, specific artists receive them, and later the others get them another way. | Phase 1 → [brief](#brief-artist-invite-codes), **Built**: single-use random codes granted with `npm run invites`. Later distribution is an open question. |
+| 2026-10-10 | Real posting: extract the post's colors when posting (for the feed's light); add/change profile picture and cover. Paid plans can use GIFs on the profile; free accounts only images. | Done: posts in Supabase (`posts`) with images in Storage and the palette extracted in the browser; delete your own posts; picture and cover uploads; GIFs gated to Flow+ (app + database). |
 | 2026-10-10 | Signed out, the header shouldn't show everything (cart, messages, notifications). Or keep them and ask to sign in on click? | Done: visitors see **Sign in / Create account** in the header; asking to sign in happens on actions instead (Follow, Message → sign-in and back). Likes and saves on posts still to do. |
 | 2026-10-10 | Show the Google/Discord/Twitch buttons again (for a design review). | Done: always shown; one not set up yet is faded and disabled (Twitch, for now). |
 | 2026-10-10 | Real accounts now: email/handle + password and a user profile, on Supabase; keep the demo data. Deploy to Vercel to review. | Phase 1 → Auth & accounts, **Built**. Supabase provisioned through the Vercel Marketplace (`artiflow-db`); schema in `supabase/migrations/`. |
@@ -289,6 +290,8 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 | 2026-10-10 | Amanda: on the sign-in desk, swap the pencil for a pen-tablet stylus, since most of our artists draw digitally. | Done: `Stylus` in `src/components/auth/desk-props.tsx`. |
 | 2026-10-10 | Sign in with Twitch, X, Google and Apple (reference: VGen's sign-up after connecting Twitch, with the username prefilled). | Phase 1 → Auth & accounts. **Decided: email + Google, Discord and Twitch.** All three are free and built into Supabase. Apple (US$99/yr, secret rotation) and X (paid API since Feb 2026) are out for now. Buttons are on `/sign-in` and `/join`. |
 | 2026-10-10 | VGen's commission flow as stakeholders understand it: slots → form + required ToS → artist reviews (a decline frees the slot) → accepting sends a payment page, also by email → once paid it's official and shows on both profiles. | Phase 1 → [brief](#brief-commission-flow-request--proposal--payment--delivery), after checking each step against VGen's help center. |
+| 2026-10-10 | Header starts transparent with no bottom border on every page and takes its glass once you scroll. | Done: `header-shell.tsx`; the Explore hero now runs under the header. |
+| 2026-10-10 | Open the deployment to everyone (the designer hit Vercel's login and access-request screen). | Done: Vercel Authentication turned off; the site is public **with the third-party demo art**, by the project lead's call after the risk was flagged. Swap in art from consenting artists before launch. |
 
 ## Pending decisions
 

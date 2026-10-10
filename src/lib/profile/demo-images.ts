@@ -4,8 +4,9 @@ import type { ImageAsset } from "./types";
  * DEMO ONLY — third-party artwork from Danbooru (general-rated posts) used to
  * judge the layout with real art. Every image belongs to its artist (see
  * `source`). Files are downloaded by `npm run demo:art` into the git-ignored
- * `public/demo-art/` folder and never committed. Never ship this to a public
- * deployment; replace with uploads from consenting artists before going live.
+ * `public/demo-art/` folder and never committed. The review deployment is
+ * public with this art (project lead's call, 2026-10-10); replace it with
+ * uploads from consenting artists before launch.
  *
  * `palette` was extracted once from the downloaded files (k-means in Lab,
  * flat backdrops dropped) — the same step real uploads will run. Regenerate

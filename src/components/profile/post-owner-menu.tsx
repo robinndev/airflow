@@ -40,7 +40,7 @@ export function PostOwnerMenu({ postId }: { postId: string }) {
         id={menuId}
         popover="auto"
         // Anchored under the button where supported; elsewhere the popover's default (centered) applies.
-        className="w-56 rounded-card border border-border bg-surface p-1.5 text-ink shadow-lift supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-1 supports-[position-area:bottom]:[position-area:bottom_span-left]"
+        className="w-56 rounded-card border border-border bg-surface p-1.5 text-ink shadow-lift supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-1 supports-[position-area:bottom]:[position-area:bottom_span-left] supports-[position-area:bottom]:[position-try-fallbacks:flip-block]"
         style={{ positionAnchor: `--${menuId}` } as React.CSSProperties}
       >
         {confirming ? (

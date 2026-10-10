@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MessageCircle, Palette, Pencil, Plus } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
-import { getProfile } from "@/lib/profile/queries";
+import { fetchPlanForUser } from "@/lib/profile/accounts";
 import { getViewer, isPreviewingAsVisitor } from "@/lib/session";
 import { FollowButton } from "./follow-button";
 import { ImagePickerButton } from "./image-picker-button";
@@ -80,7 +80,7 @@ export async function OwnerImageControls({
 }) {
   const viewer = await getViewer();
   if (viewer?.handle !== handle) return null;
-  const profile = await getProfile(handle);
-  return <ImagePickerButton handle={handle} slot={slot} allowGif={profile?.plan === "pro"} />;
+  const plan = await fetchPlanForUser(viewer.id);
+  return <ImagePickerButton handle={handle} slot={slot} allowGif={plan === "flow_plus"} />;
 }
 

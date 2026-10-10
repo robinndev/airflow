@@ -52,7 +52,8 @@ export default async function ExplorePage() {
     <>
       <SiteHeader />
       <main className={`${hand.variable} overflow-x-clip pb-24`}>
-        <section aria-labelledby="explore-heading" className="grain relative">
+        {/* Starts under the header (transparent until scrolled), so the grain and the wash reach the top. */}
+        <section aria-labelledby="explore-heading" className="grain relative -mt-16 pt-16">
           <Wash id="hero-wash" className="-top-24 right-[-18%] h-[130%] w-[80%] max-lg:top-[38%] max-lg:right-[-30%] max-lg:h-[70%] max-lg:w-[140%]" />
           <div
             className={`${container} relative grid items-center gap-10 pt-8 pb-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14 lg:pt-14 lg:pb-20`}

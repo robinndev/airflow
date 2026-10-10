@@ -62,6 +62,13 @@ export async function fetchHandleForUser(userId: string): Promise<string | null>
   return data?.handle ?? null;
 }
 
+/** Read fresh (uncached): plans change from the team's script, outside the app's cache tags. */
+export async function fetchPlanForUser(userId: string): Promise<"free" | "flow_plus"> {
+  if (!configured()) return "free";
+  const { data } = await createSupabasePublic().from("profiles").select("plan").eq("id", userId).maybeSingle();
+  return data?.plan === "flow_plus" ? "flow_plus" : "free";
+}
+
 export async function isHandleRegistered(handle: string): Promise<boolean> {
   if (!configured()) return false;
   const { count, error } = await createSupabasePublic()
