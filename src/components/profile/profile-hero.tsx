@@ -150,8 +150,8 @@ function Stat({ label, value }: { label: string; value: number }) {
 function ActionsPlaceholder() {
   return (
     <div aria-hidden className="flex gap-2">
-      <div className="h-10 w-28 animate-pulse rounded-action bg-ice" />
-      <div className="h-10 w-24 animate-pulse rounded-action bg-ice" />
+      <div className="skeleton h-10 w-28 rounded-action bg-ice" />
+      <div className="skeleton h-10 w-24 rounded-action bg-ice" />
     </div>
   );
 }

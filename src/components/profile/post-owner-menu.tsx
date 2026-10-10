@@ -46,7 +46,7 @@ export function PostOwnerMenu({ postId }: { postId: string }) {
         {confirming ? (
           <div className="p-2">
             <p className="text-sm font-semibold">Delete this post?</p>
-            <p className="mt-0.5 text-xs text-muted">Its image is deleted too. This can&apos;t be undone.</p>
+            <p className="mt-0.5 text-xs text-muted">Its images go too. This can&apos;t be undone.</p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

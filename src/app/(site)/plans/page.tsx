@@ -137,9 +137,10 @@ export default function PlansPage() {
                         artFocus={art.focus}
                         footer={[art.credit, `${String(i + 1).padStart(3, "0")}/${String(PLAN_ORDER.length).padStart(3, "0")}`]}
                         id={`plan-${id}`}
+                        eager
                       />
                       {id === "flow_plus" && (
-                        <Stamp tone="lilac" className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-[-3deg] bg-paper">
+                        <Stamp tone="lilac" className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-[-3deg] bg-surface">
                           <Sparkle className="size-2.5" />
                           Our pick
                         </Stamp>

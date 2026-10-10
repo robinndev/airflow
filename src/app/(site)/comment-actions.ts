@@ -23,6 +23,7 @@ const MAX_COMMENT_LENGTH = 1000;
 const commentSchema = z.object({
   body: z
     .string()
+    .overwrite((text) => text.replace(/\r\n?/g, "\n"))
     .trim()
     .min(1, "Write something first.")
     .max(MAX_COMMENT_LENGTH, `Comments can be up to ${MAX_COMMENT_LENGTH} characters.`),

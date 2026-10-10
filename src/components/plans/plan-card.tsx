@@ -42,6 +42,8 @@ export type PlanCardProps = {
   badge?: "price" | "plan";
   as?: "h2" | "h3" | "p";
   id?: string;
+  /** Above the fold: load the art right away. */
+  eager?: boolean;
 };
 
 export function PlanCard({
@@ -55,6 +57,7 @@ export function PlanCard({
   badge = "price",
   as: Title = "h3",
   id,
+  eager = false,
 }: PlanCardProps) {
   return (
     <article
@@ -90,6 +93,7 @@ export function PlanCard({
             src={art.src}
             alt={art.alt}
             fill
+            loading={eager ? "eager" : undefined}
             sizes="(min-width: 640px) 300px, 80vw"
             className={`object-cover ${plan.id === "flow_plus" ? "animate-breathe motion-reduce:animate-none" : ""}`}
             style={{ objectPosition: artFocus ?? art.focus }}

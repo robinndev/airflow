@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Ellipsis, Pin, Repeat2 } from "lucide-react";
 import { PinnedReference } from "@/components/feed/note-embeds";
 import { commentsTarget, repostTarget } from "@/components/social/targets";
@@ -6,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { formatLongDate, formatShortDate } from "@/lib/format";
 import { POST_KINDS } from "@/lib/profile/post-kinds";
 import type { Post, PostAuthor } from "@/lib/profile/types";
+import { getViewer } from "@/lib/session";
 import { PostActions } from "./post-actions";
 import { PostMedia } from "./post-media";
 import { PostOwnerMenu } from "./post-owner-menu";
@@ -13,12 +15,12 @@ import { PostOwnerMenu } from "./post-owner-menu";
 export function PostCard({
   post,
   author,
-  canManage = false,
+  authorId,
 }: {
   post: Post;
   author: PostAuthor;
-  /** The viewer wrote it (real posts only): show the delete menu. */
-  canManage?: boolean;
+  /** The author's account id: their own (real) posts get the delete menu, streamed in. */
+  authorId: string;
 }) {
   const kind = POST_KINDS[post.kind];
 
@@ -67,17 +69,10 @@ export function PostCard({
         >
           {kind.label}
         </span>
-        {canManage ? (
-          <PostOwnerMenu postId={post.id} />
-        ) : (
-          <button
-            type="button"
-            aria-label="More options"
-            className="-mr-2 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-ice hover:text-ink"
-          >
-            <Ellipsis aria-hidden className="size-5" />
-          </button>
-        )}
+        {/* Only the menu waits for the session; the post itself never re-renders. */}
+        <Suspense fallback={<MoreOptions />}>
+          <PostMenu postId={post.id} authorId={authorId} />
+        </Suspense>
       </header>
 
       <div className="px-5 pt-3">
@@ -121,5 +116,22 @@ export function PostCard({
         repost={repostTarget(post, author)}
       />
     </article>
+  );
+}
+
+async function PostMenu({ postId, authorId }: { postId: string; authorId: string }) {
+  const viewer = await getViewer();
+  return viewer?.id === authorId ? <PostOwnerMenu postId={postId} /> : <MoreOptions />;
+}
+
+function MoreOptions() {
+  return (
+    <button
+      type="button"
+      aria-label="More options"
+      className="-mr-2 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-ice hover:text-ink"
+    >
+      <Ellipsis aria-hidden className="size-5" />
+    </button>
   );
 }

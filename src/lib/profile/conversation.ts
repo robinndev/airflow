@@ -95,15 +95,15 @@ export async function fetchConversations(posts: Post[]): Promise<Map<string, Con
         .returns<CommentRow[]>(),
       supabase.from("posts").select("quote_post_id, quote_demo_post_id").or(quotes).limit(10_000),
     ]);
-    if (all.error || latest.error || reposts.error) {
-      throw new Error(`Couldn't load comments: ${(all.error ?? latest.error ?? reposts.error)?.message}`);
-    }
-    for (const row of all.data) result.get((row.post_id ?? row.demo_post_id)!)!.comments++;
-    for (const row of latest.data) {
+    // Counts are extras: if they can't load, the feed still shows the art.
+    const failed = all.error ?? latest.error ?? reposts.error;
+    if (failed) console.error(`Couldn't load comments and reposts: ${failed.message}`);
+    for (const row of all.data ?? []) result.get((row.post_id ?? row.demo_post_id)!)!.comments++;
+    for (const row of latest.data ?? []) {
       const entry = result.get((row.post_id ?? row.demo_post_id)!)!;
       entry.latest ??= toComment(row);
     }
-    for (const row of reposts.data) {
+    for (const row of reposts.data ?? []) {
       const entry = result.get((row.quote_post_id ?? row.quote_demo_post_id)!);
       if (entry) entry.reposts++;
     }

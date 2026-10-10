@@ -37,7 +37,7 @@ function Splat({ colors }: { colors: string[] }) {
 }
 
 const pill =
-  "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/70 px-3 text-[0.8125rem] font-semibold text-ink backdrop-blur-sm transition-colors hover:border-ink/25 hover:bg-surface [&_svg]:size-4";
+  "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/70 px-2.5 text-[0.8125rem] font-semibold text-ink backdrop-blur-sm transition-colors hover:border-ink/25 hover:bg-surface [&_svg]:size-4";
 
 // Likes and saves are UI-only until they're persisted; comments and reposts are real.
 export function PostReactions({
@@ -87,7 +87,7 @@ export function PostReactions({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       <button
         type="button"
         aria-pressed={liked}
@@ -120,7 +120,7 @@ export function PostReactions({
         {reposts > 0 && <span className="tabular-nums">{formatCompact(reposts)}</span>}
       </button>
 
-      <span className="ml-auto flex gap-1">
+      <span className="ml-auto flex">
         <button
           type="button"
           aria-pressed={saved}

@@ -6,7 +6,7 @@ import { BannerScrims } from "./profile-hero";
  * page doesn't shift when profile data streams in (CLS ≈ 0).
  */
 
-const pulse = "animate-pulse bg-ice";
+const pulse = "skeleton bg-ice";
 
 export function ProfileSkeleton() {
   return (
@@ -16,7 +16,7 @@ export function ProfileSkeleton() {
         <BannerScrims />
       </div>
       <div className="mx-auto max-w-[1184px] px-4 sm:px-6 lg:px-8">
-        <div className="-mt-14 size-28 rounded-full bg-ice-strong ring-[5px] ring-surface sm:-mt-20 sm:size-38" />
+        <div className="skeleton -mt-14 size-28 rounded-full bg-ice-strong ring-[5px] ring-surface sm:-mt-20 sm:size-38" />
         <div className={`mt-4 h-8 w-56 rounded-input ${pulse}`} />
         <div className={`mt-2 h-4 w-32 rounded-input ${pulse}`} />
         <div className={`mt-5 h-4 w-full max-w-xl rounded-input ${pulse}`} />

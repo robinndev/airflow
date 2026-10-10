@@ -35,23 +35,15 @@ async function Feed({ params }: Pick<PageProps<"/[handle]">, "params">) {
       {posts.length === 0 ? (
         <EmptyFeed name={profile.displayName} />
       ) : (
-        // Posts prerender for everyone; the owner's delete menus stream in after.
-        <Suspense fallback={<PostList posts={posts} author={profile} />}>
-          <OwnerAwarePostList posts={posts} author={profile} />
-        </Suspense>
+        // Posts prerender for everyone; each owner's "…" menu streams in on its own.
+        <PostList posts={posts} author={profile} />
       )}
     </div>
   );
 }
 
-function PostList({ posts, author, canManage = false }: { posts: Post[]; author: ArtistProfile; canManage?: boolean }) {
-  return posts.map((post) => <PostCard key={post.id} post={post} author={author} canManage={canManage} />);
-}
-
-async function OwnerAwarePostList({ posts, author }: { posts: Post[]; author: ArtistProfile }) {
-  const viewer = await getViewer();
-  // Only real accounts own their posts (demo artists have no account).
-  return <PostList posts={posts} author={author} canManage={viewer?.id === author.id} />;
+function PostList({ posts, author }: { posts: Post[]; author: ArtistProfile }) {
+  return posts.map((post) => <PostCard key={post.id} post={post} author={author} authorId={author.id} />);
 }
 
 async function OwnerComposer({ profile }: { profile: ArtistProfile }) {

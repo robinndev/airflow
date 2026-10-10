@@ -53,6 +53,7 @@ export async function YourCard({ className = "" }: { className?: string }) {
     flavor: profile.bio.trim() || undefined,
     badge: "plan" as const,
     as: "p" as const,
+    eager: true,
   };
 
   return (
@@ -91,7 +92,7 @@ export async function YourCard({ className = "" }: { className?: string }) {
                     <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
                       <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-linear-to-r from-transparent via-white/80 to-transparent opacity-0 mix-blend-soft-light group-has-checked/yours:animate-[laminate_0.9s_cubic-bezier(0.6,0,0.3,1)]" />
                     </span>
-                    <Stamp tone="lilac" className="absolute -top-3 left-4 rotate-[-5deg] bg-paper">
+                    <Stamp tone="lilac" className="absolute -top-3 left-4 rotate-[-5deg] bg-surface">
                       Preview
                     </Stamp>
                   </div>

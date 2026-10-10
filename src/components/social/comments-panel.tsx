@@ -144,10 +144,10 @@ export function CommentsPanel() {
             <div aria-busy aria-label="Loading comments" className="grid gap-5">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex gap-3">
-                  <div className="size-8 animate-pulse rounded-full bg-ice" />
+                  <div className="size-8 skeleton rounded-full bg-ice" />
                   <div className="flex-1">
-                    <div className="h-3 w-28 animate-pulse rounded-input bg-ice" />
-                    <div className="mt-2 h-3 w-4/5 animate-pulse rounded-input bg-ice" />
+                    <div className="h-3 w-28 skeleton rounded-input bg-ice" />
+                    <div className="mt-2 h-3 w-4/5 skeleton rounded-input bg-ice" />
                   </div>
                 </div>
               ))}

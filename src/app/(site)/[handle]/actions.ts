@@ -37,9 +37,13 @@ const uploadedImages = z
   )
   .max(4, "A post holds up to four images.");
 
+/** Forms submit line breaks as CRLF; store plain newlines. */
+const lines = (text: string) => text.replace(/\r\n?/g, "\n");
+
 const postSchema = z.object({
   body: z
     .string()
+    .overwrite(lines)
     .trim()
     .min(1, "Write something first.")
     .max(MAX_POST_LENGTH, `Posts can be up to ${MAX_POST_LENGTH} characters.`),
@@ -131,7 +135,7 @@ export async function deletePost(postId: string): Promise<ActionResult> {
 export async function repostPost(postId: string, note: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, error: "Sign in to repost." };
-  const body = note.trim();
+  const body = lines(note).trim();
   if (body.length > MAX_POST_LENGTH) return { ok: false, error: `Notes can be up to ${MAX_POST_LENGTH} characters.` };
 
   let info = await fetchPostInfo(postId);

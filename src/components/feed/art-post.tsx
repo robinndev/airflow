@@ -22,7 +22,7 @@ const PLATE: Record<PostKind, PlateVariant> = {
 
 /** First paragraph reads as the piece's title; the rest is the artist's note. */
 export function splitCaption(body: string) {
-  const [lead, ...rest] = body.trim().split(/\n{2,}/);
+  const [lead, ...rest] = body.trim().split(/(?:\r?\n){2,}/);
   return { lead, rest: rest.join("\n\n") };
 }
 
@@ -54,7 +54,7 @@ export function ArtPost({
       id={post.id}
       aria-labelledby={`${post.id}-by`}
       className={`flex scroll-mt-24 flex-col gap-5 lg:grid lg:items-center lg:gap-14 xl:gap-20 ${
-        flip ? "lg:grid-cols-[19rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_19rem]"
+        flip ? "lg:grid-cols-[20rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_20rem]"
       }`}
     >
       <div className={`order-2 ${flip ? "lg:order-2" : "lg:order-1"}`}>

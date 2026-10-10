@@ -407,7 +407,13 @@ html:has(dialog[open]:modal) {
   transition:
     --light-a 1.6s ease,
     --light-b 1.6s 0.12s ease,
-    --light-c 1.6s 0.24s ease;
+    --light-c 1.6s 0.24s ease,
+    opacity 0.9s ease;
+
+  /* Dark until the first artwork lights it: no flash of the default colors. */
+  &:not([data-lit]) {
+    opacity: 0;
+  }
 }
 
 /* An artwork's own light falling on the wall behind it (set --glow on the frame). */
@@ -416,6 +422,29 @@ html:has(dialog[open]:modal) {
     0 1px 2px rgb(var(--shadow-rgb) / 0.12),
     0 36px 70px -28px oklch(from var(--glow, var(--ocean)) min(l, 0.55) c h / 0.7),
     0 18px 40px -24px rgb(var(--shadow-rgb) / 0.35);
+}
+
+/*
+ * Loading placeholders. They stay invisible for the first ~350ms (most
+ * streams land before that, so nothing flashes), then fade in and breathe
+ * slowly instead of blinking.
+ */
+@utility skeleton {
+  animation:
+    skeleton-in 0.4s 0.35s both,
+    skeleton-breathe 2.6s 0.75s ease-in-out infinite;
+}
+
+@keyframes skeleton-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes skeleton-breathe {
+  50% {
+    opacity: 0.55;
+  }
 }
 
 /* Sketchbook paper: a faint dot grid printed on the page. */
@@ -567,11 +596,11 @@ html:has(dialog[open]:modal) {
 }
 
 @utility foil {
-  --foil-mix: 62%;
-  --foil-1: color-mix(in oklab, var(--sky) var(--foil-mix), var(--paper));
-  --foil-2: color-mix(in oklab, var(--mint) var(--foil-mix), var(--paper));
-  --foil-3: color-mix(in oklab, var(--lilac) var(--foil-mix), var(--paper));
-  --foil-4: color-mix(in oklab, var(--ocean) var(--foil-mix), var(--paper));
+  /* Finishes like foil-live retune these through the --foil-* inputs (never by redefining them). */
+  --foil-1: color-mix(in oklab, var(--sky) var(--foil-mix, 62%), var(--paper));
+  --foil-2: color-mix(in oklab, var(--foil-b, var(--mint)) var(--foil-mix, 62%), var(--paper));
+  --foil-3: color-mix(in oklab, var(--lilac) var(--foil-mix, 62%), var(--paper));
+  --foil-4: color-mix(in oklab, var(--foil-d, var(--ocean)) var(--foil-mix, 62%), var(--paper));
   /* Bright bands between the colors: what makes it read as metal, not paint. */
   --foil-shine: color-mix(in oklab, var(--paper) 88%, var(--sky));
   position: relative;
@@ -606,9 +635,9 @@ html:has(dialog[open]:modal) {
 
 /* Live holo: a full rainbow (the theme's star and like colors join in) and glitter that catches the light. */
 @utility foil-live {
-  --foil-mix: 80%;
-  --foil-2: color-mix(in oklab, var(--star) var(--foil-mix), var(--paper));
-  --foil-4: color-mix(in oklab, var(--like) var(--foil-mix), var(--paper));
+  --foil-mix: 78%;
+  --foil-b: var(--star);
+  --foil-d: var(--like);
 
   &::after {
     content: "";

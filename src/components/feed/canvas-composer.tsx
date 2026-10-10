@@ -3,10 +3,8 @@
 import { Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PostComposer } from "@/components/profile/post-composer";
-import { Avatar } from "@/components/ui/avatar";
-import { buttonClasses } from "@/components/ui/button";
 import type { ImageAsset, PostKind } from "@/lib/profile/types";
-import { PROCESS, STAGES } from "./stages";
+import { CanvasCard } from "./canvas-card";
 
 type CanvasComposerProps = { handle: string; displayName: string; avatar: ImageAsset };
 
@@ -60,42 +58,7 @@ export function CanvasComposer({ handle, displayName, avatar }: CanvasComposerPr
             <CloseButton onClick={() => setInline(null)} />
           </div>
         ) : (
-          <div className="group relative rounded-panel border-2 border-dashed border-ink/15 bg-surface/45 p-4 backdrop-blur-sm transition-colors hover:border-ocean/40 hover:bg-surface/70 sm:p-5">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <Avatar image={avatar} size={48} className="size-11 ring-2 ring-surface sm:size-12" />
-              <button
-                type="button"
-                onClick={() => setInline("finished")}
-                className="flex h-12 min-w-0 flex-1 items-center rounded-full border border-border bg-surface px-5 text-left text-[0.9375rem] text-muted transition-colors after:absolute after:inset-0 after:rounded-panel group-hover:border-ocean/30"
-              >
-                <span className="truncate">What&apos;s on your canvas, {firstName}?</span>
-              </button>
-            </div>
-            <div className="relative z-10 mt-3 flex flex-wrap items-center gap-1.5 sm:pl-16">
-              {PROCESS.map((stage) => {
-                const { icon: Icon, label } = STAGES[stage];
-                return (
-                  <button
-                    key={stage}
-                    type="button"
-                    onClick={() => setInline(stage)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3 text-xs font-semibold text-ink transition-colors hover:border-ocean/40 hover:text-ocean-ink [&_svg]:size-3.5"
-                  >
-                    <Icon aria-hidden />
-                    {label}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setInline("finished")}
-                className={buttonClasses({ size: "sm", className: "ml-auto px-4" })}
-              >
-                <Plus aria-hidden />
-                Post
-              </button>
-            </div>
-          </div>
+          <CanvasCard avatar={avatar} prompt={`What's on your canvas, ${firstName}?`} pick={setInline} />
         )}
       </div>
 

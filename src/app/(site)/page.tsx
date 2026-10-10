@@ -3,6 +3,7 @@ import { Caveat } from "next/font/google";
 import { Fragment, Suspense, type ReactNode } from "react";
 import { HandNote, Scribble, Sparkle } from "@/components/explore/doodles";
 import { ArtPost } from "@/components/feed/art-post";
+import { CanvasCard } from "@/components/feed/canvas-card";
 import { CanvasComposer } from "@/components/feed/canvas-composer";
 import { FeedFilters, type FeedTab } from "@/components/feed/feed-filters";
 import { FeedLight } from "@/components/feed/feed-light";
@@ -108,15 +109,17 @@ async function Feed({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
     <>
       <FeedFilters tab={tab} stage={stage} />
 
-      {viewerProfile && (
-        <div className="mt-8">
+      <div className="mt-8">
+        {viewerProfile ? (
           <CanvasComposer
             handle={viewerProfile.handle}
             displayName={viewerProfile.displayName}
             avatar={viewerProfile.avatar}
           />
-        </div>
-      )}
+        ) : (
+          <CanvasCard prompt="What's on your canvas?" href="/sign-in" />
+        )}
+      </div>
 
       {visible.length === 0 ? (
         <EmptyWall following={tab === "following"} stage={stage ? STAGES[stage].filter.toLowerCase() : null} />
@@ -190,21 +193,28 @@ function EmptyWall({ following, stage }: { following: boolean; stage: string | n
   );
 }
 
+/**
+ * Mirrors the feed's top so nothing jumps when it streams in: the real
+ * filters (default tab), the same blank canvas, then a quiet placeholder
+ * that only shows up if the pieces take a moment.
+ */
 function FeedSkeleton() {
   return (
     <div aria-busy aria-label="Loading feed">
-      <div className="flex justify-between gap-6">
-        <div className="h-8 w-56 animate-pulse rounded-input bg-ice" />
-        <div className="hidden h-9 w-96 animate-pulse rounded-full bg-ice md:block" />
+      <FeedFilters tab="for-you" stage={null} />
+      <div className="mt-8">
+        <CanvasCard prompt="What's on your canvas?" />
       </div>
-      <div className="mt-8 h-[5.5rem] animate-pulse rounded-panel bg-ice/70" />
-      <div className="mt-24 grid gap-14 lg:grid-cols-[minmax(0,1fr)_19rem]">
-        <div className="ml-auto aspect-4/5 w-full max-w-[34rem] animate-pulse rounded-[10px] bg-ice" />
+      <div className="mt-16 grid gap-14 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="skeleton ml-auto aspect-4/5 w-full max-w-[34rem] rounded-[10px] bg-ice" />
         <div className="self-center">
-          <div className="h-11 w-44 animate-pulse rounded-full bg-ice" />
-          <div className="mt-6 h-6 w-full animate-pulse rounded-input bg-ice" />
-          <div className="mt-2 h-6 w-2/3 animate-pulse rounded-input bg-ice" />
-          <div className="mt-6 h-16 w-full animate-pulse rounded-input bg-ice/70" />
+          <div className="flex items-center gap-3">
+            <div className="skeleton size-11 rounded-full bg-ice" />
+            <div className="skeleton h-4 w-32 rounded-input bg-ice" />
+          </div>
+          <div className="skeleton mt-6 h-6 w-full rounded-input bg-ice" />
+          <div className="skeleton mt-2 h-6 w-2/3 rounded-input bg-ice" />
+          <div className="skeleton mt-6 h-16 w-full rounded-input bg-ice/70" />
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useRef, type PointerEvent, type ReactNode } from "react";
 
-const MAX_TILT = 9;
+const MAX_TILT = 12;
 
 /**
  * Turns a card toward the pointer and hands the foil's light to it

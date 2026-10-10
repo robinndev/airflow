@@ -34,7 +34,16 @@ export function FeedLight({ stops }: { stops: LightStop[] }) {
     const layer = document.getElementById(FEED_LIGHT_ID);
     const glow = stops[active]?.glow;
     if (!layer || !glow?.length) return;
+    // The first colors go in instantly while the layer is still dark, then it fades in:
+    // no sweep from the default colors on every load.
+    const first = !layer.hasAttribute("data-lit");
+    if (first) layer.style.transition = "none";
     ["a", "b", "c"].forEach((slot, i) => layer.style.setProperty(`--light-${slot}`, glow[i % glow.length]));
+    if (first) {
+      void layer.offsetWidth; // Commit the colors before transitions come back.
+      layer.style.transition = "";
+      layer.setAttribute("data-lit", "");
+    }
   }, [active, stops]);
 
   function jump(id: string) {

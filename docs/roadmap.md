@@ -43,7 +43,7 @@ Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode)
 
 | Item | Status | Notes |
 | ---- | ------ | ----- |
-| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. **Price: US$6.99/mo** (decided 2026-10-10). Exact scope open. **Decided perk: animated GIF profile picture and cover** (free accounts: still images), enforced in the database. `profiles.plan` (`free`/`flow_plus`) is set by the team with `npm run plans` until billing exists. Code still calls it `pro`. |
+| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. **Price: US$6.99/mo** (decided 2026-10-10). Exact scope open. **Decided perk: animated GIF profile picture and cover** (free accounts: still images), enforced in the database. `profiles.plan` (`free`/`flow_plus`) is set by the team with `npm run plans` until billing exists; `profiles.plan_since` records when it started. Code still calls it `pro`. **Plans page built** (`/plans`, artist trading cards: your plan, since when, upgrade path); upgrade and checkout wait on the payments provider. |
 | Higher tier (name TBD, working name "Flow+ Live"): live streaming, everything in Flow+, future features | Needs decision | Requested 2026-10-10. **Price: US$9.99/mo** (decided 2026-10-10). Needs a streaming provider. |
 | Real-time chat (buyer ↔ artist) | Planned | |
 | Notifications | Prototype | Header menu on mock data (`src/lib/notifications.ts`). A minimal in-app + email slice moves to Phase 1 for ["Notify me"](#brief-notify-me-when-a-service-reopens) and the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
@@ -293,6 +293,7 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 | 2026-10-10 | Header starts transparent with no bottom border on every page and takes its glass once you scroll. | Done: `header-shell.tsx`; the Explore hero now runs under the header. |
 | 2026-10-10 | Open the deployment to everyone (the designer hit Vercel's login and access-request screen). | Done: Vercel Authentication turned off; the site is public **with the third-party demo art**, by the project lead's call after the risk was flagged. Swap in art from consenting artists before launch. |
 | 2026-10-10 | Header menus (notifications etc.) open on hover, which clashes with the account menu; open on click instead, so only one is open and opening another closes the rest. | Done: `header-menu.tsx` (was `hover-menu.tsx`) is click-only. |
+| 2026-10-10 | Redo the plans page "100% artist", magical. If I already have a plan, show which one is active and for how long, and offer an upgrade. | Done: `/plans` as **artist trading cards** (matte / foil / live holo finishes that tilt and shine). Signed-in artists see their own card with a Day N seal, start date, time on the plan and the next plan up, with a laminator preview of the next finish on their card. New `profiles.plan_since` (trigger-kept). Upgrade is shown but closed until checkout exists. Account menu links to Plans. |
 
 ## Pending decisions
 

@@ -3,7 +3,7 @@ import type { CommentsTarget, RepostTarget } from "./events";
 
 /** First line of a post, short enough for a panel header. */
 function excerpt(body: string, max = 90) {
-  const line = body.trim().split("\n")[0];
+  const line = body.trim().split(/\r?\n/)[0];
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
 }
 
