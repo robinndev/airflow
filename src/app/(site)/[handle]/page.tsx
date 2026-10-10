@@ -2,15 +2,21 @@ import { Suspense } from "react";
 import { FeedSkeleton } from "@/components/profile/skeletons";
 import { PostCard } from "@/components/profile/post-card";
 import { PostComposer } from "@/components/profile/post-composer";
+import { CommentsPanel } from "@/components/social/comments-panel";
+import { RepostDialog } from "@/components/social/repost-dialog";
 import { getPosts, getProfile, normalizeHandle } from "@/lib/profile/queries";
 import type { ArtistProfile, Post } from "@/lib/profile/types";
 import { getViewer } from "@/lib/session";
 
 export default function ProfilePostsPage({ params }: PageProps<"/[handle]">) {
   return (
-    <Suspense fallback={<FeedSkeleton />}>
-      <Feed params={params} />
-    </Suspense>
+    <>
+      <Suspense fallback={<FeedSkeleton />}>
+        <Feed params={params} />
+      </Suspense>
+      <CommentsPanel />
+      <RepostDialog />
+    </>
   );
 }
 

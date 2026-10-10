@@ -189,10 +189,31 @@ export type Post = {
   comments: number;
   /** Marketplace card attached to the post (a service or an adoptable). */
   embed?: PostEmbed;
-  /** Repost with comment. */
+  /** Repost: the post this one pins (a real post's uuid or a demo `pst_` id). The note is optional. */
   quotePostId?: string;
+  /** Demo data only: a made-up first comment, shown as the start of the thread. */
   topComment?: { author: string; text: string };
+  /** The reposted original, ready to show (filled in by `hydratePosts`). */
+  quoted?: { post: Post; author: PostAuthor };
+  /** How many times it was reposted (filled in by `hydratePosts`). */
+  reposts?: number;
+  /** Newest top-level comment, for the feed's margin note (filled in by `hydratePosts`). */
+  latestComment?: PostComment;
 };
+
+export type PostComment = {
+  id: string;
+  author: PostAuthor;
+  body: string;
+  createdAt: string;
+  /** Replies hang off a top-level comment (one level deep). */
+  parentId: string | null;
+  /** The made-up first comment of a demo post: can't be replied to or deleted. */
+  seed?: boolean;
+};
+
+/** A top-level comment with its replies, oldest first. */
+export type CommentThread = PostComment & { replies: PostComment[] };
 
 /** Public author info embedded in each post card. */
 export type PostAuthor = Pick<

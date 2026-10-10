@@ -1,7 +1,8 @@
 "use client";
 
-import { Bookmark, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Bookmark, Heart, MessageCircle, Repeat2, Share2 } from "lucide-react";
 import { useState } from "react";
+import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
 type PostActionsProps = {
@@ -9,10 +10,13 @@ type PostActionsProps = {
   handle: string;
   likes: number;
   comments: number;
+  reposts?: number;
+  conversation: CommentsTarget;
+  repost: RepostTarget;
 };
 
-// UI-only until reactions are persisted (Phase 2 in the blueprint).
-export function PostActions({ postId, handle, likes, comments }: PostActionsProps) {
+// Likes and saves are UI-only until they're persisted; comments and reposts are real.
+export function PostActions({ postId, handle, likes, comments, reposts = 0, conversation, repost }: PostActionsProps) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -47,9 +51,14 @@ export function PostActions({ postId, handle, likes, comments }: PostActionsProp
         <span className="tabular-nums">{formatCompact(likes + (liked ? 1 : 0))}</span>
       </button>
 
-      <button type="button" aria-label="Comments" className={action}>
+      <button type="button" aria-label={`Comments (${comments})`} onClick={() => openComments(conversation)} className={action}>
         <MessageCircle aria-hidden />
         <span className="tabular-nums">{formatCompact(comments)}</span>
+      </button>
+
+      <button type="button" aria-label={`Repost (${reposts})`} onClick={() => openRepost(repost)} className={action}>
+        <Repeat2 aria-hidden />
+        {reposts > 0 && <span className="tabular-nums">{formatCompact(reposts)}</span>}
       </button>
 
       <button type="button" onClick={share} className={action}>

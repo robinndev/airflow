@@ -13,8 +13,8 @@
 # testing
 /coverage
 
-# next.js
-/.next/
+# next.js (every NEXT_DIST_DIR: .next, .next-local, .next-e2e, ad-hoc builds)
+/.next*/
 /out/
 
 # production
@@ -44,7 +44,6 @@ next-env.d.ts
 /public/demo-art/
 
 # e2e tests (npm run test:e2e)
-/.next-e2e/
 /test-results/
 /playwright-report/
 /playwright/.cache/

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PostOwnerMenu } from "@/components/profile/post-owner-menu";
+import { CommentsButton } from "@/components/social/comments-button";
+import { commentsTarget, repostTarget } from "@/components/social/targets";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCompact, formatLongDate, formatShortDate } from "@/lib/format";
 import { MOODS, moodsOf } from "@/lib/palette";
@@ -120,12 +122,15 @@ export function ArtPost({
               handle={author.handle}
               likes={post.likes}
               comments={post.comments}
+              reposts={post.reposts}
               colors={palette}
+              conversation={commentsTarget(post, author)}
+              repost={repostTarget(post, author)}
               askingForFeedback={post.kind === "wip" || post.kind === "sketch"}
             />
           </div>
 
-          {post.topComment && <MarginNote entry={entry} />}
+          {post.latestComment && <MarginNote entry={entry} />}
 
           {studio.status === "open" && (
             <Link
@@ -194,33 +199,24 @@ function StageTrack({ kind }: { kind: PostKind }) {
   );
 }
 
-/** The top comment, scribbled in the margin. */
+/** The newest comment, scribbled in the margin. Opens the whole conversation. */
 function MarginNote({ entry }: { entry: FeedEntry }) {
-  const { post, author, commentAuthor } = entry;
-  if (!post.topComment) return null;
-  const { author: handle, text } = post.topComment;
+  const { post, author } = entry;
+  const comment = post.latestComment;
+  if (!comment) return null;
 
   return (
-    <Link href={`/${author.handle}#${post.id}`} className="group mt-6 flex gap-3">
-      {commentAuthor ? (
-        <Avatar image={commentAuthor.avatar} size={28} className="mt-1 size-7" />
-      ) : (
-        <span
-          aria-hidden
-          className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-lilac/20 text-[0.625rem] font-bold text-lilac-ink uppercase"
-        >
-          {handle.slice(0, 2)}
-        </span>
-      )}
+    <CommentsButton target={commentsTarget(post, author)} className="group mt-6 flex gap-3 text-left">
+      <Avatar image={comment.author.avatar} size={28} className="mt-1 size-7" />
       <span className="min-w-0">
-        <span className="block text-xs font-semibold text-muted">@{handle} wrote</span>
-        <span className="mt-0.5 block -rotate-1 font-hand text-[1.375rem] leading-[1.1] font-semibold text-pretty text-lilac-ink">
-          “{text}”
+        <span className="block text-xs font-semibold text-muted">@{comment.author.handle} wrote</span>
+        <span className="mt-0.5 line-clamp-4 -rotate-1 font-hand text-[1.375rem] leading-[1.1] font-semibold text-pretty text-lilac-ink">
+          “{comment.body}”
         </span>
         <span className="mt-1.5 block text-xs font-medium text-muted group-hover:text-ink group-hover:underline">
-          Read all {formatCompact(post.comments)} comments
+          {post.comments > 1 ? `Read all ${formatCompact(post.comments)} comments` : "Reply"}
         </span>
       </span>
-    </Link>
+    </CommentsButton>
   );
 }

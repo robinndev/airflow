@@ -11,6 +11,8 @@ import { OpenStudios, StudioVisit, TagMarquee } from "@/components/feed/interlud
 import { parseStage, STAGES } from "@/components/feed/stages";
 import { notePalette, StudioNote } from "@/components/feed/studio-note";
 import { SiteHeader } from "@/components/site/site-header";
+import { CommentsPanel } from "@/components/social/comments-panel";
+import { RepostDialog } from "@/components/social/repost-dialog";
 import { buttonClasses } from "@/components/ui/button";
 import { getExploreData, TAGS } from "@/lib/explore";
 import { glowOf } from "@/lib/palette";
@@ -66,6 +68,8 @@ export default function HomePage({ searchParams }: PageProps<"/">) {
             <Feed searchParams={searchParams} />
           </Suspense>
         </div>
+        <CommentsPanel />
+        <RepostDialog />
       </main>
     </>
   );

@@ -12,6 +12,8 @@ export type Plan = {
   priceUsd: number;
   tagline: string;
   perks: string[];
+  /** On /plans every plan is an artist trading card; the finish is how it's printed. */
+  finish: string;
 };
 
 export const PLATFORM_FEE_PERCENT = 10;
@@ -27,6 +29,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "Commissions and adoptables",
       "Accent color and banner focus",
     ],
+    finish: "Matte",
   },
   flow_plus: {
     id: "flow_plus",
@@ -38,6 +41,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "Fully custom profiles: button shapes, layout and more",
       "Small extras as they ship",
     ],
+    finish: "Foil",
   },
   live: {
     // Working name: the tier's final name is still open (docs/roadmap.md).
@@ -46,7 +50,37 @@ export const PLANS: Record<PlanId, Plan> = {
     priceUsd: 9.99,
     tagline: "Draw live for your community.",
     perks: ["Everything in Flow+", "Live streaming", "Future features first"],
+    finish: "Live holo",
   },
 };
 
+/** Cheapest first. */
+export const PLAN_ORDER: PlanId[] = ["free", "flow_plus", "live"];
+
 export const formatPlanPrice = (plan: Plan) => (plan.priceUsd === 0 ? "$0" : `$${plan.priceUsd.toFixed(2)}`);
+
+/** What moving from one plan to another adds to the monthly price: "+$3.00". */
+export const formatPlanStep = (from: Plan, to: Plan) => `+$${(to.priceUsd - from.priceUsd).toFixed(2)}`;
+
+/** Plans above this one, cheapest first. */
+export const upgradesFrom = (id: PlanId) => PLAN_ORDER.slice(PLAN_ORDER.indexOf(id) + 1).map((next) => PLANS[next]);
+
+export const includes = (id: PlanId, other: PlanId) => PLAN_ORDER.indexOf(id) >= PLAN_ORDER.indexOf(other);
+
+const DAY = 86_400_000;
+
+/** Day 1 is the day the plan started. */
+export const planDay = (sinceIso: string, now: number) => Math.floor((now - Date.parse(sinceIso)) / DAY) + 1;
+
+/** "today", "12 days", "3 months", "1 year and 2 months". */
+export function formatPlanAge(sinceIso: string, now: number) {
+  const days = planDay(sinceIso, now) - 1;
+  if (days < 1) return "today";
+  if (days < 61) return `${days} ${days === 1 ? "day" : "days"}`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months} months`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  const y = `${years} ${years === 1 ? "year" : "years"}`;
+  return rest ? `${y} and ${rest} ${rest === 1 ? "month" : "months"}` : y;
+}

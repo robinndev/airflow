@@ -186,6 +186,10 @@
   /* Auth desk (keyframes live with the cutting-mat utilities below). */
   --animate-stamp: stamp-in 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both;
   --animate-shake: shake 0.4s ease-in-out;
+  /* Plans (keyframes live with the foil utilities below). */
+  --animate-twinkle: twinkle 2.6s ease-in-out infinite both;
+  --animate-float-up: float-up 3.2s ease-out infinite both;
+  --animate-breathe: breathe 9s ease-in-out infinite alternate;
 
   @keyframes splat {
     0% {
@@ -541,4 +545,204 @@ html:has(dialog[open]:modal) {
   background-image:
     repeating-linear-gradient(0deg, rgb(0 0 0 / 0.025) 0 1px, transparent 1px 3px),
     repeating-linear-gradient(90deg, rgb(0 0 0 / 0.025) 0 1px, transparent 1px 3px);
+}
+
+/*
+ * Plans: every plan is an artist trading card, and paid plans are printed in
+ * foil. The foil is the theme's own colors (pastel iridescence in Aqua, fire
+ * in Ember) sliding under a light at --foil-x/--foil-y. Idle cards drift on
+ * their own; <HoloTilt> hands the light to the pointer (and sets
+ * data-active, which stops the drift). Foil sits on the card's frame, never
+ * over the artwork.
+ */
+@property --foil-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+@property --foil-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@utility foil {
+  --foil-mix: 62%;
+  --foil-1: color-mix(in oklab, var(--sky) var(--foil-mix), var(--paper));
+  --foil-2: color-mix(in oklab, var(--mint) var(--foil-mix), var(--paper));
+  --foil-3: color-mix(in oklab, var(--lilac) var(--foil-mix), var(--paper));
+  --foil-4: color-mix(in oklab, var(--ocean) var(--foil-mix), var(--paper));
+  /* Bright bands between the colors: what makes it read as metal, not paint. */
+  --foil-shine: color-mix(in oklab, var(--paper) 88%, var(--sky));
+  position: relative;
+  isolation: isolate;
+  background-color: var(--foil-1);
+  background-image:
+    radial-gradient(farthest-corner circle at var(--foil-x) var(--foil-y), rgb(255 255 255 / 0.9), transparent 55%),
+    repeating-linear-gradient(
+      118deg,
+      var(--foil-1) 0%,
+      var(--foil-shine) 4%,
+      var(--foil-2) 9%,
+      var(--foil-3) 15%,
+      var(--foil-shine) 19%,
+      var(--foil-4) 24%,
+      var(--foil-1) 30%
+    );
+  background-size:
+    100% 100%,
+    240% 240%;
+  background-position:
+    center,
+    var(--foil-x) var(--foil-y);
+  background-blend-mode: soft-light, normal;
+  animation: foil-drift 7s ease-in-out infinite alternate;
+
+  [data-active] &,
+  &[data-active] {
+    animation: none;
+  }
+}
+
+/* Live holo: a full rainbow (the theme's star and like colors join in) and glitter that catches the light. */
+@utility foil-live {
+  --foil-mix: 80%;
+  --foil-2: color-mix(in oklab, var(--star) var(--foil-mix), var(--paper));
+  --foil-4: color-mix(in oklab, var(--like) var(--foil-mix), var(--paper));
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 7 -4.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    mask-image: radial-gradient(circle at var(--foil-x) var(--foil-y), black 10%, transparent 70%);
+  }
+}
+
+/* Foil lettering for a word or two. Ink tones, so it stays readable in both themes. */
+@utility foil-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--ocean-ink),
+    var(--lilac-ink) 28%,
+    var(--mint-ink) 52%,
+    var(--sky-ink) 74%,
+    var(--ocean-ink)
+  );
+  background-size: 240% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: foil-text-drift 6s ease-in-out infinite alternate;
+}
+
+/* A card tilting toward the pointer (set by <HoloTilt>). */
+@utility holo-tilt {
+  transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  &[data-active] {
+    transition-duration: 0.12s;
+  }
+}
+
+/* Gloss: the light's reflection on the card, only while it's being tilted. */
+@utility card-glare {
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--foil-x) var(--foil-y),
+    rgb(255 255 255 / 0.5),
+    rgb(255 255 255 / 0.08) 38%,
+    transparent 62%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+
+  [data-active] & {
+    opacity: 1;
+  }
+}
+
+@keyframes foil-drift {
+  from {
+    --foil-x: 12%;
+    --foil-y: 18%;
+  }
+  to {
+    --foil-x: 88%;
+    --foil-y: 82%;
+  }
+}
+
+@keyframes foil-text-drift {
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    scale: 0.3;
+    rotate: 0deg;
+  }
+  50% {
+    opacity: 1;
+    scale: 1;
+    rotate: 90deg;
+  }
+}
+
+/* Reactions rising off a live stream. */
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.5;
+  }
+  15% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: var(--drift, -10px) -72px;
+    scale: 0.9;
+  }
+}
+
+/* The laminator's light passing over a card as a new finish goes on. */
+@keyframes laminate {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 420% 0;
+  }
+}
+
+/* A living cover: the art slowly breathes, like an animated profile banner. */
+@keyframes breathe {
+  to {
+    scale: 1.07;
+    translate: 0 -2%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foil,
+  .foil-text {
+    animation: none;
+  }
 }

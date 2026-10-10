@@ -22,6 +22,9 @@ const longDate = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const day = new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" });
+const dayShort = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
+
 const monthYear = new Intl.DateTimeFormat("en-US", {
   month: "long",
   year: "numeric",
@@ -33,3 +36,7 @@ export const formatUsd = (n: number) => usd.format(n);
 export const formatShortDate = (iso: string) => shortDate.format(new Date(iso));
 export const formatLongDate = (iso: string) => longDate.format(new Date(iso));
 export const formatMonthYear = (iso: string) => monthYear.format(new Date(iso));
+/** "October 10, 2026" */
+export const formatDay = (iso: string) => day.format(new Date(iso));
+/** "Oct 10, 2026" */
+export const formatDayShort = (iso: string) => dayShort.format(new Date(iso));

@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { Bookmark, Heart, MessageCircle, Share } from "lucide-react";
+import { Bookmark, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useState, type CSSProperties } from "react";
+import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
 const DROPS = 10;
@@ -39,21 +39,29 @@ function Splat({ colors }: { colors: string[] }) {
 const pill =
   "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/70 px-3 text-[0.8125rem] font-semibold text-ink backdrop-blur-sm transition-colors hover:border-ink/25 hover:bg-surface [&_svg]:size-4";
 
-// UI-only until reactions are persisted (Phase 2 in the blueprint).
+// Likes and saves are UI-only until they're persisted; comments and reposts are real.
 export function PostReactions({
   postId,
   handle,
   likes,
   comments,
+  reposts = 0,
   colors,
+  conversation,
+  repost,
   askingForFeedback = false,
 }: {
   postId: string;
   handle: string;
   likes: number;
   comments: number;
+  reposts?: number;
   /** Palette used for the like splash. */
   colors: string[];
+  /** Opens the comments panel on this post. */
+  conversation: CommentsTarget;
+  /** What reposting pins: this post, or the original when this one is a repost. */
+  repost: RepostTarget;
   /** WIPs and sketches invite critique rather than comments. */
   askingForFeedback?: boolean;
 }) {
@@ -95,11 +103,22 @@ export function PostReactions({
         <span className="tabular-nums">{formatCompact(likes + (liked ? 1 : 0))}</span>
       </button>
 
-      <Link href={`/${handle}#${postId}`} className={pill}>
+      <button type="button" onClick={() => openComments(conversation)} className={pill}>
         <MessageCircle aria-hidden />
         <span className="tabular-nums">{formatCompact(comments)}</span>
         <span className={askingForFeedback ? "" : "sr-only"}>{askingForFeedback ? "· Feedback" : "comments"}</span>
-      </Link>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => openRepost(repost)}
+        aria-label={reposts ? `Repost (${reposts} so far)` : "Repost"}
+        title="Repost to your studio"
+        className={pill}
+      >
+        <Repeat2 aria-hidden />
+        {reposts > 0 && <span className="tabular-nums">{formatCompact(reposts)}</span>}
+      </button>
 
       <span className="ml-auto flex gap-1">
         <button

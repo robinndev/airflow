@@ -1,5 +1,6 @@
 /**
  * Sets an artist's plan until billing exists. People can't change their own.
+ * Changing it restarts `plan_since` (a database trigger), which /plans counts from.
  *
  *   npm run plans -- set @handle flow_plus     (or free)
  *   npm run plans -- show @handle
@@ -24,8 +25,8 @@ if (command === "set" && handle && PLANS.includes(plan)) {
   if (!data.length) throw new Error(`No artist with the handle @${handle}`);
   console.log(`@${handle} is now on ${plan}.`);
 } else if (command === "show" && handle) {
-  const { data } = await supabase.from("profiles").select("plan").eq("handle", handle).maybeSingle();
-  console.log(data ? `@${handle}: ${data.plan}` : `No artist with the handle @${handle}`);
+  const { data } = await supabase.from("profiles").select("plan, plan_since").eq("handle", handle).maybeSingle();
+  console.log(data ? `@${handle}: ${data.plan} since ${data.plan_since}` : `No artist with the handle @${handle}`);
 } else {
   console.log(`Usage:\n  npm run plans -- set @handle ${PLANS.join("|")}\n  npm run plans -- show @handle`);
   process.exitCode = 1;

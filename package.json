@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev.ts local",
+    "dev:production": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev.ts production",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

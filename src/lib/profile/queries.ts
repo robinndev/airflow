@@ -1,5 +1,12 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { fetchAccount, fetchHandleForUser, fetchPostsByHandle, fetchRecentPosts } from "./accounts";
+import {
+  fetchAccount,
+  fetchHandleForUser,
+  fetchPostsByHandle,
+  fetchPostsByIds,
+  fetchRecentPosts,
+} from "./accounts";
+import { fetchConversations, isRealPostId } from "./conversation";
 import { db } from "./mock-db";
 import type {
   ArtistProfile,
@@ -34,7 +41,6 @@ export type FeedEntry = {
   studio: { status: ArtistProfile["commissions"]["status"]; slotsLeft: number };
   embed?: ResolvedEmbed;
   quote?: { post: Post; author: PostAuthor };
-  commentAuthor?: PostAuthor;
 };
 
 export function normalizeHandle(handle: string) {
@@ -66,15 +72,54 @@ export async function getPosts(handle: string): Promise<Post[]> {
   cacheTag(postsTag(handle));
 
   // Demo artists' posts live in mock-db; real accounts' in Supabase.
-  if (!db.profiles.some((p) => p.handle === handle)) return fetchPostsByHandle(handle);
+  if (!db.profiles.some((p) => p.handle === handle)) return hydratePosts(await fetchPostsByHandle(handle));
 
-  return db.posts
-    .filter((p) => p.authorHandle === handle)
-    .toSorted(
-      (a, b) =>
-        Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
-        b.createdAt.localeCompare(a.createdAt),
-    );
+  return hydratePosts(
+    db.posts
+      .filter((p) => p.authorHandle === handle)
+      .toSorted(
+        (a, b) =>
+          Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
+          b.createdAt.localeCompare(a.createdAt),
+      ),
+  );
+}
+
+const demoAuthor = (handle: string): PostAuthor | undefined => {
+  const p = db.profiles.find((profile) => profile.handle === handle);
+  return p && { handle: p.handle, displayName: p.displayName, avatar: p.avatar, plan: p.plan };
+};
+
+/**
+ * Fills in what doesn't live on the post itself: the original a repost pins
+ * (fetched when it isn't in `known`), comment and repost counts, and the
+ * newest comment. Call it inside a cached read; comment and repost actions
+ * invalidate the feed and the authors' post tags.
+ */
+async function hydratePosts(posts: Post[], known: Post[] = posts, authors = new Map<string, PostAuthor>()): Promise<Post[]> {
+  const byId = new Map([...db.posts, ...known].map((p) => [p.id, p]));
+  const missing = [...new Set(posts.flatMap((p) => (p.quotePostId && !byId.has(p.quotePostId) ? [p.quotePostId] : [])))];
+  const extra = await fetchPostsByIds(missing.filter(isRealPostId));
+  for (const p of extra.posts) byId.set(p.id, p);
+  for (const a of extra.authors) authors.set(a.handle, toPostAuthorFromProfile(a));
+
+  const conversations = await fetchConversations(posts);
+  return posts.map((post) => {
+    const original = post.quotePostId ? byId.get(post.quotePostId) : undefined;
+    const originalAuthor = original && (demoAuthor(original.authorHandle) ?? authors.get(original.authorHandle));
+    const talk = conversations.get(post.id);
+    return {
+      ...post,
+      quoted: original && originalAuthor ? { post: original, author: originalAuthor } : undefined,
+      comments: talk?.comments ?? 0,
+      reposts: talk?.reposts ?? 0,
+      latestComment: talk?.latest,
+    };
+  });
+}
+
+function toPostAuthorFromProfile(p: ArtistProfile): PostAuthor {
+  return { handle: p.handle, displayName: p.displayName, avatar: p.avatar, plan: p.plan };
 }
 
 /** Newest first. */
@@ -145,28 +190,27 @@ export async function getFeed(): Promise<FeedEntry[]> {
     return undefined;
   };
 
-  return [...db.posts, ...recent.posts]
-    .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .flatMap((post): FeedEntry[] => {
-      const author = toAuthor(post.authorHandle);
-      const commissions = profiles.get(post.authorHandle)?.commissions;
-      if (!author || !commissions) return [];
-      const quoted = post.quotePostId ? db.posts.find((p) => p.id === post.quotePostId) : undefined;
-      const quotedAuthor = quoted && toAuthor(quoted.authorHandle);
-      return [
-        {
-          post: { ...post, pinned: false },
-          author,
-          studio: {
-            status: commissions.status,
-            slotsLeft: Math.max(0, commissions.slotsTotal - commissions.slotsTaken),
-          },
-          embed: resolveEmbed(post),
-          quote: quoted && quotedAuthor ? { post: quoted, author: quotedAuthor } : undefined,
-          commentAuthor: post.topComment && toAuthor(post.topComment.author),
+  const all = [...db.posts, ...recent.posts].toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const authors = new Map(recent.authors.map((a) => [a.handle, toPostAuthorFromProfile(a)]));
+  const posts = await hydratePosts(all, all, authors);
+
+  return posts.flatMap((post): FeedEntry[] => {
+    const author = toAuthor(post.authorHandle);
+    const commissions = profiles.get(post.authorHandle)?.commissions;
+    if (!author || !commissions) return [];
+    return [
+      {
+        post: { ...post, pinned: false },
+        author,
+        studio: {
+          status: commissions.status,
+          slotsLeft: Math.max(0, commissions.slotsTotal - commissions.slotsTaken),
         },
-      ];
-    });
+        embed: resolveEmbed(post),
+        quote: post.quoted,
+      },
+    ];
+  });
 }
 
 export async function getAllProfiles(): Promise<ArtistProfile[]> {

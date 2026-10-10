@@ -106,3 +106,19 @@ Concept: the artist's desk, seen from above. Deliberately not a split-screen Saa
 - `getViewer()` awaits `connection()` before touching the session (Supabase checks token expiry against the clock, which Partial Prefetching won't allow in a prerender).
 - The Google/Discord/Twitch buttons always show; the ones switched on in Supabase (read from its public `/auth/v1/settings`, cached ~1 min: `enabled-providers.ts`) sign in; the rest show faded and disabled ("coming soon"). A first social sign-in has no handle: `/auth/confirm` and `signIn` send it to `/join/handle`, which creates the profile through `claim_profile` (secret key only; shared logic lives in `private.create_profile`).
 
+
+## Running locally: two modes
+
+- `npm run dev:local` → http://localhost:3001 against the **local** Supabase (Docker). Starts Docker (macOS) and the stack if needed, applies new migrations, builds into `.next-local/`. Studio `127.0.0.1:44323`, emails in Mailpit `127.0.0.1:44324`. Throwaway data.
+- `npm run dev:production` → http://localhost:3000 against the **production** Supabase from `.env.local` (Vercel uses the same project for Production/Preview/Development). Refuses to start if `.env.local` points at a local stack; prints a red "real data" banner.
+- Both can run at once (separate ports and dist folders). Logic in `scripts/dev.ts` + `scripts/lib/local-supabase.ts` (shared with the e2e suite).
+- The local stack is shared by every session on this machine: don't `supabase stop/start/db reset` while another session is using it.
+
+## Tests (end-to-end)
+
+- Playwright (`@playwright/test`, pinned) in `tests/e2e/`. Run `npm run test:e2e` (or `test:e2e:ui`).
+- Needs Docker and the **local** Supabase stack: `npx supabase start` (API `127.0.0.1:44321`, Mailpit `:44324`, Studio `:44323` — ports moved off 543xx/556xx, which other local projects / macOS hold). The suite refuses to run against a non-local Supabase.
+- Playwright builds the app into `.next-e2e/` (`NEXT_DIST_DIR`) and serves it on `localhost:3100` with the local stack's keys, so it never collides with `next dev` or `.env.local`.
+- Local auth mirrors production: email confirmation is **on**. Tests read the real confirmation email from Mailpit (`tests/e2e/support/mailpit.ts`).
+- Each test creates its own throwaway account (`e2e_<random>`) and deletes it afterwards. Wait for React hydration before typing into the controlled auth forms (see `open()` in `auth.spec.ts`).
+- First suite: `auth.spec.ts` — sign up with email + password → blocked until confirmed → confirm via the email link → signed in on the new page → sign out → wrong password refused → sign in by email and by handle.

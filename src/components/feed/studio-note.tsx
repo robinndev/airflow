@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HandNote } from "@/components/explore/doodles";
 import { PostOwnerMenu } from "@/components/profile/post-owner-menu";
+import { commentsTarget, repostTarget } from "@/components/social/targets";
 import { Avatar } from "@/components/ui/avatar";
 import { formatLongDate, formatShortDate } from "@/lib/format";
 import type { FeedEntry } from "@/lib/profile/queries";
@@ -47,16 +48,23 @@ export function StudioNote({ entry, canManage = false }: { entry: FeedEntry; can
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[0.625rem] font-bold tracking-[0.18em] text-muted uppercase">
             <Icon aria-hidden className="size-3.5" />
-            {quote ? "Pinned to the moodboard" : "Studio note"}
+            {quote ? "Reposted" : "Studio note"}
             <span aria-hidden>·</span>
             <time dateTime={post.createdAt} title={formatLongDate(post.createdAt)}>
               {formatShortDate(post.createdAt)}
             </time>
           </p>
 
-          <blockquote className="mt-4 font-display text-[1.625rem] leading-[1.18] font-bold tracking-[-0.015em] text-balance text-ink sm:text-[2rem]">
-            {post.body}
-          </blockquote>
+          {post.body ? (
+            <blockquote className="mt-4 font-display text-[1.625rem] leading-[1.18] font-bold tracking-[-0.015em] text-balance text-ink sm:text-[2rem]">
+              {post.body}
+            </blockquote>
+          ) : (
+            // A repost without a note.
+            <p className="mt-4 font-display text-[1.625rem] leading-[1.18] font-bold tracking-[-0.015em] text-balance text-ink sm:text-[2rem]">
+              Pinned {quote ? `${quote.author.displayName.split(" ")[0]}'s piece` : "this"} to the studio wall.
+            </p>
+          )}
 
           <footer className="mt-6 flex items-center gap-3">
             <Link href={`/${author.handle}`} className="group/avatar relative shrink-0 rounded-full">
@@ -78,7 +86,10 @@ export function StudioNote({ entry, canManage = false }: { entry: FeedEntry; can
               handle={author.handle}
               likes={post.likes}
               comments={post.comments}
+              reposts={post.reposts}
               colors={notePalette(entry)}
+              conversation={commentsTarget(post, author)}
+              repost={repostTarget(post, author)}
             />
           </div>
         </div>

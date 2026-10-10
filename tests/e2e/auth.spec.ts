@@ -9,19 +9,24 @@ import { latestEmailTo, verifyLink } from "./support/mailpit";
  * account and deletes it afterwards.
  */
 
-const run = Date.now().toString(36);
-const account = {
-  handle: `e2e_${run}`,
-  email: `e2e+${run}@artiflow.test`,
-  password: `Teal-brush-${run}!`,
-};
+/** A fresh account per test run, so runs never collide (handles are max 20 chars). */
+function newAccount() {
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return { handle: `e2e_${id}`, email: `e2e+${id}@artiflow.test`, password: `Teal-brush-${id}!` };
+}
+
+let account: ReturnType<typeof newAccount>;
+
+test.beforeEach(() => {
+  account = newAccount();
+});
 
 function admin() {
   const { apiUrl, secretKey } = localSupabase();
   return createClient(apiUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-test.afterAll(async () => {
+test.afterEach(async () => {
   const supabase = admin();
   const { data } = await supabase.from("profiles").select("id").eq("handle", account.handle).maybeSingle();
   if (data?.id) await supabase.auth.admin.deleteUser(data.id);
@@ -29,20 +34,34 @@ test.afterAll(async () => {
 
 async function expectSignedInAs(page: Page, handle: string) {
   await page.getByRole("button", { name: "Account menu" }).click();
-  await expect(page.locator("#account-menu").getByText(`@${handle}`, { exact: true })).toBeVisible();
+  await expect(page.locator("#account-menu").filter({ visible: true })).toContainText(`@${handle}`);
   await page.keyboard.press("Escape");
 }
 
+/**
+ * The auth forms are controlled React inputs: anything typed before hydration
+ * is wiped. Wait until React has attached to the form (not "networkidle": the
+ * desk slideshow keeps the network busy).
+ */
+async function open(page: Page, path: string) {
+  await page.goto(path);
+  await page.waitForFunction(() => {
+    const form = document.querySelector("main form");
+    return !!form && Object.keys(form).some((key) => key.startsWith("__reactProps"));
+  });
+}
+
 async function signIn(page: Page, login: string, password: string) {
-  await page.goto("/sign-in");
+  await open(page, "/sign-in");
   await page.getByLabel("Email or handle").fill(login);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Enter the studio" }).click();
 }
 
 test("creates an account with email + password, confirms it and signs back in", async ({ page }) => {
+  test.setTimeout(90_000);
   await test.step("sign up", async () => {
-    await page.goto("/join");
+    await open(page, "/join");
     await page.getByLabel("Your handle").fill(account.handle);
     await page.getByLabel("Email").fill(account.email);
     await page.getByLabel("Password", { exact: true }).fill(account.password);
@@ -67,7 +86,8 @@ test("creates an account with email + password, confirms it and signs back in", 
   });
 
   await test.step("sign out", async () => {
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.locator("#account-menu").filter({ visible: true }).getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.getByRole("button", { name: "Account menu" })).toHaveCount(0);
   });

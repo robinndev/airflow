@@ -11,6 +11,8 @@ import { POST_KIND_ORDER, POST_KINDS } from "@/lib/profile/post-kinds";
 import type { ImageAsset, PostKind } from "@/lib/profile/types";
 
 const MAX_LENGTH = 2000;
+/** The feed lays out up to four pieces per post (justified rows, nothing cropped). */
+const MAX_IMAGES = 4;
 
 type PostComposerProps = {
   handle: string;
@@ -36,53 +38,58 @@ export function PostComposer({
   const fileRef = useRef<HTMLInputElement>(null);
   const [body, setBody] = useState("");
   const [kind, setKind] = useState<PostKind>(initialKind);
-  const [image, setImage] = useState<PreparedImage | null>(null);
+  const [images, setImages] = useState<PreparedImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [preparingImage, setPreparingImage] = useState(false);
 
+  function clearImages() {
+    for (const image of images) URL.revokeObjectURL(image.previewUrl);
+    setImages([]);
+  }
+
   const [state, formAction, pending] = useActionState(
     async (prev: ActionResult | null, formData: FormData): Promise<ActionResult> => {
-      // The image goes straight to storage first; the post then points at it.
-      let path: string | null = null;
-      if (image) {
-        try {
-          path = await uploadArt(image, "posts");
-        } catch (err) {
-          return { ok: false, error: err instanceof Error ? err.message : "Upload failed. Try again." };
-        }
-        formData.set("imagePath", path);
-        formData.set("imageWidth", String(image.width));
-        formData.set("imageHeight", String(image.height));
-        formData.set("imagePalette", image.palette.join(","));
+      // Images go straight to storage first, side by side; the post then points at them.
+      const uploads = await Promise.allSettled(images.map((image) => uploadArt(image, "posts")));
+      const paths = uploads.flatMap((u) => (u.status === "fulfilled" ? [u.value] : []));
+      const failed = uploads.find((u) => u.status === "rejected");
+      if (failed) {
+        await Promise.all(paths.map(discardArt));
+        const reason = (failed as PromiseRejectedResult).reason;
+        return { ok: false, error: reason instanceof Error ? reason.message : "Upload failed. Try again." };
       }
+      formData.set(
+        "images",
+        JSON.stringify(images.map(({ width, height, palette }, i) => ({ path: paths[i], width, height, palette }))),
+      );
       const result = await createPost(handle, prev, formData);
       if (result.ok) {
         setBody("");
-        clearImage();
+        clearImages();
         onPosted?.();
-      } else if (path) {
-        await discardArt(path);
+      } else {
+        await Promise.all(paths.map(discardArt));
       }
       return result;
     },
     null,
   );
 
-  function clearImage() {
-    if (image) URL.revokeObjectURL(image.previewUrl);
-    setImage(null);
+  function removeImage(index: number) {
+    URL.revokeObjectURL(images[index].previewUrl);
+    setImages((current) => current.filter((_, i) => i !== index));
   }
 
-  async function handleImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function handleImages(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
     event.target.value = "";
-    if (!file) return;
-    setImageError(null);
+    if (files.length === 0) return;
+    const room = MAX_IMAGES - images.length;
+    setImageError(files.length > room ? `A post holds up to ${MAX_IMAGES} images — kept the first ${room}.` : null);
     setPreparingImage(true);
     try {
-      const prepared = await prepareImage(file, 2400);
-      if (image) URL.revokeObjectURL(image.previewUrl);
-      setImage(prepared);
+      const prepared = await Promise.all(files.slice(0, room).map((file) => prepareImage(file, 2400)));
+      setImages((current) => [...current, ...prepared].slice(0, MAX_IMAGES));
     } catch (err) {
       setImageError(err instanceof Error ? err.message : "Couldn't read that image.");
     } finally {
@@ -123,27 +130,33 @@ export function PostComposer({
         </div>
       </div>
 
-      {image && (
-        <div className="px-5 pt-2 pl-[4.75rem]">
-          <div className="relative w-fit overflow-hidden rounded-[12px] border border-border bg-ice">
-            <Image
-              src={image.previewUrl}
-              alt="Selected image preview"
-              width={image.width}
-              height={image.height}
-              unoptimized
-              className="max-h-64 w-auto object-contain"
-            />
-            <button
-              type="button"
-              onClick={clearImage}
-              aria-label="Remove image"
-              className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-scrim/70 text-white transition-colors hover:bg-scrim"
+      {images.length > 0 && (
+        <ul aria-label="Selected images" className="flex flex-wrap gap-2 px-5 pt-2 sm:pl-[4.75rem]">
+          {images.map((image, i) => (
+            <li
+              key={image.previewUrl}
+              className="relative overflow-hidden rounded-[12px] border border-border bg-ice"
+              style={{ backgroundColor: image.palette[0] }}
             >
-              <X aria-hidden className="size-4" />
-            </button>
-          </div>
-        </div>
+              <Image
+                src={image.previewUrl}
+                alt={`Selected image ${i + 1} of ${images.length}`}
+                width={image.width}
+                height={image.height}
+                unoptimized
+                className={`w-auto object-contain ${images.length === 1 ? "max-h-64" : "h-28"}`}
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                aria-label={`Remove image ${i + 1}`}
+                className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-scrim/70 text-white transition-colors hover:bg-scrim"
+              >
+                <X aria-hidden className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <fieldset className="px-5 pt-3 sm:pl-[4.75rem]">
@@ -178,15 +191,16 @@ export function PostComposer({
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/avif"
+          multiple
           className="sr-only"
           tabIndex={-1}
           aria-hidden
-          onChange={handleImage}
+          onChange={handleImages}
         />
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={preparingImage || pending}
+          disabled={preparingImage || pending || images.length >= MAX_IMAGES}
           className={buttonClasses({ variant: "ghost", size: "sm" })}
         >
           {preparingImage ? (
@@ -194,7 +208,7 @@ export function PostComposer({
           ) : (
             <ImagePlus aria-hidden />
           )}
-          {image ? "Replace image" : "Add image"}
+          {images.length === 0 ? "Add images" : `Images ${images.length}/${MAX_IMAGES}`}
         </button>
 
         <p role="status" aria-live="polite" className="min-w-0 flex-1 truncate text-xs text-danger">

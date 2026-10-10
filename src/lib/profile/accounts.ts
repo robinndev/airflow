@@ -2,7 +2,7 @@ import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { createSupabasePublic } from "@/lib/supabase/server";
 import { defaultArt } from "./default-art";
-import type { ArtistProfile, Post, PostKind } from "./types";
+import type { ArtistProfile, Post, PostAuthor, PostKind } from "./types";
 
 /*
  * Real accounts (Supabase `profiles`, `posts`) shown alongside the demo
@@ -12,7 +12,7 @@ import type { ArtistProfile, Post, PostKind } from "./types";
  * cookies are involved.
  */
 
-type AccountRow = {
+export type AccountRow = {
   id: string;
   handle: string;
   display_name: string;
@@ -31,15 +31,20 @@ type PostRow = {
   image_width: number | null;
   image_height: number | null;
   image_palette: string[] | null;
+  /** Up to four images. Older rows only have the image_* columns. */
+  images: StoredImage[] | null;
+  quote_post_id: string | null;
+  quote_demo_post_id: string | null;
   created_at: string;
   author: AccountRow;
 };
 
-const COLUMNS = "id, handle, display_name, bio, created_at, avatar, banner, plan";
-const POST_COLUMNS = `id, kind, body, image_path, image_width, image_height, image_palette, created_at, author:profiles!inner(${COLUMNS})`;
+export const ACCOUNT_COLUMNS = "id, handle, display_name, bio, created_at, avatar, banner, plan";
+const COLUMNS = ACCOUNT_COLUMNS;
+const POST_COLUMNS = `id, kind, body, image_path, image_width, image_height, image_palette, images, quote_post_id, quote_demo_post_id, created_at, author:profiles!inner(${COLUMNS})`;
 
 /** Lets demo-only setups (no Supabase keys yet) keep working. */
-const configured = () => Boolean(SUPABASE_URL && SUPABASE_PUBLIC_KEY);
+export const configured = () => Boolean(SUPABASE_URL && SUPABASE_PUBLIC_KEY);
 
 export async function fetchAccount(handle: string): Promise<ArtistProfile | null> {
   if (!configured()) return null;
@@ -107,25 +112,44 @@ export async function fetchRecentPosts(limit = 60): Promise<{ posts: Post[]; aut
   return { posts: data.map(toPost), authors: [...authors.values()] };
 }
 
+/** Specific posts by id (reposts pin them), whoever wrote them. */
+export async function fetchPostsByIds(ids: string[]): Promise<{ posts: Post[]; authors: ArtistProfile[] }> {
+  if (!configured() || ids.length === 0) return { posts: [], authors: [] };
+  const { data, error } = await createSupabasePublic()
+    .from("posts")
+    .select(POST_COLUMNS)
+    .in("id", ids)
+    .returns<PostRow[]>();
+  if (error) throw new Error(`Couldn't load reposted posts: ${error.message}`);
+  const authors = new Map(data.map((row) => [row.author.handle, toArtistProfile(row.author)]));
+  return { posts: data.map(toPost), authors: [...authors.values()] };
+}
+
 function toPost(row: PostRow): Post {
+  const alt = `Artwork shared by @${row.author.handle}`;
+  const images =
+    row.images?.length
+      ? row.images
+      : row.image_path && row.image_width && row.image_height
+        ? [{ path: row.image_path, width: row.image_width, height: row.image_height, palette: row.image_palette }]
+        : [];
   return {
     id: row.id,
     authorHandle: row.author.handle,
     kind: row.kind,
     body: row.body,
-    media:
-      row.image_path && row.image_width && row.image_height
-        ? [
-            toImageAsset(
-              { path: row.image_path, width: row.image_width, height: row.image_height, palette: row.image_palette },
-              `Artwork shared by @${row.author.handle}`,
-            ),
-          ]
-        : [],
+    media: images.map((image) => toImageAsset(image, alt)),
+    quotePostId: row.quote_post_id ?? row.quote_demo_post_id ?? undefined,
     createdAt: row.created_at,
     likes: 0,
+    // Real counts come from `hydratePosts` (queries.ts).
     comments: 0,
   };
+}
+
+export function toPostAuthor(row: AccountRow): PostAuthor {
+  const { handle, displayName, avatar, plan } = toArtistProfile(row);
+  return { handle, displayName, avatar, plan };
 }
 
 function toArtistProfile(row: AccountRow): ArtistProfile {

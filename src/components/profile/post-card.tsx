@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Ellipsis, Pin } from "lucide-react";
+import { Ellipsis, Pin, Repeat2 } from "lucide-react";
+import { PinnedReference } from "@/components/feed/note-embeds";
+import { commentsTarget, repostTarget } from "@/components/social/targets";
 import { Avatar } from "@/components/ui/avatar";
 import { formatLongDate, formatShortDate } from "@/lib/format";
 import { POST_KINDS } from "@/lib/profile/post-kinds";
@@ -84,10 +86,22 @@ export function PostCard({
         >
           {kind.label}
         </span>
-        <p className="text-[0.9375rem] leading-relaxed text-pretty whitespace-pre-line text-ink">
-          {post.body}
-        </p>
+        {post.quoted && (
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted">
+            <Repeat2 aria-hidden className="size-3.5" />
+            Reposted from @{post.quoted.author.handle}
+          </p>
+        )}
+        {post.body && (
+          <p className="text-[0.9375rem] leading-relaxed text-pretty whitespace-pre-line text-ink">{post.body}</p>
+        )}
       </div>
+
+      {post.quoted && (
+        <div className="px-5 pt-5 pb-2">
+          <PinnedReference quote={post.quoted} />
+        </div>
+      )}
 
       {post.media.length > 0 && (
         <div className="px-3 pt-4 sm:px-5">
@@ -102,6 +116,9 @@ export function PostCard({
         handle={author.handle}
         likes={post.likes}
         comments={post.comments}
+        reposts={post.reposts}
+        conversation={commentsTarget(post, author)}
+        repost={repostTarget(post, author)}
       />
     </article>
   );

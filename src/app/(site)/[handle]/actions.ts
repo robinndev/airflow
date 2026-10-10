@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { ART_BUCKET, artUrl, isOwnArtPath, type ArtFolder } from "@/lib/art-storage";
+import { fetchPostInfo, postRef } from "@/lib/profile/conversation";
 import { db } from "@/lib/profile/mock-db";
 import { FEED_TAG, postsTag, profileTag } from "@/lib/profile/queries";
 import { getViewer, PREVIEW_AS_VISITOR_COOKIE } from "@/lib/session";
@@ -23,6 +24,18 @@ const uploadedImage = z.object({
     .regex(/^(#[0-9a-f]{6}(,#[0-9a-f]{6}){0,7})?$/i, "Unsupported image.")
     .transform((value) => (value ? value.toLowerCase().split(",") : [])),
 });
+
+/** The composer's images, as JSON: up to four uploads. */
+const uploadedImages = z
+  .array(
+    z.object({
+      path: z.string().max(200),
+      width: z.number().int().min(1).max(8192),
+      height: z.number().int().min(1).max(8192),
+      palette: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(8),
+    }),
+  )
+  .max(4, "A post holds up to four images.");
 
 const postSchema = z.object({
   body: z
@@ -57,29 +70,29 @@ export async function createPost(
   const parsed = postSchema.safeParse({ body: formData.get("body"), kind: formData.get("kind") });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
-  let image: z.infer<typeof uploadedImage> | null = null;
-  if (formData.get("imagePath")) {
-    const result = uploadedImage.safeParse({
-      path: formData.get("imagePath"),
-      width: formData.get("imageWidth"),
-      height: formData.get("imageHeight"),
-      palette: formData.get("imagePalette") ?? "",
-    });
-    if (!result.success || !(await checkUpload(result.data.path, viewer.id, "posts"))) {
-      return { ok: false, error: "That image didn't upload. Try adding it again." };
-    }
-    image = result.data;
+  let images: z.infer<typeof uploadedImages> = [];
+  try {
+    const result = uploadedImages.safeParse(JSON.parse(String(formData.get("images") ?? "[]")));
+    if (!result.success) return { ok: false, error: result.error.issues[0].message };
+    images = result.data.map((image) => ({ ...image, palette: image.palette.map((c) => c.toLowerCase()) }));
+  } catch {
+    return { ok: false, error: "Those images didn't upload. Try adding them again." };
   }
+  const uploaded = await Promise.all(images.map((image) => checkUpload(image.path, viewer.id, "posts")));
+  if (uploaded.includes(false)) return { ok: false, error: "An image didn't upload. Try adding it again." };
 
+  const [first] = images;
   const supabase = await createSupabaseServer();
   const { error } = await supabase.from("posts").insert({
     author_id: viewer.id,
     kind: parsed.data.kind,
     body: parsed.data.body,
-    image_path: image?.path ?? null,
-    image_width: image?.width ?? null,
-    image_height: image?.height ?? null,
-    image_palette: image?.palette ?? null,
+    images,
+    // Older deployments read only these: keep them on the first image until they're dropped.
+    image_path: first?.path ?? null,
+    image_width: first?.width ?? null,
+    image_height: first?.height ?? null,
+    image_palette: first?.palette ?? null,
   });
   if (error) return { ok: false, error: "Couldn't publish your post. Try again in a moment." };
 
@@ -100,13 +113,48 @@ export async function deletePost(postId: string): Promise<ActionResult> {
     .delete()
     .eq("id", postId)
     .eq("author_id", viewer.id)
-    .select("image_path")
-    .maybeSingle();
+    .select("image_path, images")
+    .maybeSingle<{ image_path: string | null; images: { path: string }[] | null }>();
   if (error || !data) return { ok: false, error: "Couldn't delete that post." };
-  if (data.image_path) await supabase.storage.from(ART_BUCKET).remove([data.image_path]);
+  const paths = new Set([...(data.images ?? []).map((image) => image.path), ...(data.image_path ? [data.image_path] : [])]);
+  if (paths.size) await supabase.storage.from(ART_BUCKET).remove([...paths]);
 
   updateTag(postsTag(viewer.handle));
   updateTag(FEED_TAG);
+  return { ok: true };
+}
+
+/**
+ * Pins someone's post to yours, with an optional note. Reposting a repost
+ * pins its original instead (a polaroid of a polaroid shows nothing new).
+ */
+export async function repostPost(postId: string, note: string): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Sign in to repost." };
+  const body = note.trim();
+  if (body.length > MAX_POST_LENGTH) return { ok: false, error: `Notes can be up to ${MAX_POST_LENGTH} characters.` };
+
+  let info = await fetchPostInfo(postId);
+  let target = postId;
+  if (info?.quotePostId) {
+    target = info.quotePostId;
+    info = await fetchPostInfo(target);
+  }
+  const ref = info && postRef(target);
+  if (!info || !ref) return { ok: false, error: "That post isn't there anymore." };
+
+  const supabase = await createSupabaseServer();
+  const { error } = await supabase.from("posts").insert({
+    author_id: viewer.id,
+    kind: "update",
+    body,
+    ...("post_id" in ref ? { quote_post_id: ref.post_id } : { quote_demo_post_id: ref.demo_post_id }),
+  });
+  if (error) return { ok: false, error: "Couldn't repost that. Try again in a moment." };
+
+  updateTag(FEED_TAG);
+  updateTag(postsTag(viewer.handle));
+  updateTag(postsTag(info.authorHandle)); // Its repost count.
   return { ok: true };
 }
 

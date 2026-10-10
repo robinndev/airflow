@@ -146,17 +146,27 @@ export function PinnedReference({ quote }: { quote: NonNullable<FeedEntry["quote
       className="group relative mx-auto block w-full max-w-[18rem] rotate-[2.5deg] rounded-[4px] bg-paper p-2.5 pb-0 shadow-lift transition-[rotate,scale] duration-500 ease-out hover:scale-[1.02] hover:rotate-0"
     >
       <Tape tone="sky" className="-top-3 left-1/2 w-24 -translate-x-1/2 rotate-[-4deg]" />
-      {cover && (
+      {cover ? (
         <span
           className="relative block overflow-hidden rounded-[2px]"
           style={{ aspectRatio: `${cover.width} / ${cover.height}`, backgroundColor: cover.palette?.[0] }}
         >
           <Image src={cover.src} alt={cover.alt} fill sizes="280px" className="object-cover" />
+          {post.media.length > 1 && (
+            <span className="absolute right-2 bottom-2 rounded-full bg-paper/95 px-2 py-0.5 text-[0.6875rem] font-bold text-on-paper shadow-soft">
+              +{post.media.length - 1}
+            </span>
+          )}
+        </span>
+      ) : (
+        // A text post: its words, written on the page instead of a picture.
+        <span className="dot-paper block rounded-[2px] px-4 py-5 font-display text-[1.0625rem] leading-snug font-bold text-on-paper">
+          <span className="line-clamp-6">{post.body}</span>
         </span>
       )}
       <span className="flex items-baseline justify-between gap-2 px-1 pt-2 pb-3">
         <HandNote tone="paper" className="truncate text-xl">
-          {title}
+          {cover ? title : `${author.displayName.split(" ")[0]}'s note`}
         </HandNote>
         <span className="shrink-0 text-[0.6875rem] font-semibold text-paper-muted">@{author.handle}</span>
       </span>
