@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# third-party demo artwork (npm run demo:art) — never commit
+/public/demo-art/
