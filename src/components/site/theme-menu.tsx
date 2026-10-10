@@ -10,7 +10,7 @@ import {
   type Theme,
   type ThemePreference,
 } from "@/lib/theme";
-import { HoverMenu } from "./hover-menu";
+import { HeaderMenu } from "./header-menu";
 
 // <html data-theme-preference> is the source of truth (written by the inline
 // theme script and by this menu), so subscribe to it instead of duplicating state.
@@ -64,7 +64,7 @@ export function ThemeMenu() {
   }
 
   return (
-    <HoverMenu
+    <HeaderMenu
       label="Theme"
       panelClassName="sm:w-[25rem]"
       triggerClassName={trigger}
@@ -108,7 +108,7 @@ export function ThemeMenu() {
           <Check aria-hidden className="size-4 shrink-0 text-ocean opacity-0 peer-checked:opacity-100" />
         </label>
       </fieldset>
-    </HoverMenu>
+    </HeaderMenu>
   );
 }
 

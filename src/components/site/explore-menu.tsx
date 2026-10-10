@@ -13,7 +13,7 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
-import { HoverMenu } from "./hover-menu";
+import { HeaderMenu } from "./header-menu";
 
 type ExploreItem = { href: string; label: string; hint: string; icon: LucideIcon };
 
@@ -38,7 +38,7 @@ const SECTIONS: { title: string; items: ExploreItem[] }[] = [
 
 export function ExploreMenu() {
   return (
-    <HoverMenu
+    <HeaderMenu
       label="Explore"
       panelClassName="sm:w-[26rem]"
       triggerClassName="group/trigger flex h-10 items-center gap-2 rounded-full bg-surface/75 px-3 text-sm font-semibold text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface aria-expanded:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice sm:px-4"
@@ -109,6 +109,6 @@ export function ExploreMenu() {
           ))}
         </div>
       </div>
-    </HoverMenu>
+    </HeaderMenu>
   );
 }

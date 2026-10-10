@@ -12,7 +12,7 @@ const HANDLE_PATTERN = /^(?!.*\.\.)[a-z0-9_][a-z0-9_.]{1,18}[a-z0-9_]$/;
 /** Top-level routes and words that would confuse people as someone's page. */
 const RESERVED = new Set([
   "about", "admin", "api", "artiflow", "cart", "commissions", "explore", "feed", "help", "home",
-  "join", "login", "logout", "messages", "mod", "new", "notifications", "orders", "privacy",
+  "join", "login", "logout", "messages", "mod", "new", "notifications", "orders", "plans", "pricing", "privacy",
   "search", "settings", "sign-in", "signin", "signup", "staff", "support", "terms",
 ]);
 

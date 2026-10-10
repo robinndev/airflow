@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { PostOwnerMenu } from "@/components/profile/post-owner-menu";
 import { Avatar } from "@/components/ui/avatar";
-import { ProStar } from "@/components/ui/pro-badge";
 import { formatCompact, formatLongDate, formatShortDate } from "@/lib/format";
 import { MOODS, moodsOf } from "@/lib/palette";
 import type { FeedEntry } from "@/lib/profile/queries";
@@ -29,7 +29,18 @@ export function splitCaption(body: string) {
  * wall label on the other — alternating down the feed. On phones the label
  * splits around the art: who made it above, the note and reactions below.
  */
-export function ArtPost({ entry, flip, priority }: { entry: FeedEntry; flip: boolean; priority?: boolean }) {
+export function ArtPost({
+  entry,
+  flip,
+  priority,
+  canManage = false,
+}: {
+  entry: FeedEntry;
+  flip: boolean;
+  priority?: boolean;
+  /** The viewer wrote this post: show the "…" menu (delete). */
+  canManage?: boolean;
+}) {
   const { post, author, studio } = entry;
   const palette = post.media[0]?.palette ?? [];
   const mood = MOODS.find((m) => m.slug === moodsOf(palette)[0]);
@@ -52,7 +63,6 @@ export function ArtPost({ entry, flip, priority }: { entry: FeedEntry; flip: boo
         <header className="order-1 flex items-center gap-3">
           <Link href={profileHref} className="group/avatar relative shrink-0 rounded-full">
             <Avatar image={author.avatar} size={44} className="size-11 ring-2 ring-surface" />
-            {author.plan === "pro" && <ProStar size="sm" />}
           </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-[1.0625rem] leading-tight font-bold text-ink">
@@ -67,6 +77,7 @@ export function ArtPost({ entry, flip, priority }: { entry: FeedEntry; flip: boo
               </time>
             </p>
           </div>
+          {canManage && <PostOwnerMenu postId={post.id} />}
         </header>
 
         <div className="order-3 lg:mt-6">

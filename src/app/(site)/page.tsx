@@ -121,9 +121,9 @@ async function Feed({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
           {visible.map((entry, i) => (
             <Fragment key={entry.post.id}>
               {entry.post.media.length > 0 ? (
-                <ArtPost entry={entry} flip={flipped[i]} priority={i === 0} />
+                <ArtPost entry={entry} flip={flipped[i]} priority={i === 0} canManage={entry.author.handle === viewer?.handle} />
               ) : (
-                <StudioNote entry={entry} />
+                <StudioNote entry={entry} canManage={entry.author.handle === viewer?.handle} />
               )}
               {interludes[i]}
             </Fragment>

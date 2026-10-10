@@ -2,9 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-const CLOSE_DELAY_MS = 140;
-
-type HoverMenuProps = {
+type HeaderMenuProps = {
   /** Accessible name for the trigger button. */
   label: string;
   trigger: ReactNode;
@@ -15,33 +13,23 @@ type HoverMenuProps = {
 };
 
 /**
- * Header dropdown that opens on hover for mouse users (with a short close
- * delay so the pointer can travel into the panel), on click/tap for everyone
- * else, and closes on Esc, outside clicks, focus leaving, or picking a link.
+ * Header dropdown that opens and closes on click, and closes on Esc, outside
+ * clicks, focus leaving, or picking a link. Any click outside closes it, so
+ * opening another header menu (or the account popover) leaves only one open.
  * The panel stays mounted but `inert` while closed.
  */
-export function HoverMenu({
+export function HeaderMenu({
   label,
   trigger,
   triggerClassName,
   panelClassName = "sm:w-[26rem]",
   children,
-}: HoverMenuProps) {
+}: HeaderMenuProps) {
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const closeTimer = useRef<number | undefined>(undefined);
-  const lastPointer = useRef("");
   const [open, setOpen] = useState(false);
 
-  const show = () => {
-    window.clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const hideSoon = () => {
-    window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
-  };
   const close = () => setOpen(false);
 
   useEffect(() => {
@@ -63,14 +51,10 @@ export function HoverMenu({
     };
   }, [open]);
 
-  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
-
   return (
     <div
       ref={rootRef}
       className="relative"
-      onPointerEnter={(e) => e.pointerType === "mouse" && show()}
-      onPointerLeave={(e) => e.pointerType === "mouse" && hideSoon()}
       // Close when focus moves to something outside (e.g. Tab). A null
       // relatedTarget means a click on non-focusable panel content (labels,
       // text) — outside clicks are already handled by the pointerdown listener.
@@ -85,19 +69,13 @@ export function HoverMenu({
         aria-label={label}
         aria-expanded={open}
         aria-controls={panelId}
-        onPointerDown={(e) => (lastPointer.current = e.pointerType)}
-        // Hover already opened it for mouse users, so a click must not close it.
-        onClick={() => {
-          if (lastPointer.current === "mouse") show();
-          else setOpen((o) => !o);
-          lastPointer.current = "";
-        }}
+        onClick={() => setOpen((o) => !o)}
         className={triggerClassName}
       >
         {trigger}
       </button>
 
-      {/* pt-2 is an invisible hover bridge between the button and the panel. */}
+      {/* pt-2 spaces the panel from the button. */}
       <div
         id={panelId}
         inert={!open}

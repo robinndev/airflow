@@ -22,7 +22,6 @@ import { SaveButton } from "@/components/commissions/save-button";
 import { FollowButton } from "@/components/profile/follow-button";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
-import { ProStar } from "@/components/ui/pro-badge";
 import { formatShortDate, formatUsd } from "@/lib/format";
 import type {
   CommissionService,
@@ -350,7 +349,6 @@ function ServiceDetails({
         <div className="flex items-center gap-3.5">
           <span className="relative">
             <Avatar image={artist.avatar} size={48} className="size-12" />
-            {artist.isPro && <ProStar size="sm" />}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-[1.0625rem] font-bold">{artist.displayName}</p>

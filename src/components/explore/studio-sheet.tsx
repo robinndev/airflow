@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
-import { ProStar } from "@/components/ui/pro-badge";
 import type { Studio } from "@/lib/explore";
 import { formatUsd } from "@/lib/format";
 import { Countdown, RemindButton } from "./countdown";
@@ -53,7 +52,6 @@ export function StudioSheet({ studio }: { studio: Studio }) {
             className="size-11 rounded-full bg-ice object-cover ring-2 ring-surface"
             style={{ objectPosition: artist.avatar.focus }}
           />
-          {artist.isPro && <ProStar size="sm" />}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-1 font-display text-[1.0625rem] leading-tight font-bold text-ink">

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Ellipsis, Pin } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { ProStar } from "@/components/ui/pro-badge";
 import { formatLongDate, formatShortDate } from "@/lib/format";
 import { POST_KINDS } from "@/lib/profile/post-kinds";
 import type { Post, PostAuthor } from "@/lib/profile/types";
@@ -40,7 +39,6 @@ export function PostCard({
           className="group/avatar relative shrink-0 rounded-full"
         >
           <Avatar image={author.avatar} size={44} className="size-11" />
-          {author.plan === "pro" && <ProStar size="sm" />}
         </Link>
 
         <div className="min-w-0 flex-1">

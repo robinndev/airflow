@@ -5,6 +5,7 @@ import { Camera, LoaderCircle } from "lucide-react";
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { updateProfileImage } from "@/app/(site)/[handle]/actions";
 import { discardArt, prepareImage, uploadArt } from "@/lib/images/prepare";
+import { UploadNoticeDialog, type UploadNotice } from "./upload-notice-dialog";
 
 type Slot = "avatar" | "banner";
 
@@ -26,7 +27,7 @@ export function ImagePickerButton({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<UploadNotice | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -34,8 +35,14 @@ export function ImagePickerButton({
     event.target.value = "";
     if (!file) return;
 
+    // Free accounts: explain the GIF perk up front, showing their GIF moving, before any upload.
+    if (file.type === "image/gif" && !allowGif) {
+      setNotice({ kind: "flow-plus", previewUrl: URL.createObjectURL(file) });
+      return;
+    }
+
     const objectUrl = URL.createObjectURL(file);
-    setError(null);
+    setNotice(null);
     setPreview(objectUrl);
 
     startTransition(async () => {
@@ -60,7 +67,7 @@ export function ImagePickerButton({
       }
       startTransition(() => {
         setPreview(null);
-        setError(message);
+        if (message) setNotice({ kind: "error", message });
       });
       URL.revokeObjectURL(objectUrl);
     });
@@ -121,19 +128,15 @@ export function ImagePickerButton({
         </button>
       )}
 
-      <p
-        role="status"
-        aria-live="polite"
-        className={
-          error
-            ? `absolute z-10 rounded-input bg-ink px-3 py-2 text-xs font-medium text-on-ink shadow-lift ${
-                slot === "banner" ? "right-3 bottom-15 sm:right-6" : "top-full left-0 mt-2 w-56"
-              }`
-            : "sr-only"
-        }
-      >
-        {error}
-      </p>
+      <UploadNoticeDialog
+        notice={notice}
+        slot={slot}
+        onPickAnother={() => inputRef.current?.click()}
+        onClose={() => {
+          if (notice?.kind === "flow-plus") URL.revokeObjectURL(notice.previewUrl);
+          setNotice(null);
+        }}
+      />
     </>
   );
 }

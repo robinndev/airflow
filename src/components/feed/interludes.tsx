@@ -6,7 +6,6 @@ import { HandNote, Sparkle, Tape } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
 import { FollowButton } from "@/components/profile/follow-button";
 import { buttonClasses } from "@/components/ui/button";
-import { ProStar } from "@/components/ui/pro-badge";
 import type { Studio } from "@/lib/explore";
 import { formatCompact, formatUsd } from "@/lib/format";
 import type { ArtistProfile } from "@/lib/profile/types";
@@ -109,7 +108,6 @@ function StudioCover({ studio }: { studio: Studio }) {
               className="size-8 rounded-full object-cover ring-2 ring-white/80"
               style={{ objectPosition: studio.artist.avatar.focus }}
             />
-            {studio.artist.isPro && <ProStar size="sm" />}
           </span>
           <span className="min-w-0 text-white">
             <Link href={studio.href} className="block truncate text-sm font-bold after:absolute after:inset-0">

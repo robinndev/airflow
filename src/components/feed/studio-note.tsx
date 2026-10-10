@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { HandNote } from "@/components/explore/doodles";
+import { PostOwnerMenu } from "@/components/profile/post-owner-menu";
 import { Avatar } from "@/components/ui/avatar";
-import { ProStar } from "@/components/ui/pro-badge";
 import { formatLongDate, formatShortDate } from "@/lib/format";
 import type { FeedEntry } from "@/lib/profile/queries";
 import { AdoptableCard, CommissionTicket, PinnedReference } from "./note-embeds";
@@ -20,7 +20,7 @@ export function notePalette({ embed, quote }: FeedEntry): string[] {
  * studio, with whatever they point at — a commission, an adoptable, someone
  * else's piece — pinned beside it.
  */
-export function StudioNote({ entry }: { entry: FeedEntry }) {
+export function StudioNote({ entry, canManage = false }: { entry: FeedEntry; canManage?: boolean }) {
   const { post, author, embed, quote } = entry;
   const { icon: Icon } = STAGES.update;
   const attachment =
@@ -38,6 +38,11 @@ export function StudioNote({ entry }: { entry: FeedEntry }) {
       aria-labelledby={`${post.id}-by`}
       className="grain relative scroll-mt-24 rounded-panel border border-border/80 bg-surface/75 p-6 shadow-soft backdrop-blur-md sm:p-10"
     >
+      {canManage && (
+        <div className="absolute top-3 right-6 sm:top-7 sm:right-10">
+          <PostOwnerMenu postId={post.id} />
+        </div>
+      )}
       <div className={attachment ? "grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14" : ""}>
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[0.625rem] font-bold tracking-[0.18em] text-muted uppercase">
@@ -56,7 +61,6 @@ export function StudioNote({ entry }: { entry: FeedEntry }) {
           <footer className="mt-6 flex items-center gap-3">
             <Link href={`/${author.handle}`} className="group/avatar relative shrink-0 rounded-full">
               <Avatar image={author.avatar} size={40} className="size-10 ring-2 ring-surface" />
-              {author.plan === "pro" && <ProStar size="sm" />}
             </Link>
             <span className="flex min-w-0 flex-col items-start">
               <HandNote tone="accent" className="text-[1.75rem] leading-none">

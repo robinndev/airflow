@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { AppNotification, NotificationKind } from "@/lib/notifications";
-import { HoverMenu } from "./hover-menu";
+import { HeaderMenu } from "./header-menu";
 
 const KIND: Record<NotificationKind, { icon: LucideIcon; tint: string }> = {
   commission_request: { icon: Brush, tint: "bg-ocean text-white" },
@@ -40,7 +40,7 @@ export function NotificationsMenu({ items }: { items: AppNotification[] | null }
   const earlier = visible.filter((n) => !isUnread(n));
 
   return (
-    <HoverMenu
+    <HeaderMenu
       label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
       panelClassName="sm:w-[26rem]"
       triggerClassName="relative grid size-10 place-items-center rounded-full bg-surface/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface aria-expanded:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice"
@@ -115,7 +115,7 @@ export function NotificationsMenu({ items }: { items: AppNotification[] | null }
           </div>
         )}
       </div>
-    </HoverMenu>
+    </HeaderMenu>
   );
 }
 

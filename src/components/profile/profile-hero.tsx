@@ -2,7 +2,6 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
-import { ProStar } from "@/components/ui/pro-badge";
 import { HEADER_SENTINEL_ID } from "@/components/site/header-shell";
 import { formatCompact, formatMonthYear } from "@/lib/format";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
@@ -48,7 +47,6 @@ export function ProfileHero({ profile, appearance }: ProfileHeroProps) {
                 preload
                 className="size-28 shadow-lift ring-[5px] ring-surface sm:size-38"
               />
-              {profile.plan === "pro" && <ProStar />}
               <Suspense>
                 <OwnerImageControls handle={profile.handle} slot="avatar" />
               </Suspense>
