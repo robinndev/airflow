@@ -3,7 +3,7 @@ import { FeedSkeleton } from "@/components/profile/skeletons";
 import { PostCard } from "@/components/profile/post-card";
 import { PostComposer } from "@/components/profile/post-composer";
 import { getPosts, getProfile, normalizeHandle } from "@/lib/profile/queries";
-import type { ArtistProfile } from "@/lib/profile/types";
+import type { ArtistProfile, Post } from "@/lib/profile/types";
 import { getViewer } from "@/lib/session";
 
 export default function ProfilePostsPage({ params }: PageProps<"/[handle]">) {
@@ -29,10 +29,23 @@ async function Feed({ params }: Pick<PageProps<"/[handle]">, "params">) {
       {posts.length === 0 ? (
         <EmptyFeed name={profile.displayName} />
       ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} author={profile} />)
+        // Posts prerender for everyone; the owner's delete menus stream in after.
+        <Suspense fallback={<PostList posts={posts} author={profile} />}>
+          <OwnerAwarePostList posts={posts} author={profile} />
+        </Suspense>
       )}
     </div>
   );
+}
+
+function PostList({ posts, author, canManage = false }: { posts: Post[]; author: ArtistProfile; canManage?: boolean }) {
+  return posts.map((post) => <PostCard key={post.id} post={post} author={author} canManage={canManage} />);
+}
+
+async function OwnerAwarePostList({ posts, author }: { posts: Post[]; author: ArtistProfile }) {
+  const viewer = await getViewer();
+  // Only real accounts own their posts (demo artists have no account).
+  return <PostList posts={posts} author={author} canManage={viewer?.id === author.id} />;
 }
 
 async function OwnerComposer({ profile }: { profile: ArtistProfile }) {

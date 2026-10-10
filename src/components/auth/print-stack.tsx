@@ -7,7 +7,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { HandNote, Sparkle, Tape } from "@/components/explore/doodles";
 import { HumanSeal } from "@/components/explore/human-seal";
 import { PaletteChips } from "@/components/feed/palette-chips";
-import { Pencil } from "./desk-props";
+import { Stylus } from "./desk-props";
 import { lightDesk } from "./light";
 import type { DeskPiece } from "./desk-art";
 
@@ -136,7 +136,7 @@ export function PrintStack({ pieces }: { pieces: DeskPiece[] }) {
         })}
       </button>
 
-      <Pencil className="absolute top-[46%] -right-[30%] z-[60] w-[64%] rotate-[104deg]" />
+      <Stylus className="absolute top-[44%] -right-[33%] z-[60] w-[68%] rotate-[104deg]" />
 
       <div className="relative z-[70] mt-12 flex items-center gap-3">
         <PaletteChips colors={top.image.palette ?? []} />

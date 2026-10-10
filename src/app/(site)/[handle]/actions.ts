@@ -3,21 +3,25 @@
 import { cookies } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
+import { ART_BUCKET, artUrl, isOwnArtPath, type ArtFolder } from "@/lib/art-storage";
 import { db } from "@/lib/profile/mock-db";
 import { FEED_TAG, postsTag, profileTag } from "@/lib/profile/queries";
 import { getViewer, PREVIEW_AS_VISITOR_COOKIE } from "@/lib/session";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const MAX_POST_LENGTH = 2000;
 
-const imageSchema = z.object({
-  dataUrl: z
+/** An image already uploaded to the `art` bucket by the browser (see src/lib/images/prepare.ts). */
+const uploadedImage = z.object({
+  path: z.string().max(200),
+  width: z.coerce.number().int().min(1).max(8192),
+  height: z.coerce.number().int().min(1).max(8192),
+  palette: z
     .string()
-    .max(950_000, "That image is too large.")
-    .regex(/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/, "Unsupported image."),
-  width: z.coerce.number().int().min(1).max(4096),
-  height: z.coerce.number().int().min(1).max(4096),
+    .regex(/^(#[0-9a-f]{6}(,#[0-9a-f]{6}){0,7})?$/i, "Unsupported image.")
+    .transform((value) => (value ? value.toLowerCase().split(",") : [])),
 });
 
 const postSchema = z.object({
@@ -29,9 +33,17 @@ const postSchema = z.object({
   kind: z.enum(["finished", "wip", "sketch", "update"]),
 });
 
-async function assertOwner(handle: string) {
+/** The signed-in owner of `handle`, or null. */
+async function ownerOf(handle: string) {
   const viewer = await getViewer();
-  return viewer?.handle === handle;
+  return viewer?.handle === handle ? viewer : null;
+}
+
+/** The upload must be this user's, in the right folder, and actually there. */
+async function checkUpload(path: string, userId: string, folder: ArtFolder) {
+  if (!isOwnArtPath(path, userId, folder)) return false;
+  const res = await fetch(artUrl(path), { method: "HEAD", cache: "no-store" }).catch(() => null);
+  return res?.ok ?? false;
 }
 
 export async function createPost(
@@ -39,48 +51,61 @@ export async function createPost(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  if (!(await assertOwner(handle))) {
-    return { ok: false, error: "You can only post on your own profile." };
-  }
+  const viewer = await ownerOf(handle);
+  if (!viewer) return { ok: false, error: "You can only post on your own profile." };
 
-  const parsed = postSchema.safeParse({
-    body: formData.get("body"),
-    kind: formData.get("kind"),
-  });
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0].message };
-  }
+  const parsed = postSchema.safeParse({ body: formData.get("body"), kind: formData.get("kind") });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
-  const media = [];
-  if (formData.get("imageDataUrl")) {
-    const image = imageSchema.safeParse({
-      dataUrl: formData.get("imageDataUrl"),
+  let image: z.infer<typeof uploadedImage> | null = null;
+  if (formData.get("imagePath")) {
+    const result = uploadedImage.safeParse({
+      path: formData.get("imagePath"),
       width: formData.get("imageWidth"),
       height: formData.get("imageHeight"),
+      palette: formData.get("imagePalette") ?? "",
     });
-    if (!image.success) {
-      return { ok: false, error: image.error.issues[0].message };
+    if (!result.success || !(await checkUpload(result.data.path, viewer.id, "posts"))) {
+      return { ok: false, error: "That image didn't upload. Try adding it again." };
     }
-    media.push({
-      src: image.data.dataUrl,
-      alt: `Image shared by @${handle}`,
-      width: image.data.width,
-      height: image.data.height,
-    });
+    image = result.data;
   }
 
-  db.posts.push({
-    id: `pst_${crypto.randomUUID()}`,
-    authorHandle: handle,
+  const supabase = await createSupabaseServer();
+  const { error } = await supabase.from("posts").insert({
+    author_id: viewer.id,
     kind: parsed.data.kind,
     body: parsed.data.body,
-    media,
-    createdAt: new Date().toISOString(),
-    likes: 0,
-    comments: 0,
+    image_path: image?.path ?? null,
+    image_width: image?.width ?? null,
+    image_height: image?.height ?? null,
+    image_palette: image?.palette ?? null,
   });
+  if (error) return { ok: false, error: "Couldn't publish your post. Try again in a moment." };
 
   updateTag(postsTag(handle));
+  updateTag(FEED_TAG);
+  return { ok: true };
+}
+
+export async function deletePost(postId: string): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Sign in to manage your posts." };
+  if (!z.uuid().safeParse(postId).success) return { ok: false, error: "That post doesn't exist." };
+
+  const supabase = await createSupabaseServer();
+  // Row level security only lets authors delete their own posts.
+  const { data, error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", postId)
+    .eq("author_id", viewer.id)
+    .select("image_path")
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "Couldn't delete that post." };
+  if (data.image_path) await supabase.storage.from(ART_BUCKET).remove([data.image_path]);
+
+  updateTag(postsTag(viewer.handle));
   updateTag(FEED_TAG);
   return { ok: true };
 }
@@ -88,26 +113,28 @@ export async function createPost(
 export async function updateProfileImage(
   handle: string,
   slot: "avatar" | "banner",
-  input: { dataUrl: string; width: number; height: number },
+  input: { path: string; width: number; height: number; palette: string[] },
 ): Promise<ActionResult> {
-  if (!(await assertOwner(handle))) {
-    return { ok: false, error: "You can only edit your own profile." };
+  const viewer = await ownerOf(handle);
+  if (!viewer) return { ok: false, error: "You can only edit your own profile." };
+
+  const image = uploadedImage.safeParse({ ...input, palette: input.palette.join(",") });
+  if (!image.success || !(await checkUpload(image.data.path, viewer.id, slot))) {
+    return { ok: false, error: "That image didn't upload. Try again." };
   }
 
-  const image = imageSchema.safeParse(input);
-  if (!image.success) {
-    return { ok: false, error: image.error.issues[0].message };
+  const supabase = await createSupabaseServer();
+  const { data: before } = await supabase.from("profiles").select(`${slot}, plan`).eq("id", viewer.id).single();
+  // The database enforces this too (profiles_enforce_media).
+  if (image.data.path.endsWith(".gif") && (before as { plan?: string } | null)?.plan !== "flow_plus") {
+    return { ok: false, error: "Animated GIFs come with Flow+." };
   }
+  const { error } = await supabase.from("profiles").update({ [slot]: image.data }).eq("id", viewer.id);
+  if (error) return { ok: false, error: "Couldn't save that image. Try again." };
 
-  const profile = db.profiles.find((p) => p.handle === handle);
-  if (!profile) return { ok: false, error: "Profile not found." };
-
-  profile[slot] = {
-    src: image.data.dataUrl,
-    alt: slot === "avatar" ? profile.displayName : `${profile.displayName}'s banner`,
-    width: image.data.width,
-    height: image.data.height,
-  };
+  // The previous upload is no longer used anywhere.
+  const previous = (before as Record<string, { path?: string } | null> | null)?.[slot]?.path;
+  if (previous && previous !== image.data.path) await supabase.storage.from(ART_BUCKET).remove([previous]);
 
   updateTag(profileTag(handle));
   updateTag(FEED_TAG); // Feed cards embed the author's avatar.

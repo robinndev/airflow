@@ -454,9 +454,12 @@ const globalForStore = globalThis as unknown as {
   __artiflowSeed?: string;
 };
 
+/** Bump to wipe what was made in dev (posts, uploads, requests) without restarting the server. */
+const SEED_VERSION = 2;
+
 // Re-seed when the seed data above changes (e.g. a new field), otherwise keep
 // the store across hot reloads so posts/images created in dev survive.
-const seed = JSON.stringify({ profiles, posts, artworks, services, reviews });
+const seed = JSON.stringify({ SEED_VERSION, profiles, posts, artworks, services, reviews });
 if (globalForStore.__artiflowSeed !== seed) {
   globalForStore.__artiflowSeed = seed;
   globalForStore.__artiflowStore = structuredClone({

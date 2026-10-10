@@ -6,7 +6,7 @@ import { useActionState, useId, useRef, useState, type ChangeEvent } from "react
 import { createPost, type ActionResult } from "@/app/(site)/[handle]/actions";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
-import { downscaleImage, type DownscaledImage } from "@/lib/images/downscale";
+import { discardArt, prepareImage, uploadArt, type PreparedImage } from "@/lib/images/prepare";
 import { POST_KIND_ORDER, POST_KINDS } from "@/lib/profile/post-kinds";
 import type { ImageAsset, PostKind } from "@/lib/profile/types";
 
@@ -36,22 +36,42 @@ export function PostComposer({
   const fileRef = useRef<HTMLInputElement>(null);
   const [body, setBody] = useState("");
   const [kind, setKind] = useState<PostKind>(initialKind);
-  const [image, setImage] = useState<DownscaledImage | null>(null);
+  const [image, setImage] = useState<PreparedImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [preparingImage, setPreparingImage] = useState(false);
 
   const [state, formAction, pending] = useActionState(
-    async (prev: ActionResult | null, formData: FormData) => {
+    async (prev: ActionResult | null, formData: FormData): Promise<ActionResult> => {
+      // The image goes straight to storage first; the post then points at it.
+      let path: string | null = null;
+      if (image) {
+        try {
+          path = await uploadArt(image, "posts");
+        } catch (err) {
+          return { ok: false, error: err instanceof Error ? err.message : "Upload failed. Try again." };
+        }
+        formData.set("imagePath", path);
+        formData.set("imageWidth", String(image.width));
+        formData.set("imageHeight", String(image.height));
+        formData.set("imagePalette", image.palette.join(","));
+      }
       const result = await createPost(handle, prev, formData);
       if (result.ok) {
         setBody("");
-        setImage(null);
+        clearImage();
         onPosted?.();
+      } else if (path) {
+        await discardArt(path);
       }
       return result;
     },
     null,
   );
+
+  function clearImage() {
+    if (image) URL.revokeObjectURL(image.previewUrl);
+    setImage(null);
+  }
 
   async function handleImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -60,7 +80,9 @@ export function PostComposer({
     setImageError(null);
     setPreparingImage(true);
     try {
-      setImage(await downscaleImage(file, 1600));
+      const prepared = await prepareImage(file, 2400);
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      setImage(prepared);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : "Couldn't read that image.");
     } finally {
@@ -105,7 +127,7 @@ export function PostComposer({
         <div className="px-5 pt-2 pl-[4.75rem]">
           <div className="relative w-fit overflow-hidden rounded-[12px] border border-border bg-ice">
             <Image
-              src={image.dataUrl}
+              src={image.previewUrl}
               alt="Selected image preview"
               width={image.width}
               height={image.height}
@@ -114,16 +136,13 @@ export function PostComposer({
             />
             <button
               type="button"
-              onClick={() => setImage(null)}
+              onClick={clearImage}
               aria-label="Remove image"
               className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-scrim/70 text-white transition-colors hover:bg-scrim"
             >
               <X aria-hidden className="size-4" />
             </button>
           </div>
-          <input type="hidden" name="imageDataUrl" value={image.dataUrl} />
-          <input type="hidden" name="imageWidth" value={image.width} />
-          <input type="hidden" name="imageHeight" value={image.height} />
         </div>
       )}
 

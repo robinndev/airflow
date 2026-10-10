@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { HandNote, Scribble, Sparkle, Tape } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
 import type { Invite } from "@/lib/auth/invites";
-import { ConstructionSketch, Pencil } from "./desk-props";
+import { ConstructionSketch, Stylus } from "./desk-props";
 import { useDesk } from "./desk";
 import { lightDesk } from "./light";
 
@@ -67,7 +67,7 @@ export function BlankCanvas() {
       </div>
 
       {invite && <InviterNote invite={invite} />}
-      <Pencil className="absolute -right-14 -bottom-10 z-10 w-[72%] rotate-[192deg]" />
+      <Stylus className="absolute -right-14 -bottom-10 z-10 w-[72%] rotate-[192deg]" />
     </section>
   );
 }
@@ -92,13 +92,15 @@ function InviterNote({ invite }: { invite: Invite }) {
           @{inviter.handle} ♥
         </figcaption>
       </figure>
-      <p
-        className="absolute -bottom-6 -left-10 z-20 w-[48%] -rotate-[4deg] animate-stamp p-3.5 pb-4 font-hand text-[1.3rem] leading-[1.1] text-on-paper shadow-lift [animation-delay:120ms]"
-        style={{ backgroundColor: "color-mix(in oklab, var(--star) 34%, var(--paper))" }}
-      >
-        “{invite.note}”
-        <span className="mt-1 block text-right text-paper-muted">— {inviter.displayName.split(" ")[0]}</span>
-      </p>
+      {invite.note && (
+        <p
+          className="absolute -bottom-6 -left-10 z-20 w-[48%] -rotate-[4deg] animate-stamp p-3.5 pb-4 font-hand text-[1.3rem] leading-[1.1] text-on-paper shadow-lift [animation-delay:120ms]"
+          style={{ backgroundColor: "color-mix(in oklab, var(--star) 34%, var(--paper))" }}
+        >
+          “{invite.note}”
+          <span className="mt-1 block text-right text-paper-muted">— {inviter.displayName.split(" ")[0]}</span>
+        </p>
+      )}
     </>
   );
 }

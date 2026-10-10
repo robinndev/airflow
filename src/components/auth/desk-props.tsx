@@ -1,33 +1,63 @@
+import { useId } from "react";
+
 /*
- * Objects lying on the auth desk. Pure SVG in theme tokens: the pencil is
- * painted in the theme's primary (blue in Aqua, red in Ember), the wax seal
- * too; wood, graphite and eraser are mixed toward paper so they read as
- * materials in both themes.
+ * Objects lying on the auth desk, in pure SVG and theme tokens. The pen is a
+ * pen-tablet stylus (most of our artists draw digitally): ink-dark body with
+ * a ring in the theme's primary, silver details mixed toward paper. The wax
+ * seal is pressed in the theme's primary too.
  */
 
-/** A sharpened pencil, lying flat. Size it by width. */
-export function Pencil({ className = "" }: { className?: string }) {
+const SILVER = "color-mix(in oklab, var(--paper) 78%, var(--paper-muted))";
+const SILVER_DARK = "color-mix(in oklab, var(--paper-muted) 80%, var(--on-paper))";
+
+/**
+ * A pen-tablet stylus lying flat, nib to the right. What makes it read as a
+ * tablet pen rather than a ballpoint: a grip cone narrowing to a slim collar
+ * with a small nib (the bit that touches the screen), a side rocker switch,
+ * and a tail that narrows gently to a rounded eraser end.
+ */
+export function Stylus({ className = "" }: { className?: string }) {
+  const body = `${useId().replace(/[^\w-]/g, "")}-body`;
   return (
-    <svg aria-hidden viewBox="0 0 356 30" className={`pointer-events-none ${className}`}>
-      <g style={{ filter: "drop-shadow(0 10px 7px rgb(var(--shadow-rgb) / 0.22))" }}>
-        <path d="M286 4 353 15 286 26Z" className="fill-[color-mix(in_oklab,var(--star)_30%,var(--paper))]" />
-        <path d="M331 11.3 353 15 331 18.7Z" className="fill-on-paper" />
-        <path d="M60 4h228v22H60z" className="fill-ocean" />
-        <path d="M60 4h228v7H60z" fill="white" fillOpacity=".26" />
-        <path d="M60 19h228v7H60z" fill="black" fillOpacity=".16" />
-        <path d="M288 4c6 1.4 6 5.9 0 7.3 6 1.5 6 6 0 7.4 6 1.4 6 5.9 0 7.3Z" className="fill-ocean" />
-        <path d="M34 3h28v24H34z" className="fill-[color-mix(in_oklab,var(--paper-muted)_38%,var(--paper))]" />
+    <svg aria-hidden viewBox="0 0 352 34" className={`pointer-events-none ${className}`}>
+      <defs>
+        {/* A dark cylinder: lit along the top edge, falling into shadow below. */}
+        <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: "color-mix(in oklab, var(--on-paper) 50%, white)" }} />
+          <stop offset=".22" style={{ stopColor: "color-mix(in oklab, var(--on-paper) 72%, black)" }} />
+          <stop offset=".6" style={{ stopColor: "color-mix(in oklab, var(--on-paper) 62%, black)" }} />
+          <stop offset="1" style={{ stopColor: "color-mix(in oklab, var(--on-paper) 40%, black)" }} />
+        </linearGradient>
+      </defs>
+      <g style={{ filter: "drop-shadow(0 10px 7px rgb(var(--shadow-rgb) / 0.26))" }}>
+        {/* tail, gently narrowing to a rounded eraser end, then the barrel */}
         <path
-          d="M40 3v24M46 3v24M52 3v24"
-          strokeWidth="1.2"
-          className="stroke-[color-mix(in_oklab,var(--paper-muted)_70%,var(--paper))]"
+          d="M4 17C4 12.6 6.5 9.3 11 9.1L150 5.5 300 4.3V29.7L150 28.5 11 24.9C6.5 24.7 4 21.4 4 17Z"
+          fill={`url(#${body})`}
         />
+        {/* short grip cone, down to a narrow collar */}
+        <path d="M303 4.3C317 5.2 331 10.5 340 13.8V20.2C331 23.5 317 28.8 303 29.7Z" fill={`url(#${body})`} />
+        {/* the nib: the small tip that touches the screen */}
+        <path d="M339.5 15.6 346.8 15.8Q349.6 17 346.8 18.2L339.5 18.4Z" style={{ fill: SILVER_DARK }} />
+        {/* silver ring where the cone starts, theme ring at the seam */}
+        <rect x="299" y="4.1" width="5" height="25.8" rx="1" style={{ fill: SILVER }} />
+        <rect x="300.5" y="4.1" width="1.4" height="25.8" fill="white" fillOpacity=".6" />
+        <rect x="145" y="5.5" width="3.5" height="23" rx=".8" className="fill-ocean" />
+        <path d="M150.5 5.7V28.3" stroke="black" strokeOpacity=".35" />
+        {/* side switch: a rocker with two buttons in a silver bezel */}
+        <rect x="206" y="12.2" width="56" height="9.6" rx="4.8" style={{ fill: SILVER }} />
+        <rect x="209.5" y="13.6" width="49" height="6.8" rx="3.4" style={{ fill: "color-mix(in oklab, var(--on-paper) 55%, black)" }} />
+        <path d="M234 13.8V20.2" stroke="white" strokeOpacity=".35" strokeWidth=".9" />
+        {/* specular highlight running along the barrel and down the cone */}
         <path
-          d="M12 4h22v22H12a8 8 0 0 1-8-8v-6a8 8 0 0 1 8-8Z"
-          className="fill-[color-mix(in_oklab,var(--like)_40%,var(--paper))]"
+          d="M14 10.5 140 7.4M156 7 294 5.9M308 6.4C320 7.4 330 10.4 337 13.6"
+          stroke="white"
+          strokeOpacity=".2"
+          strokeWidth="1.4"
+          strokeLinecap="round"
         />
-        <text x="104" y="18.3" fontSize="7" fontWeight="800" letterSpacing="1.8" fill="white" fillOpacity=".78">
-          ARTIFLOW ✦ STUDIO · HB
+        <text x="34" y="19.2" fontSize="6" fontWeight="800" letterSpacing="1.6" style={{ fill: SILVER }} fillOpacity=".55">
+          ARTIFLOW ✦ STUDIO
         </text>
       </g>
     </svg>

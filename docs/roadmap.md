@@ -22,7 +22,7 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 
 | Item | Scope | Status | Notes |
 | ---- | ----- | ------ | ----- |
-| Auth & accounts | Sign-up, sign-in, roles, permissions | Prototype | `/sign-in` and `/join` ("the studio desk"). Mock auth: any well-formed sign-in, or Google/Discord, signs you in as `@mira`; sign-up runs the real checks (handle, password, invite) but stores nothing; sign out sets a cookie (`src/lib/session.ts`). Real accounts wait on the auth provider (see [Pending decisions](#pending-decisions)). Roles and permissions not started. |
+| Auth & accounts | Sign-up, sign-in, roles, permissions | **Built (Supabase)** | Real accounts since 2026-10-10: email + password sign-up with a handle, sign in with email **or** handle, sign out, password reset (`/new-password`), email confirmation (`/auth/confirm`). A database trigger creates each profile; invites are separate (see the [brief](#brief-artist-invite-codes)). Real profiles show at `/{handle}` beside the demo artists. **Before opening sign-ups:** Resend as Supabase's SMTP (the built-in mailer only reaches the project team) (redirect URLs are set). Social logins: **Google and Discord on** (2026-10-10); Twitch shows faded and disabled until 2FA is on for the owner's Twitch account and its app exists. A button turns on by itself once its provider is on in Supabase. Accounts without a handle (first social sign-in) go through `/join/handle` ("Connected to Twitch as @…", handle prefilled from their username). Roles and permissions not started. |
 | ↳ **Artist invite codes** | "Got an invite from another artist?" at sign-up; invite links; who brought whom | **Prototype (UI)** | Request, 2026-10-10. Code entry, invite links and the inviter reveal are built on mock codes. Where codes come from and what they unlock are open. See the [brief](#brief-artist-invite-codes). |
 | Artist profile | Banner, identity, links, post feed + composer, free vs Pro appearance | Prototype | `/[handle]`. Pro gating in `resolveAppearance()`. |
 | Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | Prototype | Gallery + filter exist; real upload pipeline is under "Media". |
@@ -43,7 +43,8 @@ Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode)
 
 | Item | Status | Notes |
 | ---- | ------ | ----- |
-| Pro subscription (US$5/mo, advanced customization) | Needs decision | Premium scope. Free/Pro split already modeled in `ProfileAppearance`. |
+| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. Price and exact scope open (blueprint: US$5/mo). The free/paid split is already modeled in `ProfileAppearance`; code still says `pro`. |
+| Higher tier (name TBD): live streaming, everything in Flow+, future features | Needs decision | Requested 2026-10-10. Needs a streaming provider and pricing. |
 | Real-time chat (buyer ↔ artist) | Planned | |
 | Notifications | Prototype | Header menu on mock data (`src/lib/notifications.ts`). A minimal in-app + email slice moves to Phase 1 for ["Notify me"](#brief-notify-me-when-a-service-reopens) and the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
 | Follow, favorites, wishlist, reviews | Prototype | Follow and likes on mock data; reviews shown on commissions. |
@@ -246,27 +247,30 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 
 ## Brief: artist invite codes
 
-- **Requested by:** project lead, 2026-10-10 ("when creating an account, ask: do you have an invite code from another artist?")
+- **Requested by:** project lead, 2026-10-10. First: "when creating an account, ask: do you have an invite code from another artist?" Then, clarified: invites are **random**, **specific artists receive them**, and later the others get them another way.
 - **Phase / priority:** Phase 1, with Auth & accounts.
-- **Status:** Prototype (UI). Blueprint §13 plans a small closed beta of invited artists, and invites are how that beta would grow.
+- **Status:** **Built** (codes, redemption, team script). Distribution beyond the team script is open. Blueprint §13 plans a small closed beta of invited artists; this is how it grows.
 
-### What's built
+### How it works
 
-- On `/join`, a sealed envelope asks **"Got an invite from another artist?"** It's optional and stays closed unless opened. Opened, it takes a code (case, spaces and dashes don't matter) and checks it when the full code is typed, on Enter or with **Check**.
-- A good code shows **who invited you**: avatar, name, their personal note, and a wax seal with their initial. The canvas on the desk pins their polaroid and the desk takes on their colors. A bad code says so in place. The server checks it again on submit.
-- **Invite links:** `/join?invite=CODE` arrives with the envelope already open and checked.
-- Mock codes (`src/lib/auth/invites.ts`): `MIRA-7Q2K`, `KAI-B4NN`, `NADIA-1NK5`, `PEBB-L3S`.
-- The UI promises only what is cheap to keep: "You'll follow each other, and your profile will show who brought you in."
+- **Codes are scarce and random:** `K7QH-3MPA` style, 8 characters with no look-alikes (no 0/O, 1/I), drawn from a strong random source. Accounts **don't** get codes automatically.
+- **The team grants them to specific artists:** `npm run invites -- grant @handle [count] ["why"]` (1–50 at a time; "why" is an internal note, never shown). `npm run invites -- list @handle` shows each code and who used it.
+- **Single-use:** joining with a code redeems it and links the new account to whoever held it (`profiles.invited_by`). A used code says "already used" everywhere. It stays used even if the account that used it is deleted. One code per account.
+- **Sign-up stays open:** the code is optional ("Got an invite from another artist?"). On `/join` (and `/join/handle` after a social sign-in), the sealed envelope opens into a code field. A good code shows who invited you, pins their polaroid on the canvas and lights the desk with their colors.
+- **Invite links:** `/join?invite=CODE` arrives with the envelope open and checked.
+- The demo artists keep reusable demo codes (`MIRA-7Q2K`, `KAI-B4NN`, `NADIA-1NK5`, `PEBB-L3S`) so the prototype still works.
 
 ### Open questions
 
 | Question | Recommendation |
 | -------- | -------------- |
-| Where does an artist find their code? | "Invite an artist" in the account menu: copy link, copy code, and a count of who joined. |
-| One code per artist, or single-use codes? | One personal code per artist, plus a cap per month during the closed beta, so it can't be posted publicly and abused. |
-| What does an invite unlock? | Decide with the payments and Pro decisions. Options: skip the beta waitlist, a month of Pro for both, or a lower fee on the first sale. Don't promise any of these in the UI until they're decided. |
-| Does the inviter hear about it? | Yes: an in-app notification ("Nova joined with your invite"), with the minimal notifications slice. |
-| Show "Invited by @mira" publicly? | Yes, on the new artist's profile (both can turn it off). It credits the inviter and helps new artists get found. |
+| How do "the others" get invites later? | Pick one once the beta is running. Options: a few codes per active artist every couple of weeks (Bluesky's beta model), codes earned by activity (first sale, complete profile), or a public waitlist that releases codes in waves. |
+| How many codes per chosen artist? | Start with 3–5 and watch how fast they're used. |
+| Where do artists see the codes they hold? | An "Your invites" panel in the account menu: copy code, copy link, used/unused, who joined. Until then the team sends them from the script's output. |
+| Do codes expire? | Not at first. Add an expiry if unused codes pile up. |
+| Should sign-up require a code (closed beta)? | Keep it optional unless spam or growth makes a closed beta necessary. Switching later is one check in the sign-up actions. |
+| What does an invite unlock? | Decide with the payments and Flow+ decisions (skip a waitlist, Flow+ trial, lower fee on the first sale). The UI promises nothing yet. |
+| Does the inviter hear about it? Show "Invited by @…" on profiles? | Yes to both, with the notifications slice and a profile setting to hide it. |
 
 ---
 
@@ -277,6 +281,13 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 | 2026-10-10 | Artists run several commission types and must be able to close some and keep others, very simply ("just click a close button"). Toyhouse's deactivate flow is so tedious that most people ignore it. | Phase 1 → Commission services → [brief](#brief-per-service-status-set-in-one-click) |
 | 2026-10-10 | "Wait list" as on VGen: on a closed commission type, buyers click "notify me when this reopens", and everyone interested is notified when the artist reopens it. | Phase 1 → [brief](#brief-notify-me-when-a-service-reopens), named **Notify me**: research showed VGen's Waitlist is a request queue, which we keep as a status. Minimal notifications pulled forward from Phase 2. |
 | 2026-10-10 | Sign-in and sign-up screens that feel artistic, not generic. Sign-up asks "do you have an invite code from another artist?" | Phase 1 → Auth & accounts, Prototype at `/sign-in` and `/join`. Invites → [brief](#brief-artist-invite-codes). |
+| 2026-10-10 | Invites aren't per-account codes: they're random, specific artists receive them, and later the others get them another way. | Phase 1 → [brief](#brief-artist-invite-codes), **Built**: single-use random codes granted with `npm run invites`. Later distribution is an open question. |
+| 2026-10-10 | Signed out, the header shouldn't show everything (cart, messages, notifications). Or keep them and ask to sign in on click? | Done: visitors see **Sign in / Create account** in the header; asking to sign in happens on actions instead (Follow, Message → sign-in and back). Likes and saves on posts still to do. |
+| 2026-10-10 | Show the Google/Discord/Twitch buttons again (for a design review). | Done: always shown; one not set up yet is faded and disabled (Twitch, for now). |
+| 2026-10-10 | Real accounts now: email/handle + password and a user profile, on Supabase; keep the demo data. Deploy to Vercel to review. | Phase 1 → Auth & accounts, **Built**. Supabase provisioned through the Vercel Marketplace (`artiflow-db`); schema in `supabase/migrations/`. |
+| 2026-10-10 | Paid plans: **Flow+** (fully custom profiles and small extras) and a higher tier, name TBD, with live streaming plus everything in Flow+ and future features. | Phase 2 → Flow+ and the higher tier (replacing "Pro subscription"). |
+| 2026-10-10 | Amanda: on the sign-in desk, swap the pencil for a pen-tablet stylus, since most of our artists draw digitally. | Done: `Stylus` in `src/components/auth/desk-props.tsx`. |
+| 2026-10-10 | Sign in with Twitch, X, Google and Apple (reference: VGen's sign-up after connecting Twitch, with the username prefilled). | Phase 1 → Auth & accounts. **Decided: email + Google, Discord and Twitch.** All three are free and built into Supabase. Apple (US$99/yr, secret rotation) and X (paid API since Feb 2026) are out for now. Buttons are on `/sign-in` and `/join`. |
 | 2026-10-10 | VGen's commission flow as stakeholders understand it: slots → form + required ToS → artist reviews (a decline frees the slot) → accepting sends a payment page, also by email → once paid it's official and shows on both profiles. | Phase 1 → [brief](#brief-commission-flow-request--proposal--payment--delivery), after checking each step against VGen's help center. |
 
 ## Pending decisions
@@ -286,11 +297,11 @@ From blueprint §16, with the items they block.
 | Decision | Blocks |
 | -------- | ------ |
 | Final brand name & .com domain | Launch, logo, landing page |
-| Auth provider (blueprint §10 suggests Supabase; not §16) | Real accounts, email confirmation, password reset, Google/Discord sign-in |
+| ~~Auth provider~~ **Decided 2026-10-10: Supabase** (auth, Postgres, storage, Realtime) via the Vercel Marketplace. Email: **Resend** as Supabase's SMTP; it needs a verified sending domain, so it follows the domain decision. | — |
 | Legal entity & seller countries at launch | Checkout, payouts |
 | Payments provider (marketplace split, KYC, international payouts) | Checkout & orders, the commission flow's payment step, 10% fee, auctions |
 | Refund, dispute & payout policy | Checkout & orders, commission cancellations |
 | Content limits & moderation process | Admin & moderation, media upload |
 | License, ownership & transfer rules for OCs/adoptables | Character transfer, adoptable checkout |
-| Exact Pro customization scope | Pro subscription |
+| Flow+ scope and price; name, scope and price of the higher tier | Flow+, higher tier |
 | MVP entry/exit criteria per phase | Phase gates in this file |

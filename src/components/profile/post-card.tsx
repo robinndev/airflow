@@ -7,8 +7,18 @@ import { POST_KINDS } from "@/lib/profile/post-kinds";
 import type { Post, PostAuthor } from "@/lib/profile/types";
 import { PostActions } from "./post-actions";
 import { PostMedia } from "./post-media";
+import { PostOwnerMenu } from "./post-owner-menu";
 
-export function PostCard({ post, author }: { post: Post; author: PostAuthor }) {
+export function PostCard({
+  post,
+  author,
+  canManage = false,
+}: {
+  post: Post;
+  author: PostAuthor;
+  /** The viewer wrote it (real posts only): show the delete menu. */
+  canManage?: boolean;
+}) {
   const kind = POST_KINDS[post.kind];
 
   return (
@@ -57,13 +67,17 @@ export function PostCard({ post, author }: { post: Post; author: PostAuthor }) {
         >
           {kind.label}
         </span>
-        <button
-          type="button"
-          aria-label="More options"
-          className="-mr-2 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-ice hover:text-ink"
-        >
-          <Ellipsis aria-hidden className="size-5" />
-        </button>
+        {canManage ? (
+          <PostOwnerMenu postId={post.id} />
+        ) : (
+          <button
+            type="button"
+            aria-label="More options"
+            className="-mr-2 grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-ice hover:text-ink"
+          >
+            <Ellipsis aria-hidden className="size-5" />
+          </button>
+        )}
       </header>
 
       <div className="px-5 pt-3">

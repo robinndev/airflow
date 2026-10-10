@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { Check, CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { STRENGTH_STAGES, passwordStrength } from "@/lib/auth/password";
 
@@ -162,3 +162,43 @@ function StrengthStroke({ id, password }: { id: string; password: string }) {
     </div>
   );
 }
+
+/** The required terms checkbox at the end of every way of joining. */
+export function TermsCheckbox({
+  checked,
+  onChange,
+  error,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  error?: string;
+}) {
+  const id = useId();
+  return (
+    <div className="mt-6">
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-muted">
+        <input
+          type="checkbox"
+          name="terms"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden
+          className="mt-px grid size-5 shrink-0 place-items-center rounded-[6px] border-2 border-border bg-surface text-white transition-colors peer-checked:border-ocean peer-checked:bg-ocean peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ocean peer-aria-invalid:border-danger [&_svg]:size-3.5 [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100"
+        >
+          <Check strokeWidth={3.5} />
+        </span>
+        <span>
+          I agree to Artiflow&apos;s <span className="font-semibold text-ink">Terms of Service</span> and{" "}
+          <span className="font-semibold text-ink">Privacy Policy</span>.
+        </span>
+      </label>
+      <FieldError id={`${id}-error`}>{error}</FieldError>
+    </div>
+  );
+}
+

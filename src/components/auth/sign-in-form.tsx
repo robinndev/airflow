@@ -6,23 +6,36 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { requestPasswordReset, signIn } from "@/app/(auth)/actions";
 import { FieldError, FormAlert, PasswordField, SubmitButton, fieldClass, labelClass } from "./form-ui";
 
+const NOTICES = {
+  link: "That link has expired or was already used. Sign in, or ask for a new one.",
+  provider: "That sign-in didn't go through. Try again, or use your email.",
+} as const;
+
+export type SignInNotice = keyof typeof NOTICES;
+
 /**
- * Email + password, with "forgot it?" swapping the sheet to a reset form in
- * place. `header` (heading + provider buttons) is rendered by the server and
- * hidden while resetting.
+ * Email or handle + password, with "forgot it?" swapping the sheet to a
+ * reset form in place. `header` (heading + provider buttons) is rendered by
+ * the server and hidden while resetting. `notice` explains a failed email
+ * link or social sign-in that bounced back here.
  */
-export function SignInForm({ header, next }: { header: ReactNode; next?: string }) {
+export function SignInForm({ header, next, notice }: { header: ReactNode; next?: string; notice?: SignInNotice }) {
   const id = useId();
   const [state, action, pending] = useActionState(signIn, null);
   const [mode, setMode] = useState<"sign-in" | "reset">("sign-in");
   // Controlled, so a failed attempt keeps what was typed.
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   // Re-keys the error so it shakes on every failed attempt, not just the first.
   const [attempt, setAttempt] = useState(0);
 
   if (mode === "reset") {
-    return <ResetPassword email={email} onEmailChange={setEmail} onBack={() => setMode("sign-in")} />;
+    return (
+      <ResetPassword
+        initialEmail={login.includes("@") && !login.startsWith("@") ? login : ""}
+        onBack={() => setMode("sign-in")}
+      />
+    );
   }
 
   return (
@@ -30,24 +43,30 @@ export function SignInForm({ header, next }: { header: ReactNode; next?: string 
       {header}
       <form action={action} onSubmit={() => setAttempt((n) => n + 1)} noValidate className="animate-rise">
         {next && <input type="hidden" name="next" value={next} />}
+        {notice && !state && (
+          <p role="status" className="mb-5 rounded-input bg-ice px-3.5 py-3 text-sm text-ink">
+            {NOTICES[notice]}
+          </p>
+        )}
         <div>
-          <label htmlFor={`${id}-email`} className={labelClass}>
-            Email
+          <label htmlFor={`${id}-login`} className={labelClass}>
+            Email or handle
           </label>
           <input
-            id={`${id}-email`}
-            name="email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@studio.art"
-            aria-invalid={state?.fields?.email ? true : undefined}
-            aria-describedby={state?.fields?.email ? `${id}-email-error` : undefined}
+            id={`${id}-login`}
+            name="login"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            placeholder="you@studio.art or @yourname"
+            aria-invalid={state?.fields?.login ? true : undefined}
+            aria-describedby={state?.fields?.login ? `${id}-login-error` : undefined}
             className={`${fieldClass} mt-2`}
           />
-          <FieldError id={`${id}-email-error`}>{state?.fields?.email}</FieldError>
+          <FieldError id={`${id}-login-error`}>{state?.fields?.login}</FieldError>
         </div>
 
         <div className="mt-5">
@@ -86,16 +105,9 @@ export function SignInForm({ header, next }: { header: ReactNode; next?: string 
   );
 }
 
-function ResetPassword({
-  email,
-  onEmailChange,
-  onBack,
-}: {
-  email: string;
-  onEmailChange: (email: string) => void;
-  onBack: () => void;
-}) {
+function ResetPassword({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
   const id = useId();
+  const [email, setEmail] = useState(initialEmail);
   const [state, action, pending] = useActionState(requestPasswordReset, null);
 
   return (
@@ -140,7 +152,7 @@ function ResetPassword({
               autoComplete="email"
               inputMode="email"
               value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@studio.art"
               aria-invalid={state && "error" in state ? true : undefined}
               aria-describedby={state && "error" in state ? `${id}-error` : undefined}

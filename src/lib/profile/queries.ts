@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { fetchAccount, fetchHandleForUser, fetchPostsByHandle, fetchRecentPosts } from "./accounts";
 import { db } from "./mock-db";
 import type {
   ArtistProfile,
@@ -10,6 +11,7 @@ import type {
 } from "./types";
 
 export const profileTag = (handle: string) => `profile:${handle}`;
+export const userTag = (userId: string) => `user:${userId}`;
 export const postsTag = (handle: string) => `posts:${handle}`;
 export const artworksTag = (handle: string) => `artworks:${handle}`;
 export const servicesTag = (handle: string) => `services:${handle}`;
@@ -39,12 +41,22 @@ export function normalizeHandle(handle: string) {
   return decodeURIComponent(handle).replace(/^@/, "").toLowerCase();
 }
 
+/** Demo artists first (mock-db), then real accounts. */
 export async function getProfile(handle: string): Promise<ArtistProfile | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(profileTag(handle));
 
-  return db.profiles.find((p) => p.handle === handle) ?? null;
+  return db.profiles.find((p) => p.handle === handle) ?? (await fetchAccount(handle));
+}
+
+/** The handle of a signed-in account (handles never change). */
+export async function getHandleForUser(userId: string): Promise<string | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(userTag(userId));
+
+  return fetchHandleForUser(userId);
 }
 
 /** Pinned first, then newest first. */
@@ -52,6 +64,9 @@ export async function getPosts(handle: string): Promise<Post[]> {
   "use cache";
   cacheLife("minutes");
   cacheTag(postsTag(handle));
+
+  // Demo artists' posts live in mock-db; real accounts' in Supabase.
+  if (!db.profiles.some((p) => p.handle === handle)) return fetchPostsByHandle(handle);
 
   return db.posts
     .filter((p) => p.authorHandle === handle)
@@ -105,6 +120,9 @@ export async function getFeed(): Promise<FeedEntry[]> {
   cacheTag(FEED_TAG);
 
   const profiles = new Map(db.profiles.map((p) => [p.handle, p]));
+  // Real accounts' posts join the demo ones.
+  const recent = await fetchRecentPosts();
+  for (const author of recent.authors) profiles.set(author.handle, author);
   const toAuthor = (handle: string): PostAuthor | undefined => {
     const p = profiles.get(handle);
     return p && { handle: p.handle, displayName: p.displayName, avatar: p.avatar, plan: p.plan };
@@ -127,7 +145,7 @@ export async function getFeed(): Promise<FeedEntry[]> {
     return undefined;
   };
 
-  return db.posts
+  return [...db.posts, ...recent.posts]
     .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
     .flatMap((post): FeedEntry[] => {
       const author = toAuthor(post.authorHandle);

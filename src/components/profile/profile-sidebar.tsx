@@ -35,6 +35,10 @@ function CardHeading({
   );
 }
 
+/** A new account that hasn't set up any commission service yet. */
+const hasNoServices = ({ commissions }: ArtistProfile) =>
+  commissions.types.length === 0 && commissions.slotsTotal === 0 && commissions.startingPriceUsd === 0;
+
 const STATUS_DOT = {
   open: { label: "Open", dot: "bg-mint-dot", text: "text-mint-ink" },
   waitlist: { label: "Waitlist", dot: "bg-lilac", text: "text-lilac-ink" },
@@ -46,6 +50,15 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
   const slotsLeft = Math.max(0, commissions.slotsTotal - commissions.slotsTaken);
   const isOpen = commissions.status === "open";
   const status = STATUS_DOT[commissions.status];
+
+  if (hasNoServices(profile)) {
+    return (
+      <section aria-labelledby="commissions-heading" className="rounded-card border border-border bg-surface p-4 shadow-soft">
+        <CardHeading id="commissions-heading" icon={<Brush />} title="Commissions" />
+        <p className="mt-2 text-sm text-muted">Not taking commissions yet.</p>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -209,7 +222,7 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
           <span className="min-w-0">
             <span className="block font-display text-sm font-bold text-ink">Commissions</span>
             <span className="block truncate text-xs text-muted">
-              {statusLabel} · from {formatUsd(commissions.startingPriceUsd)}
+              {hasNoServices(profile) ? "Not open yet" : `${statusLabel} · from ${formatUsd(commissions.startingPriceUsd)}`}
             </span>
           </span>
         </Link>

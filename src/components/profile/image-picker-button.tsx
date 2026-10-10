@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Camera, LoaderCircle } from "lucide-react";
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { updateProfileImage } from "@/app/(site)/[handle]/actions";
-import { downscaleImage } from "@/lib/images/downscale";
+import { discardArt, prepareImage, uploadArt } from "@/lib/images/prepare";
 
 type Slot = "avatar" | "banner";
 
@@ -14,7 +14,16 @@ const MAX_DIMENSION: Record<Slot, number> = { banner: 2400, avatar: 512 };
  * Lets the owner pick a new banner/avatar. Shows an instant local preview,
  * then swaps to the server-rendered image once the action revalidates.
  */
-export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot }) {
+export function ImagePickerButton({
+  handle,
+  slot,
+  allowGif = false,
+}: {
+  handle: string;
+  slot: Slot;
+  /** Flow+: animated GIFs are allowed (free accounts get a friendly "Flow+" note instead). */
+  allowGif?: boolean;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +41,20 @@ export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot
     startTransition(async () => {
       let message: string | null = null;
       try {
-        const image = await downscaleImage(file, MAX_DIMENSION[slot]);
-        const result = await updateProfileImage(handle, slot, image);
-        if (!result.ok) message = result.error;
+        // Straight to storage from the browser, then the profile points at it.
+        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif });
+        URL.revokeObjectURL(image.previewUrl);
+        const path = await uploadArt(image, slot);
+        const result = await updateProfileImage(handle, slot, {
+          path,
+          width: image.width,
+          height: image.height,
+          palette: image.palette,
+        });
+        if (!result.ok) {
+          message = result.error;
+          await discardArt(path);
+        }
       } catch (err) {
         message = err instanceof Error ? err.message : "Upload failed. Try again.";
       }
@@ -63,7 +83,7 @@ export function ImagePickerButton({ handle, slot }: { handle: string; slot: Slot
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/avif"
+        accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
         className="sr-only"
         tabIndex={-1}
         aria-hidden

@@ -9,28 +9,29 @@ import { WaxSeal } from "./desk-props";
 import { setDesk } from "./desk";
 import { FieldError, fieldClass } from "./form-ui";
 
-const MISSING = "That code doesn't match any invite. Double-check it with the artist who sent it.";
-
 /**
  * "Got an invite from another artist?" — a sealed envelope that opens into a
- * code field. A good code reveals who invited you, with their note, and
+ * code field. Codes are single-use (see src/lib/auth/invites.ts). A good code reveals who invited you, with their note, and
  * pins their polaroid on your canvas. Invite links (`/join?invite=CODE`)
  * arrive with the envelope already open and checked.
  */
 export function InviteEnvelope({
   initialCode = "",
   initialInvite = null,
+  initialError,
   error: serverError,
 }: {
   initialCode?: string;
   initialInvite?: Invite | null;
+  /** Why the code from an invite link can't be used (unknown or already used). */
+  initialError?: string;
   error?: string;
 }) {
   const id = useId();
   const [open, setOpen] = useState(Boolean(initialCode));
   const [code, setCode] = useState(initialInvite?.code ?? initialCode);
   const [invite, setInvite] = useState<Invite | null>(initialInvite);
-  const [error, setError] = useState<string | null>(initialCode && !initialInvite ? MISSING : null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [checking, startChecking] = useTransition();
 
   useEffect(() => {
@@ -134,7 +135,7 @@ export function InviteEnvelope({
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
-              placeholder="MIRA-7Q2K"
+              placeholder="K7QH-3MPA"
               aria-invalid={shownError ? true : undefined}
               aria-describedby={shownError ? `${id}-error` : undefined}
               className={`${fieldClass} font-mono font-semibold tracking-[0.22em] uppercase placeholder:tracking-[0.22em]`}
@@ -173,11 +174,11 @@ function InviteCard({ invite, onChange }: { invite: Invite; onChange: () => void
           <p className="truncate font-display font-bold text-ink">
             {inviter.displayName} <span className="font-sans text-sm font-medium text-muted">@{inviter.handle}</span>
           </p>
-          <p className="mt-1.5 font-hand text-[1.25rem] leading-[1.1] text-lilac-ink">“{invite.note}”</p>
+          {invite.note && <p className="mt-1.5 font-hand text-[1.25rem] leading-[1.1] text-lilac-ink">“{invite.note}”</p>}
         </div>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-muted">
-        You&apos;ll follow each other, and your profile will show who brought you in.{" "}
+        Invites work once: this one becomes yours when you join.{" "}
         <button type="button" onClick={onChange} className="font-semibold text-ocean-ink hover:underline">
           Use a different code
         </button>

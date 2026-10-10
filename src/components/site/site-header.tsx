@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
-import { Bell, MessageCircle, ShoppingBag } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, ShoppingBag } from "lucide-react";
 import { getNotifications } from "@/lib/notifications";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
@@ -45,24 +46,10 @@ export function SiteHeader({ overlay = false, handle, frosted = false }: SiteHea
 
         <nav aria-label="Main" className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ExploreMenu />
-          <CircleButton label="Cart" className="hidden sm:grid">
-            <ShoppingBag aria-hidden />
-          </CircleButton>
-          <CircleButton label="Messages" className="hidden sm:grid">
-            <MessageCircle aria-hidden />
-          </CircleButton>
           <ThemeMenu />
-          <Suspense
-            fallback={
-              <CircleButton label="Notifications">
-                <Bell aria-hidden />
-              </CircleButton>
-            }
-          >
-            <NotificationsBell />
-          </Suspense>
-          <Suspense fallback={<div className="h-10 w-[4.75rem] rounded-full bg-surface/60" />}>
-            <ViewerMenu />
+          {/* Cart, messages and notifications only exist for signed-in artists; visitors get sign in / join. */}
+          <Suspense fallback={<div aria-hidden className="h-10 w-24 sm:w-52" />}>
+            <ViewerNav />
           </Suspense>
         </nav>
       </div>
@@ -91,25 +78,47 @@ function CircleButton({
   );
 }
 
-async function NotificationsBell() {
-  const viewer = await getViewer();
-  return <NotificationsMenu items={viewer ? await getNotifications(viewer.handle) : null} />;
-}
-
-async function ViewerMenu() {
+async function ViewerNav() {
   const viewer = await getViewer();
   const profile = viewer ? await getProfile(viewer.handle) : null;
 
+  if (!viewer || !profile) {
+    return (
+      <>
+        <Link
+          href="/sign-in"
+          className="hidden h-10 items-center rounded-full bg-surface/75 px-4 text-sm font-semibold text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice sm:flex"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/join"
+          className="flex h-10 items-center rounded-full bg-ocean px-4 text-sm font-semibold text-white shadow-soft transition-[filter] hover:brightness-105"
+        >
+          <span className="sm:hidden">Join</span>
+          <span className="hidden sm:inline">Create account</span>
+        </Link>
+      </>
+    );
+  }
+
   return (
-    <AccountMenu
-      viewer={
-        profile && {
+    <>
+      <CircleButton label="Cart" className="hidden sm:grid">
+        <ShoppingBag aria-hidden />
+      </CircleButton>
+      <CircleButton label="Messages" className="hidden sm:grid">
+        <MessageCircle aria-hidden />
+      </CircleButton>
+      <NotificationsMenu items={await getNotifications(viewer.handle)} />
+      <AccountMenu
+        viewer={{
           handle: profile.handle,
           displayName: profile.displayName,
           avatar: profile.avatar,
           isPro: profile.plan === "pro",
-        }
-      }
-    />
+        }}
+      />
+    </>
   );
 }

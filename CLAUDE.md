@@ -11,7 +11,7 @@ The executable plan lives in `docs/roadmap.md` (phases, item status, feature bri
 Key decisions already made (per blueprint):
 
 - Positioning: global marketplace, English-first, USD-first.
-- Business model: 10% platform fee on transactions; optional US$5/mo subscription for advanced profile customization (does not remove the fee).
+- Business model: 10% platform fee on transactions; paid plans (do not remove the fee): **Flow+** for fully custom profiles (blueprint: US$5/mo; code still calls it `pro`) and a higher tier, name TBD, adding live streaming.
 - Visual direction: **Aqua** (light, modern, art-first). Name "Artiflow" is a working candidate — not final.
 
 Still undecided: final brand name & domain, legal entity, payments provider, moderation policy, premium customization scope.
@@ -61,11 +61,11 @@ Spacing scale: 4, 8, 12, 16, 24, 32, 48, 64 px.
 ## Artist profile (`/[handle]`) — first sketch
 
 - Route: `src/app/(site)/[handle]/` — `layout.tsx` (banner, identity, sidebar shortcuts), `page.tsx` (post feed + composer), `gallery/` and `commissions/` stubs, `actions.ts` (Server Actions).
-- Data: `src/lib/profile/` — `types.ts`, `queries.ts` (cached reads), `mock-db.ts` (in-memory store, resets on restart), `appearance.ts`.
-- Header: `src/components/site/site-header.tsx` — each page renders its own. Profiles use `overlay` (transparent over the full-bleed banner, turns solid past the banner via an IntersectionObserver sentinel). Wordmark only for now (no logo mark). Explore = hover/click menu (`explore-menu.tsx`); account = native popover (`account-menu.tsx`).
-- Auth is mocked in `src/lib/session.ts`: you're signed in as `@mira` unless you sign out (cookie); the eye button toggles "visitor view" via another cookie.
+- Data: `src/lib/profile/` — `types.ts`, `queries.ts` (cached reads), `mock-db.ts` (in-memory store; resets on restart, or bump `SEED_VERSION` to wipe dev posts without restarting), `appearance.ts`.
+- Header: `src/components/site/site-header.tsx` — each page renders its own. Profiles use `overlay` (transparent over the full-bleed banner, turns solid past the banner via an IntersectionObserver sentinel). Wordmark only for now (no logo mark). Explore = hover/click menu (`explore-menu.tsx`); account = native popover (`account-menu.tsx`). Signed-in artists get cart, messages, notifications and the account menu; visitors get **Sign in** / **Create account** instead. Actions that need an account (Follow, Message) send visitors to `/sign-in?next=` and back.
+- Auth is real (Supabase, see "Accounts" below). `getViewer()` in `src/lib/session.ts` returns the signed-in handle; the eye button toggles "visitor view" via a cookie. The demo artists (`mira`, `kai`…) have no accounts.
 - Customization tiers: free vs Pro fields are documented on `ProfileAppearance` (`types.ts`) and gated in one place, `resolveAppearance()`. Appearance is applied as CSS variables (`--profile-accent`, `--profile-radius-action`) → Tailwind `bg-accent`, `rounded-action`. Premium will grow to button shapes, block positions, themes, fonts and sandboxed CSS.
-- Demo artwork is third-party (Danbooru, general-rated), listed with credits in `src/lib/profile/demo-images.ts`, downloaded by `npm run demo:art` (runs automatically before `npm run dev`) into git-ignored `public/demo-art/`. Never commit or deploy it publicly.
+- Demo artwork is third-party (Danbooru, general-rated), listed with credits in `src/lib/profile/demo-images.ts`, downloaded by `npm run demo:art` (runs automatically before `npm run dev`) into git-ignored `public/demo-art/`. Never commit or deploy it publicly. That's why the Vercel project (`robinndevs-projects/artiflow`) protects **every** deployment, production included (Vercel Authentication, `ssoProtection: all`); keep it that way while demo art ships. Deploy with `vercel build && vercel deploy --prebuilt` so the local demo art is included (Git-triggered builds won't have it).
 
 ## Explore (`/explore`)
 
@@ -92,5 +92,15 @@ Concept: the artist's desk, seen from above. Deliberately not a split-screen Saa
 - Layout: `src/app/(auth)/layout.tsx` (persists across both routes, so switching tabs swaps only the sheet and the art). It's a self-healing cutting mat (`mat-grid`, `ruler-x/y` utilities; rulers track the pointer, `ruler-cursor.tsx`) lit by a fixed `#desk-light` `ambient-light` layer (`light.ts`, `lightDesk()`).
 - Art side (`desk-art.tsx`, desktop): sign-in shows a stack of community prints signed in pencil (edition · title · artist). Every 6.5s the top print is pulled off and slipped under the rest, and the desk takes its colors (`print-stack.tsx`, pausable). Join shows *your* blank canvas with construction lines that draw themselves in. It signs itself with the handle you type, pins your inviter's polaroid and note, and gets stamped when the account is made (`blank-canvas.tsx`, shared state in `desk.ts`). Phones get a small fan of prints tucked behind the sheet.
 - Sheet (`auth-sheet.tsx`): a binder page with index tabs (Sign in / Create account). Forms are client islands (`sign-in-form.tsx` with an in-place password reset, `sign-up-form.tsx`). Handle check is debounced against the server, with suggestions when taken (`handle-field.tsx`). Password strength is a paint stroke named after drawing stages, rough sketch → fully rendered (`lib/auth/password.ts`). The invite code is a sealed envelope (`invite-envelope.tsx`). `/join?invite=CODE` opens it already checked.
-- Server Actions: `src/app/(auth)/actions.ts` (mock: nothing is stored). Rules shared with the client live in `src/lib/auth/` (handles, password, invites). Desk props (pencil, wax seal, construction sketch) are SVG in theme tokens: `desk-props.tsx`.
+- Server Actions: `src/app/(auth)/actions.ts` (mock: nothing is stored). Rules shared with the client live in `src/lib/auth/` (handles, password, invites). Desk props (pen-tablet stylus, wax seal, construction sketch) are SVG in theme tokens: `desk-props.tsx`.
+
+## Accounts (Supabase)
+
+- Provisioned through the Vercel Marketplace (`artiflow-db`); `vercel env pull .env.local` fetches the keys. Clients in `src/lib/supabase/`: `server.ts` (session from cookies; also a cookie-less public client for `"use cache"` reads), `admin.ts` (secret key, server-only: handle → email at sign-in, invite lookups). `src/proxy.ts` refreshes sessions.
+- Schema in `supabase/migrations/` (create with `npx supabase migration new <name>`, apply with `npx supabase db push --db-url "$POSTGRES_URL_NON_POOLING"`, then `npx supabase db advisors --db-url …`). New tables aren't exposed to the Data API by default: grant explicitly and enable RLS.
+- `profiles` (handle, display name, bio, invited_by / invite_code) is created by the `handle_new_user` trigger from sign-up metadata (or `claim_profile` after a social sign-in), both through `private.create_profile`. Profiles are public.
+- `invites` are random single-use codes (`K7QH-3MPA`) the team grants to specific artists: `npm run invites -- grant @handle [count] ["why"]` / `list @handle`. Joining with one redeems it (`redeemed_at` marks it used) and sets `invited_by`. Lookups go through the server (`lookupInvite`); artists can only read their own rows. Demo artists keep reusable demo codes.
+- Real profiles merge into the demo data: `getProfile()` tries `mock-db.ts` first, then Supabase (`src/lib/profile/accounts.ts`). New accounts get generated art (`/defaults/{avatar|banner}/{handle}.svg`, `default-art.ts`) and empty states. Handles of demo artists and reserved routes can't be registered.
+- `getViewer()` awaits `connection()` before touching the session (Supabase checks token expiry against the clock, which Partial Prefetching won't allow in a prerender).
+- The Google/Discord/Twitch buttons always show; the ones switched on in Supabase (read from its public `/auth/v1/settings`, cached ~1 min: `enabled-providers.ts`) sign in; the rest show faded and disabled ("coming soon"). A first social sign-in has no handle: `/auth/confirm` and `signIn` send it to `/join/handle`, which creates the profile through `claim_profile` (secret key only; shared logic lives in `private.create_profile`).
 

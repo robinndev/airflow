@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, MailCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 import { signUp } from "@/app/(auth)/actions";
 import { Stamp } from "@/components/explore/stamp";
 import type { Invite } from "@/lib/auth/invites";
 import { resetDesk, setDesk } from "./desk";
-import { FieldError, FormAlert, PasswordField, SubmitButton, fieldClass, labelClass } from "./form-ui";
+import { FieldError, FormAlert, PasswordField, SubmitButton, TermsCheckbox, fieldClass, labelClass } from "./form-ui";
 import { HandleField } from "./handle-field";
 import { InviteEnvelope } from "./invite-envelope";
 
@@ -15,7 +15,7 @@ type SignUpFormProps = {
   /** Heading + provider buttons, rendered by the server; hidden once the account exists. */
   header: ReactNode;
   /** From an invite link (`/join?invite=CODE`), already looked up. */
-  invite?: { code: string; found: Invite | null };
+  invite?: { code: string; found: Invite | null; error?: string } | null;
 };
 
 export function SignUpForm({ header, invite }: SignUpFormProps) {
@@ -34,7 +34,7 @@ export function SignUpForm({ header, invite }: SignUpFormProps) {
     if (state?.ok) setDesk({ signed: true });
   }, [state]);
 
-  if (state?.ok) return <Welcome handle={state.handle} email={state.email} inviter={state.inviter} />;
+  if (state?.ok) return <Welcome {...state} />;
 
   return (
     <>
@@ -79,32 +79,9 @@ export function SignUpForm({ header, invite }: SignUpFormProps) {
           />
         </div>
 
-        <InviteEnvelope initialCode={invite?.code} initialInvite={invite?.found} error={fields.invite} />
+        <InviteEnvelope initialCode={invite?.code} initialInvite={invite?.found} initialError={invite?.error} error={fields.invite} />
 
-        <div className="mt-6">
-          <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-muted">
-            <input
-              type="checkbox"
-              name="terms"
-              checked={terms}
-              onChange={(e) => setTerms(e.target.checked)}
-              aria-invalid={fields.terms ? true : undefined}
-              aria-describedby={fields.terms ? `${id}-terms-error` : undefined}
-              className="peer sr-only"
-            />
-            <span
-              aria-hidden
-              className="mt-px grid size-5 shrink-0 place-items-center rounded-[6px] border-2 border-border bg-surface text-white transition-colors peer-checked:border-ocean peer-checked:bg-ocean peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ocean peer-aria-invalid:border-danger [&_svg]:size-3.5 [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100"
-            >
-              <Check strokeWidth={3.5} />
-            </span>
-            <span>
-              I agree to Artiflow&apos;s <span className="font-semibold text-ink">Terms of Service</span> and{" "}
-              <span className="font-semibold text-ink">Privacy Policy</span>.
-            </span>
-          </label>
-          <FieldError id={`${id}-terms-error`}>{fields.terms}</FieldError>
-        </div>
+        <TermsCheckbox checked={terms} onChange={setTerms} error={fields.terms} />
 
         {state && !state.ok && state.error && <FormAlert key={attempt}>{state.error}</FormAlert>}
 
@@ -137,7 +114,22 @@ const DROPS = Array.from({ length: 16 }, (_, i) => {
   };
 });
 
-function Welcome({ handle, email, inviter }: { handle: string; email: string; inviter?: string }) {
+/**
+ * After sign-up. With email confirmation on (the default), the account
+ * starts signed out until the link is opened, so we point to the inbox;
+ * otherwise straight to the new page.
+ */
+function Welcome({
+  handle,
+  email,
+  inviter,
+  confirmEmail,
+}: {
+  handle: string;
+  email: string;
+  inviter?: string;
+  confirmEmail: boolean;
+}) {
   return (
     <div role="status" className="relative py-4 text-center">
       <span aria-hidden className="pointer-events-none absolute top-24 left-1/2">
@@ -162,23 +154,36 @@ function Welcome({ handle, email, inviter }: { handle: string; email: string; in
         Account created
       </Stamp>
       <h1 className="mt-6 font-display text-[2.125rem] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink">
-        Your page is ready,
+        {confirmEmail ? "One last stroke," : "Your page is ready,"}
         <span className="mt-1 block truncate font-hand text-[1.4em] leading-[1.05] font-bold tracking-normal text-ocean">
           @{handle}
         </span>
       </h1>
-      <p className="mx-auto mt-4 max-w-sm text-[0.9375rem] leading-relaxed text-muted">
-        We sent a link to <span className="font-semibold break-all text-ink">{email}</span> to confirm your email. Start
-        setting up while it arrives.
-      </p>
-      {inviter && <p className="mt-4 font-hand text-xl text-lilac-ink">@{inviter} will hear that you joined ♥</p>}
-      <Link
-        href="/"
-        className="group/enter mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-button bg-ocean text-base font-semibold text-white shadow-[0_10px_24px_-12px_var(--ocean)] transition-[filter,translate] hover:-translate-y-px hover:brightness-105"
-      >
-        Enter the studio
-        <ArrowRight aria-hidden className="size-[1.125rem] transition-transform group-hover/enter:translate-x-0.5" />
-      </Link>
+      {confirmEmail ? (
+        <p className="mx-auto mt-4 max-w-sm text-[0.9375rem] leading-relaxed text-muted">
+          <MailCheck aria-hidden className="mr-1.5 inline size-4 align-[-2px] text-mint-ink" />
+          Open the link we sent to <span className="font-semibold break-all text-ink">{email}</span> to confirm
+          it&apos;s you. Your page goes live right after.
+        </p>
+      ) : (
+        <p className="mx-auto mt-4 max-w-sm text-[0.9375rem] leading-relaxed text-muted">
+          You&apos;re signed in. Add your art, open commissions, make it yours.
+        </p>
+      )}
+      {inviter && <p className="mt-4 font-hand text-xl text-lilac-ink">invited by @{inviter} ♥</p>}
+      {confirmEmail ? (
+        <Link href="/explore" className="mt-8 inline-flex text-sm font-semibold text-ocean-ink hover:underline">
+          Look around while you wait
+        </Link>
+      ) : (
+        <Link
+          href={`/${handle}`}
+          className="group/enter mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-button bg-ocean text-base font-semibold text-white shadow-[0_10px_24px_-12px_var(--ocean)] transition-[filter,translate] hover:-translate-y-px hover:brightness-105"
+        >
+          Go to your page
+          <ArrowRight aria-hidden className="size-[1.125rem] transition-transform group-hover/enter:translate-x-0.5" />
+        </Link>
+      )}
     </div>
   );
 }

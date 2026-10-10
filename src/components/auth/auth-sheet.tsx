@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Scribble } from "@/components/explore/doodles";
-import { continueWithProvider } from "@/app/(auth)/actions";
-import { DiscordIcon, GoogleIcon } from "@/components/icons/social-icon";
+import { enabledProviders } from "@/lib/auth/enabled-providers";
+import { ProviderButtons as ProviderRow } from "./provider-buttons";
 import { SheetTabs } from "./sheet-tabs";
 
 /**
@@ -36,27 +36,18 @@ export function SheetHeading({ lead, hand, children }: { lead: string; hand: str
   );
 }
 
-const providerButton =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-button border border-border bg-surface text-sm font-semibold text-ink transition-colors hover:border-sky/60 hover:bg-ice/60 [&_svg]:size-[1.125rem]";
-
-/** One-tap accounts, the way most artists already sign in elsewhere. */
-export function ProviderButtons({ verb }: { verb: "Sign in" | "Sign up" }) {
+/** The social sign-in row (see provider-buttons.tsx), then "or with email". */
+export async function ProviderButtons({ verb }: { verb: "Sign in" | "Sign up" }) {
   return (
-    <form action={continueWithProvider} className="mt-7 grid grid-cols-2 gap-2.5">
-      <button type="submit" name="provider" value="google" aria-label={`${verb} with Google`} className={providerButton}>
-        <GoogleIcon />
-        Google
-      </button>
-      <button type="submit" name="provider" value="discord" aria-label={`${verb} with Discord`} className={providerButton}>
-        <DiscordIcon />
-        Discord
-      </button>
-    </form>
+    <>
+      <ProviderRow verb={verb} enabled={await enabledProviders()} />
+      <OrDivider />
+    </>
   );
 }
 
 /** "or with email", between two hand-drawn squiggles. */
-export function OrDivider() {
+function OrDivider() {
   return (
     <div className="my-6 flex items-center gap-3 text-xs font-semibold text-muted">
       <Squiggle />
