@@ -53,7 +53,7 @@ export default function FavoritesPage() {
                 Your{" "}
                 <span className="relative inline-block font-hand text-[1.3em] leading-[0.8] font-bold tracking-normal text-ocean">
                   moodboard.
-                  <Scribble className="absolute -bottom-2 left-[-3%] w-[106%] text-mint" />
+                  <Scribble className="absolute right-[-3%] -bottom-3.5 w-[62%] text-mint" />
                 </span>
               </h1>
               <p className="mt-6 max-w-lg text-[0.9375rem] leading-relaxed text-pretty text-muted sm:text-base">

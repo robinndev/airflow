@@ -137,16 +137,13 @@ function Polaroid({ item, image, ratio, tilt }: { item: FavoritePost; image: Ima
             +{item.media.length - 1}
           </span>
         )}
-        <span className="flex h-[var(--cap)] min-w-0 items-center justify-between gap-2 px-0.5">
-          <HandNote tone="paper" className="min-w-0 truncate text-lg sm:text-xl">
+        <span className="flex h-[var(--cap)] min-w-0 flex-col justify-center px-0.5">
+          <HandNote tone="paper" className="block truncate text-base leading-[1.05] sm:text-lg">
             {item.title}
           </HandNote>
-          <span className="shrink-0 text-[0.625rem] font-semibold text-paper-muted max-sm:hidden">
+          <span className="truncate text-[0.625rem] leading-tight font-semibold text-paper-muted sm:text-[0.6875rem]">
             @{item.author.handle} · {stage.label}
           </span>
-        </span>
-        <span className="sr-only">
-          {stage.label} by @{item.author.handle}
         </span>
       </Link>
     </>
