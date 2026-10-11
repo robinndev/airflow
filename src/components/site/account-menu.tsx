@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, Frame, LogIn, LogOut, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
+import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
+import { openInbox } from "@/components/messages/store";
 import { Avatar } from "@/components/ui/avatar";
 import type { ImageAsset } from "@/lib/profile/types";
 
@@ -63,6 +64,14 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 <UserRound aria-hidden />
                 Your profile
               </Link>
+              <Link href="/commissions" className={item}>
+                <Brush aria-hidden />
+                My commissions
+              </Link>
+              <Link href="/requests" className={item}>
+                <Mail aria-hidden />
+                My requests
+              </Link>
               <Link href="/favorites" className={item}>
                 <Bookmark aria-hidden />
                 Favorites
@@ -89,8 +98,8 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                   </span>
                 )}
               </Link>
-              {/* Messages lives in the header on larger screens. */}
-              <button type="button" className={`${item} sm:hidden`}>
+              {/* On phones the inbox opens full screen (larger screens use the header dropdown). */}
+              <button type="button" onClick={openInbox} className={`${item} sm:hidden`}>
                 <MessageCircle aria-hidden />
                 Messages
               </button>

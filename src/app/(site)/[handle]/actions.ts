@@ -1,5 +1,6 @@
 "use server";
 
+import { optionUsd, pickOptions, serviceOptions, usageOf } from "@/lib/commissions/addons";
 import { cookies } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -200,7 +201,8 @@ const requestSchema = z.object({
     .trim()
     .min(20, "Tell the artist a bit more — at least 20 characters.")
     .max(2000, "Keep it under 2,000 characters."),
-  usage: z.enum(["personal", "commercial"]),
+  // Asked on custom pieces only; a service's usage comes from its licenses.
+  usage: z.enum(["personal", "commercial"]).optional(),
   budget: z.enum(["under-50", "50-150", "150-300", "300-plus"]).optional(),
   deadline: z.iso.date().optional(),
   references: z.string().trim().max(1000).optional(),
@@ -216,7 +218,7 @@ export async function submitCommissionRequest(
   const parsed = requestSchema.safeParse({
     serviceId: formData.get("serviceId"),
     description: formData.get("description"),
-    usage: formData.get("usage"),
+    usage: optional("usage"),
     budget: optional("budget"),
     deadline: optional("deadline"),
     references: optional("references"),
@@ -227,12 +229,15 @@ export async function submitCommissionRequest(
   }
 
   const { serviceId } = parsed.data;
-  if (
-    serviceId !== "custom" &&
-    !db.services.some((s) => s.id === serviceId && s.ownerHandle === handle)
-  ) {
+  const service = db.services.find((s) => s.id === serviceId && s.ownerHandle === handle);
+  if (serviceId !== "custom" && !service) {
     return { ok: false, error: "That service is no longer available." };
   }
+  // Only what this service sells on top, priced as it is now (the request keeps that snapshot).
+  const ids = formData.getAll("addonIds").filter((value): value is string => typeof value === "string");
+  const picked = service ? pickOptions(serviceOptions(service), ids) : [];
+  const addons = picked.map(({ id, label, price }) => ({ id, label, priceUsd: optionUsd(price, service!.priceFromUsd) }));
+  const usage = service ? usageOf(service.usage, ids) : (parsed.data.usage ?? "personal");
 
   const viewer = await getViewer();
   db.requests.push({
@@ -240,6 +245,8 @@ export async function submitCommissionRequest(
     artistHandle: handle,
     requesterHandle: viewer?.handle ?? null,
     ...parsed.data,
+    usage,
+    ...(addons.length > 0 && { addons }),
     acceptedTerms: true,
     createdAt: new Date().toISOString(),
   });

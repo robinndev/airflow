@@ -4,8 +4,10 @@ import { CircleCheck, LoaderCircle, Send, Sparkles } from "lucide-react";
 import { useActionState, useId, useState } from "react";
 import { submitCommissionRequest, type ActionResult } from "@/app/(site)/[handle]/actions";
 import { buttonClasses } from "@/components/ui/button";
-import { formatUsd } from "@/lib/format";
+import { extrasUsd, pickOptions, type Option } from "@/lib/commissions/addons";
+import { formatUsd, formatUsdExact } from "@/lib/format";
 import type { CommissionBudget, CommissionStatus, CommissionUsage } from "@/lib/profile/types";
+import { OptionsPicker } from "./addon-picker";
 import { CUSTOM_SERVICE_ID } from "./events";
 
 type ServiceOption = { id: string; title: string; priceFromUsd: number };
@@ -17,6 +19,10 @@ type CommissionRequestFormProps = {
   services: ServiceOption[];
   serviceId: string;
   onServiceChange: (id: string) => void;
+  /** The chosen service's licenses and add-ons (included ones come ticked), and which the buyer ticked. */
+  options?: Option[];
+  addonIds?: string[];
+  onAddonsChange?: (ids: string[]) => void;
   onDone: () => void;
   /** Hide the service picker when the request starts from a specific service. */
   lockService?: boolean;
@@ -51,6 +57,9 @@ export function CommissionRequestForm({
   services,
   serviceId,
   onServiceChange,
+  options = [],
+  addonIds = [],
+  onAddonsChange = () => {},
   onDone,
   lockService = false,
   termsAccepted = false,
@@ -74,6 +83,7 @@ export function CommissionRequestForm({
   const isCustom = serviceId === CUSTOM;
   const selected = services.find((s) => s.id === serviceId);
   const isWaitlist = status === "waitlist";
+  const extra = selected ? extrasUsd(pickOptions(options, addonIds), selected.priceFromUsd) : 0;
 
   if (state?.ok) {
     return (
@@ -146,6 +156,7 @@ export function CommissionRequestForm({
         </div>
       </fieldset>
 
+
       <div>
         <div className="flex items-baseline justify-between">
           <label htmlFor={`${id}-description`} className={label}>
@@ -196,30 +207,35 @@ export function CommissionRequestForm({
         </fieldset>
       )}
 
-      <fieldset>
-        <legend className={label}>How will you use it?</legend>
-        <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-          {USAGES.map((option) => (
-            <label
-              key={option.value}
-              className={`cursor-pointer rounded-[12px] border px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ocean ${
-                usage === option.value ? "border-ocean bg-ice/70" : "border-border hover:bg-ice/40"
-              }`}
-            >
-              <input
-                type="radio"
-                name="usage"
-                value={option.value}
-                checked={usage === option.value}
-                onChange={() => setUsage(option.value)}
-                className="sr-only"
-              />
-              <span className="block text-sm font-semibold text-ink">{option.label}</span>
-              <span className="block text-xs text-muted">{option.hint}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {/* A service lists its licenses with the add-ons (the server works out the usage); a custom piece asks. */}
+      {!isCustom && options.length > 0 ? (
+        <OptionsPicker options={options} selected={addonIds} onChange={onAddonsChange} />
+      ) : (
+        <fieldset>
+          <legend className={label}>How will you use it?</legend>
+          <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+            {USAGES.map((option) => (
+              <label
+                key={option.value}
+                className={`cursor-pointer rounded-[12px] border px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ocean ${
+                  usage === option.value ? "border-ocean bg-ice/70" : "border-border hover:bg-ice/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="usage"
+                  value={option.value}
+                  checked={usage === option.value}
+                  onChange={() => setUsage(option.value)}
+                  className="sr-only"
+                />
+                <span className="block text-sm font-semibold text-ink">{option.label}</span>
+                <span className="block text-xs text-muted">{option.hint}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-[11rem_minmax(0,1fr)]">
         <div>
@@ -274,8 +290,9 @@ export function CommissionRequestForm({
           <p className="text-ink">
             {selected ? (
               <>
-                Estimated <span className="font-display font-extrabold">from {formatUsd(selected.priceFromUsd)}</span>
-                {usage === "commercial" && <span className="text-muted"> + license</span>}
+                Estimated{" "}
+                <span className="font-display font-extrabold">from {formatUsdExact(selected.priceFromUsd + extra)}</span>
+                {extra > 0 && <span className="text-muted"> incl. {formatUsdExact(extra)} in extras</span>}
               </>
             ) : (
               <span className="font-semibold">Custom quote</span>

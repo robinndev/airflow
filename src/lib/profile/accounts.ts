@@ -188,7 +188,7 @@ export function toPostAuthor(row: AccountRow): PostAuthor {
   return { handle, displayName, avatar, plan };
 }
 
-function toArtistProfile(row: AccountRow): ArtistProfile {
+export function toArtistProfile(row: AccountRow): ArtistProfile {
   const art = defaultArt(row.handle, row.display_name);
   return {
     id: row.id,

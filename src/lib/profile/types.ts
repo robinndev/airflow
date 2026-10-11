@@ -115,10 +115,32 @@ export type ArtistProfile = {
   about?: Board;
 };
 
+/**
+ * How a license or an add-on is priced: already in the price (shown ticked and
+ * locked), a fixed amount, or a share of the "from" price ("+200%").
+ */
+export type AddonPrice =
+  | { kind: "included" }
+  | { kind: "fixed"; usd: number }
+  | { kind: "percent"; percent: number };
+
+/** Each license is included, sold on top (an `AddonPrice`), or not offered (null). */
 export type UsageRights = {
-  personal: boolean;
-  commercialContent: boolean;
-  commercialMerch: boolean;
+  personal: AddonPrice | null;
+  commercialContent: AddonPrice | null;
+  commercialMerch: AddonPrice | null;
+};
+
+/**
+ * An extra the buyer can tick when requesting ("+$10 shading"), or one that's
+ * already in the price (ticked and locked). Only some services have them.
+ */
+export type ServiceAddon = {
+  id: string;
+  label: string;
+  price: AddonPrice;
+  /** A short clarification under the label ("A short loop, GIF and MP4"). */
+  hint?: string;
 };
 
 export type CommissionService = {
@@ -134,6 +156,8 @@ export type CommissionService = {
   includes: string[];
   examples: ImageAsset[];
   popular?: boolean;
+  /** Optional extras the buyer can add. Absent or empty: the service has none. */
+  addons?: ServiceAddon[];
 };
 
 export type Review = {
@@ -161,6 +185,8 @@ export type CommissionRequest = {
   budget?: CommissionBudget;
   deadline?: string;
   references?: string;
+  /** What the buyer ticked on top (licenses and add-ons), priced in USD when they asked; later price changes don't touch it. */
+  addons?: { id: string; label: string; priceUsd: number }[];
   acceptedTerms: true;
   createdAt: string;
 };

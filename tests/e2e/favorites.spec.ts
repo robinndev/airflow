@@ -45,10 +45,10 @@ async function signIn(page: Page) {
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 }
 
-/** Clicks a save button once the page has hydrated, and waits for it to say it's saved. */
+/** Clicks a save button once the page has hydrated, and waits for it to say it's saved (its label flips too). */
 async function save(button: Locator) {
   await expect(async () => {
-    await button.click();
+    if ((await button.getAttribute("aria-pressed")) !== "true") await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "true", { timeout: 1500 });
   }).toPass();
 }
@@ -75,14 +75,14 @@ test("saves from the feed, Explore and commissions land on the moodboard", async
 
   // A post on the home feed.
   await page.goto("/");
-  await save(page.locator("article#pst_3").getByRole("button", { name: "Save to favorites" }));
-  await expect(page.getByRole("status")).toContainText("Saved to favorites");
+  await save(page.locator("article#pst_3").getByRole("button", { name: /^(Save to|Remove from) favorites$/ }));
+  await expect(page.getByText("Saved to favorites")).toBeVisible();
 
   // A piece on Explore's wall (the heart), and a commission service.
   await page.goto("/explore");
-  await save(page.getByRole("button", { name: "Favorite Golden Hour" }));
+  await save(page.getByRole("button", { name: /^(Un)?favorite Golden Hour$/i }));
   await page.goto("/mira/commissions");
-  await save(page.getByRole("button", { name: "Save Half-body illustration to favorites" }).first());
+  await save(page.getByRole("button", { name: /^(Save|Remove) Half-body illustration (to|from) favorites$/ }).first());
 
   await expect.poll(async () => (await savedRows()).map((r) => `${r.kind}:${r.demo_id}`).sort()).toEqual([
     "art:art_1",
@@ -105,7 +105,7 @@ test("saves from the feed, Explore and commissions land on the moodboard", async
     await expect(wall.getByRole("link", { name: /Golden Hour/ })).toBeHidden({ timeout: 1500 });
   }).toPass();
   await expect.poll(async () => (await savedRows()).some((r) => r.demo_id === "art_1")).toBe(false);
-  await page.getByRole("status").getByRole("button", { name: "Undo" }).click();
+  await page.getByRole("button", { name: "Undo" }).click();
   await expect(wall.getByRole("link", { name: /Golden Hour/ })).toBeVisible();
   await expect
     .poll(async () => (await savedRows()).find((r) => r.demo_id === "art_1")?.created_at)

@@ -1,7 +1,8 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
-import { MessageCircle, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { FavoritesSession } from "@/components/favorites/favorites-session";
+import { MessagesMenu, MessagesSession } from "@/components/messages/messages-menu";
 import { getNotifications } from "@/lib/notifications";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
@@ -87,6 +88,7 @@ async function ViewerNav() {
     return (
       <>
         <FavoritesSession viewer={null} />
+        <MessagesSession viewer={null} />
         <Link
           href="/sign-in"
           className="hidden h-10 items-center rounded-full bg-surface/75 px-4 text-sm font-semibold text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice sm:flex"
@@ -107,12 +109,11 @@ async function ViewerNav() {
   return (
     <>
       <FavoritesSession viewer={viewer.id} />
+      <MessagesSession viewer={viewer} />
       <CircleButton label="Cart" className="hidden sm:grid">
         <ShoppingBag aria-hidden />
       </CircleButton>
-      <CircleButton label="Messages" className="hidden sm:grid">
-        <MessageCircle aria-hidden />
-      </CircleButton>
+      <MessagesMenu />
       <NotificationsMenu items={await getNotifications(viewer.handle)} />
       <AccountMenu
         viewer={{

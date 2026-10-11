@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MessageCircle, Palette, Plus } from "lucide-react";
+import { MessageButton } from "@/components/messages/message-button";
 import { buttonClasses } from "@/components/ui/button";
 import { fetchPlanForUser } from "@/lib/profile/accounts";
 import { customizationFor } from "@/lib/customization/model";
@@ -56,10 +57,7 @@ export async function ProfileActions({ handle }: { handle: string }) {
   return (
     <>
       <FollowButton handle={handle} />
-      <button type="button" className={buttonClasses({ variant: "secondary" })}>
-        <MessageCircle aria-hidden />
-        Message
-      </button>
+      <MessageButton handle={handle} />
       <Link
         href={`/${handle}/commissions`}
         className={buttonClasses({ variant: "soft" })}

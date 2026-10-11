@@ -3,11 +3,9 @@
 import Image from "next/image";
 import {
   ArrowLeft,
-  Check,
   ChevronDown,
   Clock,
   Ellipsis,
-  Info,
   MessageCircle,
   MessagesSquare,
   PackageCheck,
@@ -29,8 +27,9 @@ import type {
   CommissionSummary,
   ImageAsset,
   Review,
-  UsageRights,
 } from "@/lib/profile/types";
+import { serviceOptions } from "@/lib/commissions/addons";
+import { OptionsPicker, OptionsTotal } from "./addon-picker";
 import { CommissionRequestForm } from "./commission-request-form";
 import { CUSTOM_SERVICE_ID, OPEN_SERVICE_EVENT, openService } from "./events";
 import { ExampleCarousel } from "./example-carousel";
@@ -48,12 +47,6 @@ type CommissionDialogProps = {
 
 type View = "details" | "request";
 
-const USAGE_LABELS: { key: keyof UsageRights; label: string; hint: string }[] = [
-  { key: "personal", label: "Personal", hint: "Profile pictures, gifts, your own non-monetized posts." },
-  { key: "commercialContent", label: "Commercial: Content", hint: "Monetized videos, streams, book covers and ads." },
-  { key: "commercialMerch", label: "Commercial: Merchandising", hint: "Prints, stickers, apparel and other products for sale." },
-];
-
 /**
  * Service detail modal: art on the left, details + request flow on the right.
  * Opened by any service row (or a #serviceId hash), so links are shareable.
@@ -65,6 +58,8 @@ export function CommissionDialog(props: CommissionDialogProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<View>("details");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Ticked add-ons carry from the details view into the request form.
+  const [addonIds, setAddonIds] = useState<string[]>([]);
   const [round, setRound] = useState(0);
 
   const open = useCallback(
@@ -74,6 +69,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
       setActiveId(id);
       setView(isCustom ? "request" : "details");
       setTermsAccepted(false);
+      setAddonIds([]);
       setRound((r) => r + 1);
       history.replaceState(null, "", `#${id}`);
       if (!dialogRef.current?.open) dialogRef.current?.showModal();
@@ -149,7 +145,13 @@ export function CommissionDialog(props: CommissionDialogProps) {
               )}
 
               {view === "details" && service ? (
-                <ServiceDetails {...props} service={service} firstName={firstName} />
+                <ServiceDetails
+                  {...props}
+                  service={service}
+                  firstName={firstName}
+                  addonIds={addonIds}
+                  onAddons={setAddonIds}
+                />
               ) : (
                 <div>
                   <div className="flex items-center gap-3 px-6 pt-8 sm:px-8 md:pt-20">
@@ -185,6 +187,9 @@ export function CommissionDialog(props: CommissionDialogProps) {
                       }))}
                       serviceId={activeId ?? CUSTOM_SERVICE_ID}
                       onServiceChange={setActiveId}
+                      options={service ? serviceOptions(service) : []}
+                      addonIds={addonIds}
+                      onAddonsChange={setAddonIds}
                       lockService
                       termsAccepted={termsAccepted}
                       onDone={close}
@@ -269,8 +274,16 @@ function ServiceDetails({
   terms,
   service,
   firstName,
-}: CommissionDialogProps & { service: CommissionService; firstName: string }) {
+  addonIds,
+  onAddons,
+}: CommissionDialogProps & {
+  service: CommissionService;
+  firstName: string;
+  addonIds: string[];
+  onAddons: (ids: string[]) => void;
+}) {
   const [tab, setTab] = useState<"description" | "reviews">("description");
+  const options = serviceOptions(service);
   const original = service.discountPercent
     ? Math.round(service.priceFromUsd / (1 - service.discountPercent / 100))
     : null;
@@ -305,44 +318,16 @@ function ServiceDetails({
           <Clock aria-hidden className="size-4" />
           Delivered in {service.turnaround}
         </p>
+        {/* Licenses and add-ons right under the price, ticked like a commission sheet: included ones come ticked. */}
+        <div className="mt-5 rounded-[16px] border border-border px-4 pt-3.5 pb-3">
+          <OptionsPicker options={options} selected={addonIds} onChange={onAddons} />
+          {addonIds.length > 0 && (
+            <div className="mt-2 border-t border-dashed border-border pt-2.5">
+              <OptionsTotal base={service.priceFromUsd} options={options} selected={addonIds} />
+            </div>
+          )}
+        </div>
       </header>
-
-      {/* Usage rights */}
-      <section aria-labelledby="usage-heading">
-        <SectionTitle id="usage-heading">Usage rights</SectionTitle>
-        <ul className="mt-3 divide-y divide-border rounded-[16px] border border-border">
-          {USAGE_LABELS.map(({ key, label, hint }) => {
-            const allowed = service.usage[key];
-            return (
-              <li key={key} className="flex items-center gap-3 px-4 py-3">
-                <span
-                  className={`grid size-6 shrink-0 place-items-center rounded-full ${
-                    allowed ? "bg-mint/15 text-mint-strong" : "bg-ice text-muted/70"
-                  }`}
-                >
-                  {allowed ? (
-                    <Check aria-hidden className="size-3.5" />
-                  ) : (
-                    <X aria-hidden className="size-3.5" />
-                  )}
-                </span>
-                <span
-                  className={`flex-1 text-[0.9375rem] ${
-                    allowed ? "font-medium text-ink" : "text-muted line-through"
-                  }`}
-                >
-                  {label}
-                  <span className="sr-only">{allowed ? " (included)" : " (not included)"}</span>
-                </span>
-                <span title={hint} className="text-muted/80">
-                  <Info aria-hidden className="size-4" />
-                  <span className="sr-only">{hint}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
 
       {/* Artist */}
       <section aria-label="About the artist" className="grid gap-4">
@@ -519,14 +504,6 @@ function TermsCard({
         />
       </button>
     </section>
-  );
-}
-
-function SectionTitle({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <h3 id={id} className="text-xs font-bold tracking-wider text-muted uppercase">
-      {children}
-    </h3>
   );
 }
 

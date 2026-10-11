@@ -31,8 +31,12 @@ const monthYear = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const usdCents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+
 export const formatCompact = (n: number) => compact.format(n);
 export const formatUsd = (n: number) => usd.format(n);
+/** Whole dollars stay whole; anything with cents shows them ($8.50), so breakdowns add up. */
+export const formatUsdExact = (n: number) => (Number.isInteger(n) ? usd.format(n) : usdCents.format(n));
 export const formatShortDate = (iso: string) => shortDate.format(new Date(iso));
 export const formatLongDate = (iso: string) => longDate.format(new Date(iso));
 export const formatMonthYear = (iso: string) => monthYear.format(new Date(iso));

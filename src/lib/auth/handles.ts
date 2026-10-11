@@ -13,7 +13,7 @@ const HANDLE_PATTERN = /^(?!.*\.\.)[a-z0-9_][a-z0-9_.]{1,18}[a-z0-9_]$/;
 const RESERVED = new Set([
   "about", "admin", "api", "artiflow", "cart", "commissions", "customize", "explore", "favorites", "feed", "help",
   "home", "join", "login", "logout", "messages", "mod", "moodboard", "new", "notifications", "orders", "plans",
-  "pricing", "privacy", "saved", "search", "settings", "shop", "sign-in", "signin", "signup", "staff", "support",
+  "pricing", "privacy", "requests", "saved", "search", "settings", "shop", "sign-in", "signin", "signup", "staff", "support",
   "terms",
 ]);
 
