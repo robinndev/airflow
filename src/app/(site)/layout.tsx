@@ -5,7 +5,7 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-canvas">
       {children}
-      {/* "Pinned to your moodboard": save buttons anywhere on the site raise it. */}
+      {/* "Saved to favorites · View": save buttons anywhere on the site raise it. */}
       <FavoritesToast />
     </div>
   );

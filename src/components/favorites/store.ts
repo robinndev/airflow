@@ -83,11 +83,11 @@ export function useFavorite({ kind, id, title }: SaveTarget) {
     if (state.viewer === null) return signIn();
     const next = !saved;
     if (!(await write(next))) return;
-    const what = title ? `“${title}”` : "it";
+    const what = title ? ` “${title}”` : "";
     showToast(
       next
-        ? { message: `Saved ${what} to favorites`, link: { label: "View", href: "/favorites" } }
-        : { message: `Removed ${what} from favorites`, undo: () => void write(true) },
+        ? { message: `Saved${what} to favorites`, link: { label: "View", href: "/favorites" } }
+        : { message: `Removed${what} from favorites`, undo: () => void write(true) },
     );
   }
 

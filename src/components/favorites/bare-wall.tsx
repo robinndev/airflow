@@ -61,7 +61,7 @@ export function EmptyWall() {
       <p className="text-[0.625rem] font-bold tracking-[0.2em] text-paper-muted uppercase">Nothing pinned yet</p>
       <h2 className="mt-2 font-display text-2xl leading-tight font-extrabold">An empty wall, for now.</h2>
       <p className="mt-2 text-sm leading-relaxed text-paper-muted">
-        When something stops your scroll, save it and it lands here. Tap
+        When something stops your scroll, save it and it lands here. Look for
       </p>
       <ul className="mx-auto mt-3 grid w-fit gap-2 text-left text-sm">
         {WAYS.map(({ icon: Icon, label, tint }) => (

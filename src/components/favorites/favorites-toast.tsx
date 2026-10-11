@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { TOAST_EVENT, type Toast } from "./toast-events";
 
 /**
- * A paper slip taped to the bottom of the screen: "Pinned to your moodboard ·
- * View", or "Unpinned · Undo". Stays while hovered or focused.
+ * A paper slip taped to the bottom of the screen: "Saved to favorites · View",
+ * or "Unpinned · Undo". Stays while hovered or focused.
  */
 export function FavoritesToast() {
   const [toast, setToast] = useState<(Toast & { at: number }) | null>(null);
