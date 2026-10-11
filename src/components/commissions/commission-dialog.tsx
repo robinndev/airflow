@@ -245,7 +245,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
 
           {service && view === "details" && (
             <div className="absolute top-5 right-5 z-10 flex items-center gap-1 rounded-full bg-surface/90 p-1 shadow-soft backdrop-blur-sm">
-              <SaveButton title={service.title} />
+              <SaveButton serviceId={service.id} title={service.title} />
               <button
                 type="button"
                 aria-label="More options"

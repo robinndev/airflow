@@ -3,7 +3,7 @@
 Living plan for what we build and in what order. The blueprint (`docs/brand/Aqua_Product_Brand_Blueprint.docx`, §9) sets the vision and the phases; this file turns them into concrete items, tracks their status, and records stakeholder requests.
 
 - **Maintained by:** Claude (roadmap owner), with input from stakeholders via the project lead.
-- **Last updated:** 2026-10-10
+- **Last updated:** 2026-10-11
 
 **Status legend**
 
@@ -12,7 +12,35 @@ Living plan for what we build and in what order. The blueprint (`docs/brand/Aqua
 | Prototype      | Built in the app on mock data (`mock-db.ts`, mocked session). No real backend yet. |
 | Planned        | Agreed scope, not started.                                            |
 | Needs decision | Blocked on an open question (see [Pending decisions](#pending-decisions)). |
+| Proposed       | Suggested by the roadmap owner and not yet confirmed by the project lead. |
 | Shipped        | Live on real infrastructure. (Nothing yet.)                           |
+
+---
+
+## Now and next (as of 2026-10-11)
+
+The roadmap owner's order of work. The goal is the blueprint's closed beta (§13): invited artists publishing, then the first commissions.
+
+**Decisions only the project lead can make. These unblock the most:**
+
+1. **A sending domain for email.** Supabase's built-in mailer only reaches the team, so nobody outside it can confirm their email. That blocks the beta. Resend needs a verified domain. Pick a provisional one now and keep the final brand name as a separate decision.
+2. **Payments provider and legal entity.** Researched 2026-10-11, see the [payments brief](#brief-payments-how-the-money-moves). Recommended: a US company, Stripe Connect first and PayPal second. The paperwork (company, bank, Stripe's review, terms, tax advice) takes weeks, so start it now.
+
+**Build, before the beta opens (trust & safety minimum):**
+
+1. [Content tags](#brief-content-rating-mature-art-hidden-until-you-click): artists will post adult art from day one.
+2. [Reporting, block and mute](#brief-reporting-and-keeping-artiflow-human-made), with the minimal `/admin/reports` queue.
+3. [Spam & sign-up protection](#what-else-confirmed-2026-10-11) (bot check, rate limits), plus the quick part of [keeping art out of AI training](#what-else-confirmed-2026-10-11) (robots.txt, `noai` tags).
+4. [Guidelines, terms & privacy](#what-else-confirmed-2026-10-11), drafted for legal review, with the AI rule, content tags and strikes.
+
+**Then, the commission loop (payment step stubbed until the provider is chosen):**
+
+5. [Per-service status in one click](#brief-per-service-status-set-in-one-click), the data model the rest builds on.
+6. [Commission flow](#brief-commission-flow-request--proposal--payment--delivery): inbox (accept / decline / waitlist), proposals, orders, delivery.
+7. ["Notify me"](#brief-notify-me-when-a-service-reopens), with the in-app + email notifications slice.
+8. Character (OC) pages, the blueprint's other pillar, which nothing blocks.
+
+**Later in Phase 1:** [artist track record](#brief-artist-track-record) (needs real orders), account deletion & data export, the rest of the AI-training protection.
 
 ---
 
@@ -32,10 +60,18 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | ↳ **Per-service status, set in one click** | Each commission type is Open, Waitlist or Closed on its own; one click changes it; closed ones leave discovery right away | **Planned (P1)** | Stakeholder request, 2026-10-10. See the [brief](#brief-per-service-status-set-in-one-click). |
 | ↳ **"Notify me" when a service reopens** | One click on a closed service; everyone who asked is notified when it opens again | **Planned (P1)** | Stakeholder request, 2026-10-10. Pulls a minimal slice of notifications into Phase 1. See the [brief](#brief-notify-me-when-a-service-reopens). |
 | ↳ **Commission flow: request → proposal → payment → delivery** | Slots, artist review (accept / decline / waitlist), proposal + payment link by email, order tracking, delivery, credit on both sides | **Planned (P1)** | Stakeholder request, 2026-10-10, checked against VGen's docs. The payment step depends on the payments provider. See the [brief](#brief-commission-flow-request--proposal--payment--delivery). |
+| ↳ **Artist track record** | Does this artist deliver? Delivered, on time, cancellations, disputes, reply time and reviews, shown as facts plus a "Reliable" badge; an internal trust score for moderation | **Planned** | Request, 2026-10-11. Recorded from the commission flow's first order; shown once an artist has enough orders. See the [brief](#brief-artist-track-record). |
 | Discovery & search | Explore, search, filters, tags | Prototype | `/explore` built (studios, adoptables, palette wall). Search input isn't wired; `/explore/[section]` pages are placeholders. |
 | Checkout & orders | 10% fee, order history, minimal refund/dispute flow | Needs decision | Payments provider. Commissions pay through the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
 | Media upload & delivery | Limits, validation, thumbnails, CDN, metadata stripping | **Built (first pass)** | Supabase Storage, public `art` bucket, one folder per account (policies: write/delete only your own). The browser resizes (posts 2400px, cover 2400px, picture 512px), re-encodes to WebP (strips EXIF) and **extracts the palette** before uploading straight to storage (no server hop, 10 MB cap). Next/Image serves them. Open: delete an account's files when the account is deleted; moderation/scanning. |
 | Admin & moderation | Reports, takedowns, essential analytics | Needs decision | Moderation policy. |
+| ↳ **Reporting: posts, comments, profiles** | "…" → Report on anything people post; reasons; block/mute; team review queue; outcomes and appeals | **Planned (P1)** | Request, 2026-10-11. Needed before sign-ups open beyond invited artists: posting is real and the site is public. See the [brief](#brief-reporting-and-keeping-artiflow-human-made). |
+| ↳ **Made by humans: no generative AI** | The rule; agreement at sign-up and on paid listings; AI-generator check on upload; AI reports reviewed evidence-first, with private process requests | **Planned (P1)**; **generator check Built** | Request, 2026-10-11 ("only real posts"). **Rule and strikes decided** 2026-10-11. **Built 2026-10-11:** every upload (posts, picture and cover, profile background, About board) is checked for AI generators' marks before it's re-encoded, with an "I made this myself" review request. See [Part 2](#part-2-ai-generated-art). |
+| ↳ **Content tags: sensitive art hidden until you click** | Artists tag their work (artistic nudity, suggestive, sexual content, gore, violence, flashing, revealing clothes, other). 18+ tags are covered and only confirmed adults can reveal them | **Planned (P1)** | Confirmed 2026-10-11: adult art is welcome, tagged and hidden. Tags replace a single "Mature" switch (2026-10-11). See the [brief](#brief-content-rating-mature-art-hidden-until-you-click). |
+| ↳ **Keep our art out of AI training** | Block AI crawlers, `noai` tags, scraping ban in the terms; check that our resize + WebP doesn't weaken Glaze/Nightshade | **Planned** | Confirmed 2026-10-11. See [What else](#what-else-confirmed-2026-10-11). |
+| ↳ **Guidelines, terms & copyright takedowns** | Community guidelines (incl. the AI rule and strikes), terms, privacy; a takedown form that works **without an account** | **Planned (P1)** | Needed before sign-ups open widely, and the decided AI rule and strikes need to be published. See [What else](#what-else-confirmed-2026-10-11). |
+| ↳ **Account deletion & data export** | Delete account + files; download your data | **Planned** | Confirmed 2026-10-11. International privacy laws (GDPR, LGPD, CCPA). See [What else](#what-else-confirmed-2026-10-11). |
+| ↳ **Spam & sign-up protection** | Bot check at sign-up; rate limits on posts, comments and reports | **Planned (P1)** | Confirmed 2026-10-11 ("we must have this"). See [What else](#what-else-confirmed-2026-10-11). |
 
 Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode) and a chronological **home feed** (`/`).
 
@@ -43,7 +79,7 @@ Built ahead of plan: the **Ember** dark theme (the blueprint deferred dark mode)
 
 | Item | Status | Notes |
 | ---- | ------ | ----- |
-| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. **Price: US$6.99/mo** (decided 2026-10-10). Exact scope open. **Decided perk: animated GIF profile picture and cover** (free accounts: still images), enforced in the database. `profiles.plan` (`free`/`flow_plus`) is set by the team with `npm run plans` until billing exists; `profiles.plan_since` records when it started. Code still calls it `pro`. **Plans page built** (`/plans`, artist trading cards: your plan, since when, upgrade path); upgrade and checkout wait on the payments provider. |
+| **Flow+** subscription (was "Pro"): fully custom profiles and small extras | Needs decision | Renamed by the project lead, 2026-10-10. **Price: US$6.99/mo** (decided 2026-10-10). Exact scope open. **Decided perk: animated GIF profile picture and cover** (free accounts: still images), enforced in the database. **Customization built (2026-10-11):** Flow+ unlocks every theme + own colors, background patterns/images, name fonts/gradients/effects, button styles, sidebar side, custom CSS, HTML blocks and a 60-block About board; free keeps 5 themes, name color, 2 fonts, glow, rounded/pill buttons, dots pattern, free frames and a 10-block board. Avatar frames shop at `/shop` (3 free, 7 paid; prices $1.99–$3.99 are placeholders until shop pricing is decided). `profiles.plan` (`free`/`flow_plus`) is set by the team with `npm run plans` until billing exists; `profiles.plan_since` records when it started. Code still calls it `pro`. **Plans page built** (`/plans`, artist trading cards: your plan, since when, upgrade path); upgrade and checkout wait on the payments provider. |
 | Higher tier (name TBD, working name "Flow+ Live"): live streaming, everything in Flow+, future features | Needs decision | Requested 2026-10-10. **Price: US$9.99/mo** (decided 2026-10-10). Needs a streaming provider. |
 | Real-time chat (buyer ↔ artist) | Planned | |
 | Notifications | Prototype | Header menu on mock data (`src/lib/notifications.ts`). A minimal in-app + email slice moves to Phase 1 for ["Notify me"](#brief-notify-me-when-a-service-reopens) and the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
@@ -274,6 +310,367 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 
 ---
 
+## Brief: reporting, and keeping Artiflow human-made
+
+- **Requested by:** project lead, 2026-10-11: report on posts, with reasons, and a strong focus on reporting AI use. "The idea is that only real posts are here."
+- **Phase / priority:** Phase 1, P1. It has to land before sign-ups open beyond invited artists, since posting is real and the site is public.
+- **Status:** Planned. The exact wording of the AI rule is Needs decision (recommendation below).
+- **Depends on:** accounts, posts and comments (built); the notifications slice; a team-only review page.
+
+### Why it matters
+
+- **The promise is the product.** Explore already closes with "made by humans". A single AI piece found in Explore breaks that promise for every artist on the site.
+- **Money raises the stakes.** Once commissions and adoptables are paid, AI art stops being only a content issue. It's fraud: the buyer paid for hand-made work.
+- **The blueprint asks for it** (§8): spam, harassment, scams, art theft, prohibited content and moderation are part of the design from day one.
+- **The other side:** an AI accusation can end a human artist's career. VGen's help center says it outright: it acts only when it is "100% certain", because "falsely accusing a human artist and destroying their livelihood is never worth the same as correctly removing a generative AI enthusiast". So the process has to protect artists who are accused unfairly as carefully as it removes AI.
+
+### Part 1: report anything, in two clicks
+
+1. **Where.** Every post gets the "…" menu. Today only authors see it, and only for delete. For everyone else it holds **Report post**, **Block @handle** and **Mute @handle**. Comments and profiles get the same, and so will services, adoptables and messages once they exist. Visitors who aren't signed in are asked to sign in.
+2. **The dialog.** Pick a reason, add an optional note, Send. That's two clicks in the common case. A few reasons ask one more thing:
+
+   | Reason (posts) | Extra question | While the case is open |
+   | -------------- | -------------- | ---------------------- |
+   | **Made with AI** | Optional: "What did you notice?" (hands or anatomy · rendering that changes within the piece · objects or light that make no sense · garbled text or symbols · posts too much, too fast · I know the source) and a link | Stays up. See [Part 2](#part-2-ai-generated-art). |
+   | **Stolen, traced or reposted art** | Link to the original. "This is my art" sends the case to the copyright takedown process. | Stays up. Higher priority when the original owner reports. |
+   | **Missing or wrong content tags** | — | Stays up. Covered once a reviewer fixes the tags (needs [content tags](#brief-content-rating-mature-art-hidden-until-you-click)). |
+   | **Sexual content involving minors** (including drawn characters who look like minors, whatever their stated age) | — | **Hidden at once**, top of the queue, and handled under the law (in the US, report to NCMEC). Never stays up. |
+   | **Harassment, hate or bullying** | "Is it aimed at you?" | Stays up, high priority. |
+   | **Violence, gore or self-harm** | — | Self-harm: the reporter sees where to get help; high priority. |
+   | **Scam or fraud** | Fake commission, asks you to pay outside Artiflow, pretends to be someone else | High priority. |
+   | **Spam** | — | Hidden once several established accounts report it. |
+   | **Something else** | Note required | Stays up. |
+
+3. **After sending:** "Thanks, we'll take a look." The reporter is offered Block or Mute right there. Blocking means the other account can't see your posts, comment or message you; muting only hides them from your feed. **Reporters stay anonymous** to the person they reported, always.
+4. **Closing the loop.** Reporters see their reports and the outcomes under "Your reports" in the account menu, and get a notification when a case closes ("We removed the post you reported" or "We reviewed it and it doesn't break our rules"). When we act, the reported person is told which rule they broke and what was removed, and gets **one appeal**, reviewed by someone else.
+5. **One case per item.** Duplicate reports group into a single case. The queue sorts by severity, then by how many people reported and how reliable they've been.
+6. **Report abuse** is handled too:
+   - Each account can send a limited number of reports per day.
+   - Accounts whose reports keep getting rejected count for less.
+   - A burst of reports on one artist from new accounts is flagged as a possible pile-on, not treated as proof.
+
+### Part 2: AI-generated art
+
+**The rule** (decided 2026-10-11):
+
+> Everything posted or sold on Artiflow is made by people. No generative AI in any part of a posted image: not the character, not the background, not textures or fills, and not as a base you paint over. Ordinary digital tools are fine: stabilizers, liquify, filters, 3D posing models, photo references.
+
+No upscalers that invent detail and no generative fill, however small. Drawing *from* an AI image you don't post (without tracing it) stays open until we've talked to artists. VGen bans generative AI too, so artists coming from there will recognize this.
+
+**Prevention, before anyone has to report:**
+
+1. **Agreement at sign-up.** One line in the join flow: "Artiflow is made by humans. I won't post or sell generative-AI art." It's backed by the community guidelines.
+2. **Declaration on paid listings.** Commission examples and adoptables carry a "Made by me, no generative AI" checkbox. Selling AI art is fraud, and this declaration is what a refund rests on.
+3. **Generator check on upload — Built 2026-10-11.** Our browser pipeline re-encodes to WebP and strips metadata, so the check runs first, on the original file. It's a standalone module, `src/lib/ai-check/`, so anything else that takes images can reuse it (commission deliveries, adoptables, moderation tools):
+   - `signature.ts`, the detector. Plain TypeScript, so it runs in the browser, in scripts and on a server. It reads:
+     - C2PA Content Credentials: the IPTC "trained algorithmic media" label, or the generator's own signature. Bing Image Creator signs "AI Generated Image" without the IPTC term, so the label alone isn't enough.
+     - XMP/IPTC labels.
+     - Settings in PNG text, EXIF and XMP: Automatic1111/Forge, ComfyUI, NovelAI, InvokeAI, Fooocus, Midjourney job IDs.
+     - Settings hidden in the alpha channel's lowest bit ("stealth" PNG info from NovelAI and an A1111 extension). These survive metadata stripping and some re-exports.
+   - `browser.ts`: `assertMadeByHumans(file)` throws an `AiImageError`, and `<AiImageDialog>` (`src/components/uploads/`) explains it and offers **"I made this myself"**. The request lands in `ai_review_requests`, limited to 10 a day, with no file kept. The team lists open requests with `npm run ai-check -- requests`.
+   - Wired into every upload today: posts, profile picture and cover, profile background, About board images.
+   - **Tested against real files:**
+     - 12 out of 12 caught from Stable Diffusion (A1111 PNG and JPEG, stealth), ComfyUI, NovelAI, InvokeAI and Fooocus.
+     - Bing Image Creator and Adobe Firefly caught through Content Credentials.
+     - 0 false positives on 126 human-made images, nor on 13 files carrying non-AI Content Credentials (cameras, Photoshop).
+     - `npm run ai-check -- <files>` runs the same check from the terminal. `npm run test:unit` covers every format, and an e2e test runs the whole flow in a browser.
+   - **Limits.** 13 AI images downloaded from Wikimedia Commons had already lost their metadata, and they pass. A screenshot or a re-export removes everything too. The check also runs in the browser, so someone technical can skip it. It's a free filter for people who post a generator's file as it came. The real barrier is reports reviewed by people.
+4. **Process as proof, from features we already have.** Posts already have stages (sketch → WIP → finished), and the feed shows the track. A finished piece linked to its own sketch or WIP posts gets a "Process shown" mark. It makes good feed content and is the artist's best defense if anyone ever questions the piece. It's encouraged, never required.
+
+**How AI reports are reviewed: evidence first.**
+
+1. **One report never hides or labels a post.** Reports collect into a case.
+2. **A team reviewer** checks the piece **and the artist's history** against a written checklist, much like VGen's published list of signs:
+   - hands, eyes and anatomy
+   - rendering quality that shifts within one piece
+   - objects, light and shadows that make no sense
+   - garbled text or symbols
+   - a sudden jump in every skill at once across past posts
+   - more finished, polished work than one person could make
+3. **AI detectors** (Hive's API, for example) can be **one input** in the reviewer's view, never the decision and never shown publicly. Detectors miss things and misfire, and each check costs money. Phase 2, after testing one on our own set of human-made art.
+4. **When unsure, ask the artist privately.** "We received reports about this piece. Can you share your process?" Sketches, layers, WIP stages, a timelapse or the working file all count. The artist has 7 days, and the post stays up meanwhile with no public label. The reporter doesn't know a request was sent. Layered files and early sketches weigh more than a timelapse, because VGen notes an edited timelapse can hide AI tracing.
+5. **Outcomes:**
+   - **Cleared.** The case closes, and new reports on the same piece close by themselves so the same pile-on can't start again. If the artist shared their process, they're offered "Process shown".
+   - **Confirmed AI** (only when certain, the same bar as VGen):
+     - First time: the post is removed, with a warning and a strike.
+     - Second time: posting is suspended for 30 days.
+     - Selling AI art (commissions or adoptables): the account is suspended right away and buyers get a refund through the commission flow's dispute path.
+   - **No answer to the process request.** The reviewer decides on the evidence alone. Silence isn't proof by itself.
+6. **No public "suspected AI" labels**, ever. A piece is either removed or fine. Calling someone out in the comments falls under harassment ("report it, don't call it out", which is also VGen's line).
+
+### Who reviews
+
+The team, at first, on a minimal team-only page (`/admin/reports`). It shows the queue by severity. Each case shows the item, the reports, the artist's history and past cases. The actions are dismiss, remove, ask for process, warn and suspend. Access goes by a `moderator` role on the profile; anything sent to that page is checked against the role on the server. Community moderators come later (Phase 3, "Moderation at scale").
+
+### Acceptance criteria
+
+- Any signed-in user can report a post, comment or profile from its "…" menu in 2 clicks (reason → Send).
+- One report per person per item. The reported person never learns who reported them.
+- "Sexual content involving minors" hides the item at once and alerts the team.
+- An AI report alone never hides or labels anything. Only a reviewer's decision removes a post for AI.
+- Reporters get an outcome notification. Artists we act against get the rule, what was removed and an appeal link.
+- An upload whose metadata names an AI generator is refused, with a way to contest.
+- Report rate limits are in place, and pile-ons from new accounts are flagged.
+- Blocking takes effect at once: the blocked account can't see your posts, comment or message you.
+
+### Open questions
+
+| Question | Recommendation |
+| -------- | -------------- |
+| Where exactly is the AI line? AI upscalers, generative fill for small cleanups, drawing from an AI image you don't post. | **Decided 2026-10-11:** strict on the posted pixels, so no upscalers that invent detail and no generative fill. Drawing *from* an AI image without tracing: decide after artist interviews. |
+| Strikes | **Decided 2026-10-11:** remove + warn → 30-day suspension; immediate suspension for selling AI art. Reset after 12 months without a new strike. |
+| Who reviews at launch? | The team, with the checklist, on `/admin/reports`. Write down every decision, because it becomes the precedent the guidelines grow from. |
+| Rewards for reporting? | None. Rewards push people to over-report. Reporters just get the outcome note. |
+| Should "Process shown" become an Explore filter? | Later, once we see how many artists post their process. |
+
+### Implementation sketch
+
+- **Tables:**
+  - `reports`: reporter, target type + id, reason, details, created_at; one per reporter and target
+  - `report_cases`: target, status, severity, outcome, decided_by, decided_at
+  - `blocks`, `mutes`, `strikes`, `process_requests`
+- **Access rules (RLS):** users can insert their own reports and read only their own. Cases, strikes and process requests are team-only, written by Server Actions with the secret key after a moderator check.
+- **Server Actions:** `reportContent`, `blockUser`, `muteUser`; team actions on `/admin/reports`. Hidden and removed content is filtered in the feed, profile and Explore queries.
+- **UI:** `PostOwnerMenu` becomes a general `PostMenu` (owner: delete; everyone else: report, block, mute). One `<ReportDialog>` per page, opened through window events, like the comments panel.
+- **Upload:** the provenance check goes in `src/lib/images/prepare.ts`, reading C2PA/XMP/PNG text from the original file before it's re-encoded.
+- **Notifications:** `report_resolved`, `content_removed`, `process_requested`, `appeal_decided`.
+
+Sources: VGen help center, ["AI Policy"](https://help.vgen.co/hc/en-us/articles/12882944163991) and ["How to tell if an image is created with Generative AI?"](https://help.vgen.co/hc/en-us/articles/31672648933399) (both read 2026-10-11); [Hive AI-generated content detection](https://docs.thehive.ai/docs/ai-generated-content-detection).
+
+---
+
+## Brief: artist track record
+
+- **Requested by:** project lead, 2026-10-11: "a score on the artist, to know if they deliver well, if they don't deliver, and so on."
+- **Phase / priority:** Phase 1. Recording starts with the [commission flow](#brief-commission-flow-request--proposal--payment--delivery)'s first order; it's shown once an artist has enough orders.
+- **Status:** Planned.
+- **Depends on:** the commission flow (orders, agreed delivery dates, cancellations, disputes) and reviews.
+
+### Why it matters
+
+Buyers pay upfront, and the biggest fear in commissions is an artist who takes the money and vanishes. A track record answers "will I get my art, on time, as agreed?" before anyone pays. It rewards artists who deliver, and it gives moderation the history it needs (for example, the artist's history in an [AI review](#part-2-ai-generated-art)).
+
+### What buyers see
+
+It appears on the profile's commissions card, in the commission dialog and on Explore's studio sheets:
+
+| Fact | How it's counted (last 12 months) |
+| ---- | --------------------------------- |
+| **Delivered** | Completed commissions. |
+| **On time** | Share delivered by the agreed date. A new date the buyer accepted counts as on time. The clock pauses while the order waits on the buyer. |
+| **Cancelled by the artist** | Share of paid orders the artist cancelled. |
+| **Delivered as agreed** | Disputes for "not what we agreed" that the artist lost. |
+| **Replies in** | Typical time from request to accept or decline. |
+| **Reviews** | Average and count, from completed orders only. The artist can reply once. |
+
+- A **"Reliable"** badge goes to artists with at least 10 delivered, 90% or more on time and no lost disputes in 12 months. Buyers can see it at a glance, without reading the numbers.
+- **New artists** (fewer than 3 delivered) show "New on Artiflow" and nothing else: no zeros, no penalty. Small artists have to be able to start.
+- Every number explains how it's counted, it updates on its own when an order closes, and nobody can edit it by hand. Artists see their own numbers privately, including before they go public.
+
+**Why facts and not one number:** a single score punishes new artists, hides the reason, and invites gaming. The facts answer what the buyer actually wants to know. A 0–100 score can be computed later from the same data if we still want one.
+
+### The internal trust score (team only)
+
+The team gets a second, private score. It combines the track record, the account's age, its moderation history (strikes, upheld or cleared reports, AI review outcomes) and how accurate the account's own reports have been. It decides how much an account's reports weigh, orders the review queue, adds context to AI reviews and flags fraud patterns, such as a new account with many cancelled orders. It's never shown publicly.
+
+### Open questions
+
+| Question | Recommendation |
+| -------- | -------------- |
+| A public single score, or facts? | Facts plus the badge (above). |
+| How many orders before the facts show? | 3 for the facts, 10 for the badge. |
+| Do buyers get a track record too (ignored proposals, chargebacks)? | Yes, visible only to artists. Phase 2. |
+
+### Implementation sketch
+
+- `order_events` is append-only (paid, started, delivered, date changed, cancelled, disputed).
+- `artist_stats` is recomputed when an order closes and cached per artist.
+- `trust_scores` is team-only, written with the secret key.
+
+---
+
+## Brief: content rating, mature art hidden until you click
+
+- **Decided by:** project lead, 2026-10-11: "we'll have adult art, but it'll be rated and hidden; you have to click to see it."
+- **Phase / priority:** Phase 1, P1. Adult art can't be posted properly without it, and the "missing or wrong content tags" report reason depends on it.
+- **Status:** Planned.
+
+### How it works
+
+**Content tags, not one "Mature" switch** (decided 2026-10-11; the idea comes from VGen's sensitivity filters). When posting, the artist ticks every tag that applies, and no tags means General. More precise tags help viewers choose what they see. They also show a payment provider that our content is controlled.
+
+| Tag | Group | What viewers get by default |
+| --- | ----- | --------------------------- |
+| **Artistic nudity** | 18+ | Covered. Only signed-in accounts confirmed 18+ can reveal it. |
+| **Suggestive** | 18+ | Covered, same as above. |
+| **Sexual content** | 18+ | Covered, same as above. |
+| **Blood / gore** | Sensitive | Covered with the tag name. Anyone can reveal it. |
+| **Violence** | Sensitive | Covered with the tag name. Anyone can reveal it. |
+| **Flashing** | Motion | Animations don't autoplay: a still frame shows with the warning, and a click plays it. |
+| **Revealing clothes** (non-sexual) | Label | Shown, with a small label. Viewers can choose to cover it. |
+| **Other** (artist's own label) | Sensitive | Covered with the artist's label. Anyone can reveal it. |
+
+1. **Hidden until you click.** A covered image shows a wash of the artwork's own palette (we already extract it on upload), with its tags and "click to view". One click reveals that piece. This applies everywhere: feed, profile, gallery, Explore. Until it's revealed, the real image isn't even loaded, only its colors.
+2. **18+ is a hard line.** Signed-out visitors see "Sign in to view". Under-18 accounts never see 18+ tags and can't post them. Accounts confirm they're 18+ at sign-up, or once for existing accounts.
+3. **Each viewer decides per group:** Show, Cover or Hide. The defaults are the table above. Showing the 18+ group uncovered is for confirmed 18+ accounts only.
+4. **Commission services and adoptables** carry tags too: a service tagged 18+ keeps its examples covered, and the tags show on the listing.
+5. **Never as a preview.** Art tagged 18+, Sensitive or Flashing never appears in link previews, the Explore hero, "Artist in residence", the sign-in desk prints or notification thumbnails. Profile pictures and covers can't carry those tags, because they show everywhere.
+6. **Missing or wrong tags.** The report reason becomes "Missing or wrong content tags". A reviewer fixes the tags. Repeated mislabeling earns a warning, then a strike.
+
+### Legal and payments (must be checked)
+
+- **Sexual content involving minors is banned outright and reported.** **Decided 2026-10-11:** this includes drawn and OC art. No sexual depiction of characters who look like minors, whatever age they're said to be (the "she's actually 1,000 years old" defense doesn't count). Many countries treat it as a crime.
+- **Payments. Decided 2026-10-11: mature commissions can be paid.** The constraint is the payment provider's rules, not ours. If a provider decides we're outside its rules, it can freeze the whole account and every artist's payouts; Steam and itch.io pulled adult content overnight under payment-processor pressure in July 2025. VGen sells drawn adult commissions on Stripe and PayPal with a written statement from Stripe: drawn adult art is fine; pornography, meaning photos or video of real people in sexual acts, isn't. Before launch: **get the same written OK from our provider**, which is a criterion for choosing it. Keep the tags strict, since they're how we show we're in control.
+- **Sexual photos or videos of real people are banned** (decided 2026-10-11). Artiflow is for drawn art, and this is the line payment providers draw.
+- **Age checks:** some countries require stronger age verification for explicit content, so this goes into the per-country legal review.
+
+### Acceptance criteria
+
+- The composer shows the tags as chips. None picked means General, and a post can carry several.
+- Art tagged 18+ never shows uncovered to signed-out visitors or under-18 accounts, including in link previews.
+- Flashing animations never autoplay unless the viewer chose Show for Motion.
+- Revealing takes one click and works by keyboard. The piece stays revealed for that visit.
+- Profile pictures and covers can't carry 18+, Sensitive or Flashing tags.
+
+### Open questions
+
+| Question | Recommendation |
+| -------- | -------------- |
+| ~~Separate "Explicit" level?~~ | **Settled by the tags:** Suggestive and Sexual content are separate. |
+| How do we confirm 18+? | Birthdate at sign-up, plus stronger checks only where the law requires them. |
+| Tagged art in Explore? | Covered tiles, following each viewer's choices, and never in the hero. |
+| Extreme gore: 18+ as well? | Reviewers can move a piece into the 18+ group when the gore is extreme. Write examples into the guidelines. |
+| Drawn characters who look underage in sexual content? | **Decided 2026-10-11:** banned, whatever their stated age. |
+
+### Implementation sketch
+
+- `content_tags text[]` on posts, services and adoptables, checked against the list above (General = empty). Profile pictures and covers are refused with 18+, Sensitive or Flashing tags, in the app and in the database.
+- `profiles.adult_confirmed_at` and `profiles.content_preferences` (Show / Cover / Hide per group).
+- A `<SensitiveCover>` client island that draws the palette wash with the tags and loads the image (or plays the animation) on click.
+- Queries pass the viewer's preferences; link previews skip anything tagged.
+
+---
+
+## Brief: payments, how the money moves
+
+- **Requested by:** project lead, 2026-10-11: "someone pays the commission, we take our fee and split the rest to the artist. How does it work, and how complex is it?" Focus markets: **the US and the rest of the world; Brazil is not a priority.**
+- **Status:** researched 2026-10-11. **Recommendation below; the decision is the project lead's.**
+- **Sources:** Stripe and PayPal docs and policies, VGen's help center (the closest working example), read 2026-10-11. Listed at the end.
+
+### How VGen does it (the closest working example)
+
+- **Two rails.** "VGen Payments" runs on **Stripe Connect Express** (artists never open a Stripe account; a VGen subsidiary, Nello Labs, exists only to run it). **PayPal** is the second rail, paid straight into the artist's PayPal account. Between them they pay artists in **149 countries**, and buyers pay in 82 currencies.
+- **Fees.** VGen takes **5%**, and the artist also pays processing: Stripe's 2.9% + $0.30, plus 1.5–2.5% for non-US payouts. PayPal's fees depend on the artist's PayPal account. All fees come out of the artist's side, and the proposal shows the exact breakdown.
+- **Money is held until delivery** on the Stripe rail. The artist gets the funds after the milestone or commission is done. Buyer protection: a refund if the guaranteed delivery date passes, within 75 days on Stripe (their hold limit) and 150 days on PayPal. Anything longer needs the buyer's explicit consent.
+- **Disputes.** On Stripe, VGen handles chargebacks. On PayPal, the artist does.
+- **Adult art.** Stripe gave VGen a written statement: drawn adult art is fine; pornography (photos or video of real people) isn't.
+
+### What the providers allow (checked 2026-10-11)
+
+| | **Stripe Connect** | **PayPal (multiparty)** |
+| --- | --- | --- |
+| Split with a platform fee | Yes: destination charges, or separate charges and transfers. | Yes: "partner fees" per transaction. Needs PayPal's approval as a platform. |
+| Hold funds until delivery | Yes. Connected accounts' payouts can be held up to **2 years (US)** or **90 days (most other countries)**. Stripe stresses this isn't legal "escrow". | **28 days**, then funds release automatically. That's shorter than many commissions. |
+| Pay artists abroad | Self-serve only between the **US, UK, EEA, Canada and Switzerland**. Anywhere else (Japan, Australia, Korea, SEA, LatAm…) needs a deal with Stripe's sales team, or "Global Payouts", which leaves money-transmitter compliance with us. | Sellers in most countries already have PayPal. That's how VGen reaches the rest of the world. |
+| Who pays chargebacks | **The platform**, in the marketplace setups. We can reverse the transfer to recover it from the artist. | The artist's PayPal account, when paid directly (VGen's setup). |
+| Adult art | Prohibited: "pornography and other mature audience content (including literature, imagery…) designed for the purpose of sexual gratification". VGen still got a written OK for drawn adult art, so ask for ours. | "Mature audience content delivered digitally" **needs PayPal's pre-approval**. So does **live streaming**, which matters for Flow+ Live. |
+| Where the platform must be | Cross-border payouts need a platform company in the US, UK, EEA, CA or CH. | Approval case by case. |
+
+### Recommendation
+
+1. **A US company** (for example a Delaware entity), given the US focus. Stripe gives US platforms the most: the widest self-serve payouts and the longest holds.
+2. **Rail 1: Stripe Connect, Express accounts, "separate charges and transfers"**:
+   - When the buyer accepts a proposal, **we charge them in full**. The money stays in Artiflow's Stripe balance.
+   - **On delivery, we transfer the artist's share** to their connected account, and Stripe pays it out to their bank. The 10% stays with us.
+   - A refund before delivery comes straight from our balance, with nothing to claw back.
+   - Commissions with long delivery dates: past 75 days, ask for the buyer's consent (as VGen does) or use milestones (Phase 2).
+   - Provision Stripe through the Vercel Marketplace (it's the payments provider listed there) when we build.
+3. **At launch, artists in the US, UK, EEA, Canada and Switzerland** get paid through Stripe. **Talk to Stripe's sales team early** about the other countries, since most artists in our niche live outside those regions.
+4. **Rail 2: PayPal**, next, for artists Stripe doesn't reach. It needs PayPal's platform approval, plus its pre-approval for mature content.
+5. **Adult art:**
+   - Commissions tagged artistic nudity, suggestive, gore or violence can be paid from the start.
+   - Commissions tagged **"Sexual content"** stay unpayable until Stripe confirms in writing, as it did for VGen.
+   - If Stripe says no, the fallback is a processor that specializes in adult content (CCBill, Segpay). It costs more and adds a third integration, so it's a later phase.
+6. **Taxes, with an accountant before launch:**
+   - Stripe Tax for tax on our fee.
+   - Connect files US tax forms (1099) for US artists.
+   - The EU's DAC7 makes platforms report the income of EU sellers every year.
+   - The EU "deemed supplier" VAT rule needs a tax opinion for digital commissions.
+
+### An example: a US buyer pays a US artist $100
+
+| | Artist pays the fees (VGen's model) | Artiflow absorbs processing |
+| --- | --- | --- |
+| Buyer pays | $100.00 | $100.00 |
+| Stripe processing (2.9% + $0.30)¹ | −$3.20 (artist) | −$3.20 (Artiflow) |
+| Artiflow's 10% | $10.00 | $10.00 |
+| **Artist receives** | **$86.80** | **$90.00** |
+| Artiflow keeps, before Connect's $2 per active artist per month and 0.25% + $0.25 per payout | ~$9.50 | ~$6.30 |
+
+¹ +1.5% for an international card, +1% if currencies differ. Disputes cost $15 each (refunded if we win). US figures come from trackers that cite Stripe's US price list: Stripe's own page redirected to Brazilian prices from here. Confirm in the Stripe dashboard.
+
+**Business risk to weigh:** VGen takes 5% and we plan 10%. If artists also pay processing, they'd keep about 87% with us against about 92% on VGen. The blueprint's 10% is a decision, but choose with that comparison in mind: who pays processing, and what Artiflow gives in return.
+
+### Complexity
+
+**Overall: high, but it splits into parts, and only the first part is needed for the beta's first paid commissions.** These are rough sizes for one developer focused on it:
+
+| Part | Complexity | Rough size |
+| ---- | ---------- | ---------- |
+| Artist payout onboarding (Stripe-hosted Express onboarding, status on the profile) | Low | 2–3 days |
+| Paying a proposal (Stripe Checkout or Payment Element, charge on the platform) | Low–medium | 2–3 days |
+| Webhooks + the order state machine + a fee ledger (every cent accounted for, idempotent, reconciled) | **Medium–high: where bugs cost money** | 1–1.5 weeks |
+| Hold until delivery, transfer on delivery, refunds before delivery, reversals after a dispute | Medium–high | 1 week |
+| Chargebacks (evidence, recovery from the artist, banning abusers) | Medium, plus ongoing ops | 3–4 days |
+| Fee breakdown in proposals, receipts and invoices | Low–medium | 2–3 days |
+| **Stripe rail total** | | **~4–6 weeks** |
+| PayPal as a second rail | High (another API, approval, different dispute model) | 2–3 weeks + approval |
+| Countries beyond Stripe's self-serve regions | Business deal with Stripe, not code (or Global Payouts + our own compliance: high) | — |
+| Adult-specialized processor | High (third rail, higher fees) | Only if Stripe says no |
+
+**The long poles aren't code.** These run in parallel with development and take weeks:
+- the company, its bank account and EIN;
+- Stripe's review of a marketplace with adult art;
+- the seller agreement, refund policy and terms;
+- tax advice.
+
+Start these first.
+
+### Decisions this needs
+
+| Decision | Recommendation |
+| -------- | -------------- |
+| Legal entity | A US company. |
+| Provider | Stripe Connect first, PayPal second. |
+| Who pays processing | Show the exact split in every proposal, whichever we choose. Weigh it against VGen's 5% (above). |
+| Paying "Sexual content" commissions | Only after Stripe's written OK. Otherwise use a specialized processor later. |
+| Long delivery dates | Buyer consent past 75 days, or milestones (Phase 2). |
+
+Sources:
+- Stripe: [Connect charge types](https://docs.stripe.com/connect/charges), [cross-border payouts](https://docs.stripe.com/connect/cross-border-payouts), [service agreement types](https://docs.stripe.com/connect/service-agreement-types), [manual payouts](https://docs.stripe.com/connect/manual-payouts), [Global Payouts](https://docs.stripe.com/global-payouts), [restricted businesses](https://stripe.com/legal/restricted-businesses)
+- PayPal: [multiparty](https://developer.paypal.com/docs/multiparty/), [delayed disbursement](https://developer.paypal.com/platforms/checkout/delayed-disbursement), [acceptable use policy](https://www.paypal.com/us/legalhub/paypal/acceptableuse-full)
+- VGen help center: [fees](https://help.vgen.co/hc/en-us/articles/12820094917655), [payouts](https://help.vgen.co/hc/en-us/articles/12758889287703), [countries](https://help.vgen.co/hc/en-us/articles/40469294324503), [refund protection](https://help.vgen.co/hc/en-us/articles/24137084086295), [chargebacks](https://help.vgen.co/hc/en-us/articles/12821345326743), [NSFW policy](https://help.vgen.co/hc/en-us/articles/12733211123351)
+- Fee trackers: [FlexPrice](https://flexprice.io/blog/stripe-pricing-breakdown-2026), [PaymentCloud](https://paymentcloudinc.com/blog/stripe-fees/)
+- DAC7: [Quaderno](https://quaderno.io/blog/digital-tax/dac7-reporting/)
+
+---
+
+## What else (confirmed 2026-10-11)
+
+Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead confirmed all five the same day. In rough priority order:
+
+1. **Guidelines, terms and copyright takedowns.** Community guidelines (with the AI rule, what's allowed and the strikes), terms of service, privacy policy. The takedown form has to work **without an account**, because the artist whose work was stolen often isn't a member. All of this comes before sign-ups open widely, and the blueprint asks for a legal review in each launch country.
+2. **Content rating.** Adult art is welcome, rated and hidden until you click. It now has its own [brief](#brief-content-rating-mature-art-hidden-until-you-click).
+3. **Keep our art out of AI training.** This is the other half of "made by humans", and artists will expect it:
+   - Block known AI crawlers (robots.txt, plus Vercel bot rules).
+   - Add `noai` / `noimageai` meta tags.
+   - Ban scraping for training in the terms.
+   - Check whether our resize + WebP step weakens Glaze or Nightshade protection, and if it does, offer "keep my file as uploaded".
+4. **Account deletion and data export.** Deleting an account removes its files (already an open point under Media), and people can download their data. We're international, so GDPR, LGPD and CCPA apply.
+5. **Spam and sign-up protection.** A bot check at sign-up (e.g. Vercel BotID) and rate limits on posts, comments and reports. Real accounts are already open.
+
+---
+
 ## Stakeholder requests log
 
 | Date | Request | Where it landed |
@@ -294,6 +691,15 @@ Sources: VGen help center, ["How does the VGen commission system work?"](https:/
 | 2026-10-10 | Open the deployment to everyone (the designer hit Vercel's login and access-request screen). | Done: Vercel Authentication turned off; the site is public **with the third-party demo art**, by the project lead's call after the risk was flagged. Swap in art from consenting artists before launch. |
 | 2026-10-10 | Header menus (notifications etc.) open on hover, which clashes with the account menu; open on click instead, so only one is open and opening another closes the rest. | Done: `header-menu.tsx` (was `hover-menu.tsx`) is click-only. |
 | 2026-10-10 | Redo the plans page "100% artist", magical. If I already have a plan, show which one is active and for how long, and offer an upgrade. | Done: `/plans` as **artist trading cards** (matte / foil / live holo finishes that tilt and shine). Signed-in artists see their own card with a Day N seal, start date, time on the plan and the next plan up, with a laminator preview of the next finish on their card. New `profiles.plan_since` (trigger-kept). Upgrade is shown but closed until checkout exists. Account menu links to Plans. |
+| 2026-10-11 | Reporting on posts, with reasons, and a strong focus on reporting AI use: "only real posts". Also: what else is missing? | Phase 1 → [brief](#brief-reporting-and-keeping-artiflow-human-made): report on posts, comments and profiles; block/mute; the "made by humans" rule; a generator check on upload; AI reports reviewed evidence-first (private process request, never acted on from reports alone), after reading VGen's AI policy. Trust & safety gaps listed as **Proposed** in [What else](#what-else-confirmed-2026-10-11). |
+| 2026-10-11 | Build the upload's AI check now (C2PA, Stable Diffusion/NovelAI metadata), with the "I think this is a mistake" link, and test it with real files from each generator. Keep the detector separate, to reuse elsewhere. | **Built:** `src/lib/ai-check/` (standalone detector + browser helper), `<AiImageDialog>`, `ai_review_requests`, `npm run ai-check`, unit + e2e tests. Results with real files are in [Part 2](#part-2-ai-generated-art). |
+| 2026-10-11 | A score on the artist: do they deliver well, do they deliver at all. | Phase 1 → [brief](#brief-artist-track-record): public facts + "Reliable" badge, and a private trust score for moderation. |
+| 2026-10-11 | Adult art is allowed, but rated and hidden: you click to see it. | Phase 1, P1 → [brief](#brief-content-rating-mature-art-hidden-until-you-click). |
+| 2026-10-11 | Confirmed: keep our art out of AI training ("BOA"), account deletion & data export, spam and bot protection ("we must have this"); agreed with the AI line and the strikes. | All five trust & safety items moved from Proposed to Planned ([What else](#what-else-confirmed-2026-10-11)); AI rule and strikes marked decided. |
+| 2026-10-11 | Drawn characters who look like minors in sexual content: banned, whatever their stated age. | **Decided.** Content rating [brief](#brief-content-rating-mature-art-hidden-until-you-click), the reporting reasons and Pending decisions updated. Goes into the community guidelines. |
+| 2026-10-11 | Mature commissions should be payable ("I think it should be allowed"). | **Decided.** The provider's rules are the constraint: get its written OK for drawn adult art before launch (VGen has one from Stripe). Sexual photos or video of real people banned. Content rating [brief](#brief-content-rating-mature-art-hidden-until-you-click) and Pending decisions updated. |
+| 2026-10-11 | Use detailed content tags like VGen's instead of a single "Mature" rating. | **Decided.** Content [brief](#brief-content-rating-mature-art-hidden-until-you-click): eight tags in four groups (18+, Sensitive, Motion, Label), each viewer chooses Show / Cover / Hide per group; the report reason becomes "Missing or wrong content tags". |
+| 2026-10-11 | Research payments: buyer pays, we take our fee and split to the artist. How it works and how complex it is. Focus: the US and other countries; Brazil is a small fish. | [Payments brief](#brief-payments-how-the-money-moves): US company, Stripe Connect (separate charges and transfers, held until delivery) for US/UK/EEA/CA/CH artists at launch, PayPal as the second rail, Stripe sales for the other countries. Complexity: high overall, ~4–6 weeks for the Stripe rail; the paperwork is the long pole. |
 
 ## Pending decisions
 
@@ -303,10 +709,13 @@ From blueprint §16, with the items they block.
 | -------- | ------ |
 | Final brand name & .com domain | Launch, logo, landing page |
 | ~~Auth provider~~ **Decided 2026-10-10: Supabase** (auth, Postgres, storage, Realtime) via the Vercel Marketplace. Email: **Resend** as Supabase's SMTP; it needs a verified sending domain, so it follows the domain decision. | — |
-| Legal entity & seller countries at launch | Checkout, payouts |
-| Payments provider (marketplace split, KYC, international payouts) | Checkout & orders, the commission flow's payment step, 10% fee, auctions |
+| Legal entity & seller countries at launch. **Recommended 2026-10-11: a US company; at launch, artists in the US, UK, EEA, Canada and Switzerland via Stripe, others via PayPal or a Stripe deal** ([brief](#brief-payments-how-the-money-moves)) | Checkout, payouts |
+| Payments provider (marketplace split, KYC, international payouts). **Recommended 2026-10-11: Stripe Connect first, PayPal second** ([brief](#brief-payments-how-the-money-moves)) | Checkout & orders, the commission flow's payment step, 10% fee, auctions |
 | Refund, dispute & payout policy | Checkout & orders, commission cancellations |
 | Content limits & moderation process | Admin & moderation, media upload |
+| ~~Exact AI rule and strikes~~ **Decided 2026-10-11:** strict on the posted pixels (no upscalers that invent detail, no generative fill); strikes remove + warn → 30 days → immediate suspension for selling AI art. Still open: drawing *from* an AI image you don't post, after artist interviews. | — |
+| ~~Drawn characters who look underage in sexual content~~ **Decided 2026-10-11: banned**, whatever the character's stated age. | — |
+| ~~Can mature commissions be paid?~~ **Decided 2026-10-11: yes.** Still to do: the chosen provider's written OK for drawn adult art (like VGen's from Stripe). | Payments provider choice, paid mature commissions |
 | License, ownership & transfer rules for OCs/adoptables | Character transfer, adoptable checkout |
 | Flow+ scope and price; name, scope and price of the higher tier | Flow+, higher tier |
 | MVP entry/exit criteria per phase | Phase gates in this file |

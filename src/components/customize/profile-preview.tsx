@@ -22,7 +22,16 @@ export type PreviewProfile = {
  * (scoped) custom CSS the real page uses — so what you see is what visitors get.
  * Custom CSS is only checked when saving; the preview applies it as typed.
  */
-export function ProfilePreview({ profile, custom }: { profile: PreviewProfile; custom: Customization }) {
+export function ProfilePreview({
+  profile,
+  custom,
+  highlight,
+}: {
+  profile: PreviewProfile;
+  custom: Customization;
+  /** A selector to outline (the CSS helper points at parts of the page). */
+  highlight?: string | null;
+}) {
   const name = nameStyle(custom);
   const scope = `preview-${profile.handle}`;
 
@@ -36,14 +45,17 @@ export function ProfilePreview({ profile, custom }: { profile: PreviewProfile; c
       {custom.css && (
         <style>{`@scope ([data-profile-canvas="${scope}"]) {\n${custom.css.replace(/<\/?style/gi, "")}\n}`}</style>
       )}
-      <div className="relative h-36 overflow-hidden bg-ice sm:h-44" style={{ backgroundColor: profile.banner.palette?.[0] }}>
+      {highlight && (
+        <style>{`@scope ([data-profile-canvas="${scope}"]) { ${highlight} { outline: 3px dashed #ff2bd6 !important; outline-offset: 4px; transition: outline-color 0.2s; } }`}</style>
+      )}
+      <div data-part="banner" className="relative h-36 overflow-hidden bg-ice sm:h-44" style={{ backgroundColor: profile.banner.palette?.[0] }}>
         <Image src={profile.banner.src} alt="" fill sizes="(min-width: 1024px) 760px, 100vw" className="object-cover" />
       </div>
 
       <div className="px-5 pb-6 sm:px-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-5">
-            <FramedAvatar frame={custom.frame} className="-mt-12 w-fit">
+            <FramedAvatar frame={custom.frame} className="-mt-12 w-fit" part="avatar">
               <Image
                 src={profile.avatar.src}
                 alt=""
@@ -54,15 +66,16 @@ export function ProfilePreview({ profile, custom }: { profile: PreviewProfile; c
             </FramedAvatar>
             <div className="min-w-0 pb-1">
               <p
+                data-part="name"
                 style={name.style}
                 className={`font-display text-[calc(1.6rem*var(--name-scale,1))] leading-tight font-extrabold tracking-tight text-ink ${name.className}`}
               >
                 {profile.displayName}
               </p>
-              <p className="text-sm text-muted">@{profile.handle}</p>
+              <p data-part="handle" className="text-sm text-muted">@{profile.handle}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div data-part="actions" className="flex flex-wrap gap-2">
             <span className={buttonClasses({ size: "sm" })}>
               <Plus aria-hidden />
               Follow
@@ -75,11 +88,31 @@ export function ProfilePreview({ profile, custom }: { profile: PreviewProfile; c
           </div>
         </div>
 
-        <p className="mt-4 font-display font-semibold text-ink">{profile.headline}</p>
-        <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink/80">{profile.bio || "Your bio goes here."}</p>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p data-part="headline" className="font-display font-semibold text-ink">
+              {profile.headline || "Your headline"}
+            </p>
+            <p data-part="bio" className="mt-1 max-w-xl text-sm leading-relaxed text-ink/80">
+              {profile.bio || "Your bio goes here."}
+            </p>
+          </div>
+          <dl data-part="stats" className="flex gap-1 rounded-card border border-border bg-surface p-1 shadow-soft">
+            {[
+              ["Followers", "1.2K"],
+              ["Following", "180"],
+              ["Artworks", "64"],
+            ].map(([label, value]) => (
+              <div key={label} className="flex min-w-16 flex-col-reverse items-center px-2 py-1">
+                <dt className="text-[0.625rem] text-muted">{label}</dt>
+                <dd className="font-display text-sm font-bold text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
         <div className={`mt-5 grid gap-4 ${custom.layout.sidebar === "right" ? "sm:grid-cols-[1fr_200px]" : "sm:grid-cols-[200px_1fr]"}`}>
-          <div className={`rounded-card border border-border bg-surface p-4 shadow-soft ${custom.layout.sidebar === "right" ? "sm:order-last" : ""}`}>
+          <div data-part="card" className={`rounded-card border border-border bg-surface p-4 shadow-soft ${custom.layout.sidebar === "right" ? "sm:order-last" : ""}`}>
             <p className="flex items-center gap-2 font-display text-sm font-bold text-ink">
               <span className="grid size-6 place-items-center rounded-[7px] bg-ice text-accent-strong [&_svg]:size-3">
                 <Brush aria-hidden />
@@ -89,7 +122,7 @@ export function ProfilePreview({ profile, custom }: { profile: PreviewProfile; c
             <p className="mt-2 text-xs text-muted">Open · 3/5 slots</p>
             <span className={buttonClasses({ size: "sm", className: "mt-3 w-full" })}>Request</span>
           </div>
-          <div className="rounded-card border border-border bg-surface p-4 shadow-soft">
+          <div data-part="post" className="rounded-card border border-border bg-surface p-4 shadow-soft">
             <p className="text-sm text-ink">New piece is up! Thank you all for 1k ♡</p>
             <div className="mt-3 h-20 rounded-input bg-ice" />
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted">

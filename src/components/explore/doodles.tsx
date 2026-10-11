@@ -13,13 +13,25 @@ const TAPE_TONES = {
   sky: "bg-sky/45",
 } as const;
 
-/** A strip of washi tape with torn ends. Position it with `className`. */
-export function Tape({ tone = "mint", className = "" }: { tone?: keyof typeof TAPE_TONES; className?: string }) {
+/**
+ * A strip of washi tape with torn ends. Position it with `className`. `color`
+ * (a hex from an artwork's palette) dyes it to match the art it holds.
+ */
+export function Tape({
+  tone = "mint",
+  color,
+  className = "",
+}: {
+  tone?: keyof typeof TAPE_TONES;
+  color?: string;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute z-10 block h-7 w-24 backdrop-blur-[1px] [clip-path:polygon(0%_10%,3%_0%,97%_5%,100%_16%,98%_34%,100%_52%,97%_70%,100%_88%,98%_100%,2%_95%,0%_78%,3%_60%,0%_42%,2%_25%)] ${TAPE_TONES[tone]} ${className}`}
+      className={`pointer-events-none absolute z-10 block h-7 w-24 backdrop-blur-[1px] [clip-path:polygon(0%_10%,3%_0%,97%_5%,100%_16%,98%_34%,100%_52%,97%_70%,100%_88%,98%_100%,2%_95%,0%_78%,3%_60%,0%_42%,2%_25%)] ${color ? "" : TAPE_TONES[tone]} ${className}`}
       style={{
+        backgroundColor: color && `color-mix(in oklab, ${color} 58%, transparent)`,
         backgroundImage:
           "radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--paper) 55%, transparent) 0 1.5px, transparent 2px)",
         backgroundSize: "9px 9px",

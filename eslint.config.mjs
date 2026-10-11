@@ -9,6 +9,10 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Our other build folders: dev:local (.next-local), e2e (.next-e2e), ad-hoc builds.
+    ".next-*/**",
+    "test-results/**",
+    "playwright-report/**",
     // Local `vercel build` output.
     ".vercel/**",
     "out/**",

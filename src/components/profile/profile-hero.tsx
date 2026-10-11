@@ -30,6 +30,7 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
       */}
       {/* Painted in the banner's own dominant color while it loads, so a reload never flashes light. */}
       <div
+        data-part="banner"
         className="relative h-[clamp(15rem,30vw,24rem)] overflow-hidden bg-ice"
         style={{ backgroundColor: profile.banner.palette?.[0] }}
       >
@@ -51,7 +52,7 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
       <div className="mx-auto max-w-[1184px] px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
-            <div className="group/avatar relative -mt-14 w-fit shrink-0 sm:-mt-20">
+            <div data-part="avatar" className="group/avatar relative -mt-14 w-fit shrink-0 sm:-mt-20">
               <FramedAvatar frame={custom.frame}>
                 <Avatar
                   image={profile.avatar}
@@ -69,13 +70,14 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1
                   id="profile-name"
+                  data-part="name"
                   style={name.style}
                   className={`font-display text-[calc(1.75rem*var(--name-scale,1))] leading-tight font-extrabold tracking-tight text-ink sm:text-[calc(2rem*var(--name-scale,1))] ${name.className}`}
                 >
                   {profile.displayName}
                 </h1>
               </div>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-muted">
+              <p data-part="handle" className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-muted">
                 <span className="font-medium text-ink/80">@{profile.handle}</span>
                 {profile.pronouns && (
                   <>
@@ -87,7 +89,7 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:pb-1">
+          <div data-part="actions" className="flex flex-wrap items-center gap-2 md:pb-1">
             <Suspense fallback={<ActionsPlaceholder />}>
               <ProfileActions handle={profile.handle} />
             </Suspense>
@@ -96,11 +98,13 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="max-w-2xl">
-            <p className="font-display text-[1.0625rem] font-semibold text-ink">
-              {profile.headline}
-            </p>
-            <p className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80">{profile.bio}</p>
-            <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
+            {profile.headline && (
+              <p data-part="headline" className="font-display text-[1.0625rem] font-semibold text-ink">
+                {profile.headline}
+              </p>
+            )}
+            <p data-part="bio" className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80">{profile.bio}</p>
+            <ul data-part="meta" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
               <li>
                 {/* Availability is the headline status; commission details live in the sidebar. */}
                 {profile.availability ? (
@@ -122,7 +126,7 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
             </ul>
           </div>
 
-          <dl className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft">
+          <dl data-part="stats" className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft">
             <Stat label="Followers" value={profile.stats.followers} />
             <Stat label="Following" value={profile.stats.following} />
             <Stat label="Artworks" value={profile.stats.artworks} />

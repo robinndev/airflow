@@ -1,3 +1,4 @@
+import { assertMadeByHumans } from "@/lib/ai-check/browser";
 import { ART_BUCKET, type ArtFolder } from "@/lib/art-storage";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { SAMPLE_SIZE, extractPalette } from "./extract-palette";
@@ -27,6 +28,9 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
  *
  * Animated GIFs (profile picture and cover, Flow+ only) are uploaded as they
  * are: re-encoding through a canvas would freeze them on the first frame.
+ *
+ * Files carrying an AI generator's marks are turned away first, while the
+ * marks are still there: it throws an AiImageError (show <AiImageDialog>).
  */
 export async function prepareImage(
   file: File,
@@ -39,6 +43,12 @@ export async function prepareImage(
   if (gif && file.size > MAX_BYTES) throw new Error("That GIF is over 9 MB. Try a smaller one.");
 
   const bitmap = await createImageBitmap(file);
+  try {
+    await assertMadeByHumans(file, bitmap);
+  } catch (error) {
+    bitmap.close();
+    throw error;
+  }
   const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);

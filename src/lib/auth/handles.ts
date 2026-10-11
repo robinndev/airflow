@@ -11,9 +11,10 @@ const HANDLE_PATTERN = /^(?!.*\.\.)[a-z0-9_][a-z0-9_.]{1,18}[a-z0-9_]$/;
 
 /** Top-level routes and words that would confuse people as someone's page. */
 const RESERVED = new Set([
-  "about", "admin", "api", "artiflow", "cart", "commissions", "customize", "explore", "feed", "help", "home",
-  "join", "login", "logout", "messages", "mod", "new", "notifications", "orders", "plans", "pricing", "privacy",
-  "search", "settings", "shop", "sign-in", "signin", "signup", "staff", "support", "terms",
+  "about", "admin", "api", "artiflow", "cart", "commissions", "customize", "explore", "favorites", "feed", "help",
+  "home", "join", "login", "logout", "messages", "mod", "moodboard", "new", "notifications", "orders", "plans",
+  "pricing", "privacy", "saved", "search", "settings", "shop", "sign-in", "signin", "signup", "staff", "support",
+  "terms",
 ]);
 
 /** What people type ("@Nova ") → what we store ("nova"). */

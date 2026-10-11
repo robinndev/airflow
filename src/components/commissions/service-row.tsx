@@ -41,7 +41,7 @@ export function ServiceRow({
               {service.title}
             </OpenServiceButton>
           </h3>
-          <SaveButton title={service.title} />
+          <SaveButton serviceId={service.id} title={service.title} />
         </div>
         <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm">
           <span className="font-display text-lg font-bold text-ink">

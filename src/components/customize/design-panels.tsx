@@ -4,7 +4,9 @@ import Link from "next/link";
 import { ImagePlus, LoaderCircle, ShoppingBag, X } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 import { FrameArt } from "@/components/frames/avatar-frame";
-import { CSS_MAX, FREE, NAME_EFFECTS, NAME_FONTS, THEME_PRESETS, type Customization, type ThemePreset } from "@/lib/customization/model";
+import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
+import { AiImageError } from "@/lib/ai-check/browser";
+import { FREE, NAME_EFFECTS, NAME_FONTS, THEME_PRESETS, type Customization, type ThemePreset } from "@/lib/customization/model";
 import { resolvePalette } from "@/lib/customization/style";
 import { FRAMES, formatFramePrice, isFreeFrame, type FrameId } from "@/lib/frames";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
@@ -23,6 +25,7 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
   const palette = resolvePalette(custom);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
@@ -37,7 +40,8 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
       const path = await uploadArt(image, "about");
       onChange({ ...custom, background: { ...custom.background, image: { path, width: image.width, height: image.height } } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That image didn't upload. Try again.");
+      if (err instanceof AiImageError) setAiRefusal(err);
+      else setError(err instanceof Error ? err.message : "That image didn't upload. Try again.");
     } finally {
       setUploading(false);
     }
@@ -147,6 +151,7 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
         </div>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" tabIndex={-1} aria-hidden onChange={onFile} />
         {error && <p role="alert" className="mt-2 text-xs text-danger">{error}</p>}
+        <AiImageDialog error={aiRefusal} onClose={() => setAiRefusal(null)} onPickAnother={() => fileRef.current?.click()} />
       </Section>
     </>
   );
@@ -348,43 +353,6 @@ export function FramePanel({ custom, onChange, owned }: Props & { owned: string[
         <ShoppingBag aria-hidden />
         Browse the frame shop
       </Link>
-    </Section>
-  );
-}
-
-/* -------------------------------------------------------------------- css */
-
-const CSS_EXAMPLE = `/* Everything here applies only to your page. */
-[data-profile-canvas] h1 {
-  letter-spacing: 0.04em;
-}
-
-.rounded-card {
-  border-width: 2px;
-  border-style: dashed;
-}`;
-
-export function CssPanel({ custom, isPaid, onChange }: Props) {
-  const css = custom.css ?? "";
-  return (
-    <Section
-      title="Custom CSS"
-      paid={!isPaid}
-      hint="Restyle anything on your page. It can't touch the site header, menus or checkout, and can't load outside images or fonts."
-    >
-      <textarea
-        value={css}
-        onChange={(e) => onChange({ ...custom, css: e.target.value || undefined })}
-        placeholder={CSS_EXAMPLE}
-        spellCheck={false}
-        rows={16}
-        maxLength={CSS_MAX}
-        aria-label="Custom CSS"
-        className="w-full resize-y rounded-input border border-border bg-[#0f1424] p-3 font-mono text-xs leading-relaxed text-[#d7e3ff] outline-none placeholder:text-[#6f7a99] focus:border-ocean"
-      />
-      <p className="mt-1.5 text-right text-xs text-muted tabular-nums">
-        {css.length.toLocaleString("en-US")} / {CSS_MAX.toLocaleString("en-US")}
-      </p>
     </Section>
   );
 }

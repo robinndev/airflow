@@ -4,8 +4,10 @@ import Image from "next/image";
 import { ImagePlus, LoaderCircle, Send, X } from "lucide-react";
 import { useActionState, useId, useRef, useState, type ChangeEvent } from "react";
 import { createPost, type ActionResult } from "@/app/(site)/[handle]/actions";
+import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
+import { AiImageError } from "@/lib/ai-check/browser";
 import { discardArt, prepareImage, uploadArt, type PreparedImage } from "@/lib/images/prepare";
 import { POST_KIND_ORDER, POST_KINDS } from "@/lib/profile/post-kinds";
 import type { ImageAsset, PostKind } from "@/lib/profile/types";
@@ -40,6 +42,7 @@ export function PostComposer({
   const [kind, setKind] = useState<PostKind>(initialKind);
   const [images, setImages] = useState<PreparedImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
   const [preparingImage, setPreparingImage] = useState(false);
 
   function clearImages() {
@@ -88,10 +91,13 @@ export function PostComposer({
     setImageError(files.length > room ? `A post holds up to ${MAX_IMAGES} images — kept the first ${room}.` : null);
     setPreparingImage(true);
     try {
-      const prepared = await Promise.all(files.slice(0, room).map((file) => prepareImage(file, 2400)));
+      // One bad file doesn't sink the others: keep what prepared, explain the first failure.
+      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400)));
+      const prepared = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
       setImages((current) => [...current, ...prepared].slice(0, MAX_IMAGES));
-    } catch (err) {
-      setImageError(err instanceof Error ? err.message : "Couldn't read that image.");
+      const failure = results.find((result) => result.status === "rejected")?.reason;
+      if (failure instanceof AiImageError) setAiRefusal(failure);
+      else if (failure) setImageError(failure instanceof Error ? failure.message : "Couldn't read that image.");
     } finally {
       setPreparingImage(false);
     }
@@ -230,6 +236,7 @@ export function PostComposer({
           {pending ? "Posting…" : "Post"}
         </button>
       </div>
+      <AiImageDialog error={aiRefusal} onClose={() => setAiRefusal(null)} onPickAnother={() => fileRef.current?.click()} />
     </form>
   );
 }

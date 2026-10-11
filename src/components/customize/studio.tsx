@@ -10,7 +10,8 @@ import { boardPaidFeatures, type Block, type Board, type NewBlock } from "@/lib/
 import { canvasData, canvasStyle } from "@/lib/customization/style";
 import { BoardEditor } from "./board-editor";
 import { BoardPanel } from "./board-panel";
-import { ButtonsPanel, CssPanel, FramePanel, NamePanel, ThemePanel } from "./design-panels";
+import { CssPanel } from "./css-panel";
+import { ButtonsPanel, FramePanel, NamePanel, ThemePanel } from "./design-panels";
 import { FlowBadge } from "./controls";
 import { ProfilePreview, type PreviewProfile } from "./profile-preview";
 import { TABS, type TabId } from "./tabs";
@@ -52,6 +53,8 @@ export function Studio({
   const [saved, setSaved] = useState({ custom: initialCustom, board: initialBoard });
   const [tab, setTab] = useState<TabId>(initialTab);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The CSS helper points at parts of the preview.
+  const [highlight, setHighlight] = useState<string | null>(null);
   const [result, setResult] = useState<SaveResult | null>(null);
   const [saving, startSaving] = useTransition();
 
@@ -230,6 +233,7 @@ export function Studio({
               onClick={() => {
                 setTab(t.id);
                 setSelectedId(null);
+                setHighlight(null);
               }}
               className="h-9 rounded-full px-4 text-sm font-semibold whitespace-nowrap text-muted transition-colors hover:text-ink aria-selected:bg-surface aria-selected:text-ink aria-selected:shadow-soft"
             >
@@ -249,7 +253,7 @@ export function Studio({
           {tab === "name" && <NamePanel custom={custom} isPaid={isPaid} onChange={changeCustom} displayName={profile.displayName} />}
           {tab === "buttons" && <ButtonsPanel custom={custom} isPaid={isPaid} onChange={changeCustom} />}
           {tab === "frame" && <FramePanel custom={custom} isPaid={isPaid} onChange={changeCustom} owned={owned} />}
-          {tab === "css" && <CssPanel custom={custom} isPaid={isPaid} onChange={changeCustom} />}
+          {tab === "css" && <CssPanel custom={custom} isPaid={isPaid} onChange={changeCustom} onHighlight={setHighlight} />}
           {tab === "about" && (
             <BoardPanel
               board={board}
@@ -308,7 +312,7 @@ export function Studio({
               />
             </div>
           ) : (
-            <ProfilePreview profile={profile} custom={custom} />
+            <ProfilePreview profile={profile} custom={custom} highlight={tab === "css" ? highlight : null} />
           )}
         </div>
       </div>

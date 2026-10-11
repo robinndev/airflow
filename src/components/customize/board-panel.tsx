@@ -3,6 +3,8 @@
 import { Code2, ImagePlus, List, LoaderCircle, Smile, Type } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Sticker } from "@/components/about/stickers";
+import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
+import { AiImageError } from "@/lib/ai-check/browser";
 import { STICKERS, type Block, type Board, type NewBlock, type StickerId } from "@/lib/customization/about";
 import { FREE } from "@/lib/customization/model";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
@@ -55,6 +57,7 @@ export function BoardPanel({
   const [showStickers, setShowStickers] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const limit = isPaid ? 60 : FREE.aboutBlocks;
   const full = board.blocks.length >= 60;
@@ -80,7 +83,8 @@ export function BoardPanel({
         rotate: 0,
       });
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "That image didn't upload. Try again.");
+      if (error instanceof AiImageError) setAiRefusal(error);
+      else setUploadError(error instanceof Error ? error.message : "That image didn't upload. Try again.");
     } finally {
       setUploading(false);
     }
@@ -139,6 +143,7 @@ export function BoardPanel({
         </div>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" tabIndex={-1} aria-hidden onChange={onFile} />
         {uploadError && <p role="alert" className="mt-2 text-xs text-danger">{uploadError}</p>}
+        <AiImageDialog error={aiRefusal} onClose={() => setAiRefusal(null)} onPickAnother={() => fileRef.current?.click()} />
 
         {showStickers && (
           <div className="mt-3 grid grid-cols-8 gap-1.5 rounded-card bg-ice/60 p-2">

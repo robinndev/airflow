@@ -2,6 +2,7 @@
 
 import { Bookmark, Heart, MessageCircle, Repeat2, Share2 } from "lucide-react";
 import { useState } from "react";
+import { useFavorite } from "@/components/favorites/store";
 import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
@@ -15,10 +16,10 @@ type PostActionsProps = {
   repost: RepostTarget;
 };
 
-// Likes and saves are UI-only until they're persisted; comments and reposts are real.
+// Likes are UI-only until they're persisted; saves (favorites), comments and reposts are real.
 export function PostActions({ postId, handle, likes, comments, reposts = 0, conversation, repost }: PostActionsProps) {
   const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { saved, toggle: toggleSaved } = useFavorite({ kind: "post", id: postId });
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -69,11 +70,12 @@ export function PostActions({ postId, handle, likes, comments, reposts = 0, conv
       <button
         type="button"
         aria-pressed={saved}
-        aria-label={saved ? "Remove from saved" : "Save"}
-        onClick={() => setSaved((v) => !v)}
+        aria-label={saved ? "Remove from favorites" : "Save to favorites"}
+        title={saved ? "On your moodboard" : "Save to favorites"}
+        onClick={toggleSaved}
         className={`${action} ml-auto ${saved ? "text-accent-strong hover:text-accent-strong" : ""}`}
       >
-        <Bookmark aria-hidden className={saved ? "fill-current" : ""} />
+        <Bookmark aria-hidden className={saved ? "animate-pop fill-current" : ""} />
       </button>
     </footer>
   );

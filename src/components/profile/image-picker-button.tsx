@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Camera, LoaderCircle } from "lucide-react";
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { updateProfileImage } from "@/app/(site)/[handle]/actions";
+import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
+import { AiImageError } from "@/lib/ai-check/browser";
 import { discardArt, prepareImage, uploadArt } from "@/lib/images/prepare";
 import { UploadNoticeDialog, type UploadNotice } from "./upload-notice-dialog";
 
@@ -28,6 +30,7 @@ export function ImagePickerButton({
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [notice, setNotice] = useState<UploadNotice | null>(null);
+  const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -47,6 +50,7 @@ export function ImagePickerButton({
 
     startTransition(async () => {
       let message: string | null = null;
+      let refusal: AiImageError | null = null;
       try {
         // Straight to storage from the browser, then the profile points at it.
         const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif });
@@ -63,11 +67,13 @@ export function ImagePickerButton({
           await discardArt(path);
         }
       } catch (err) {
-        message = err instanceof Error ? err.message : "Upload failed. Try again.";
+        if (err instanceof AiImageError) refusal = err;
+        else message = err instanceof Error ? err.message : "Upload failed. Try again.";
       }
       startTransition(() => {
         setPreview(null);
         if (message) setNotice({ kind: "error", message });
+        if (refusal) setAiRefusal(refusal);
       });
       URL.revokeObjectURL(objectUrl);
     });
@@ -137,6 +143,7 @@ export function ImagePickerButton({
           setNotice(null);
         }}
       />
+      <AiImageDialog error={aiRefusal} onClose={() => setAiRefusal(null)} onPickAnother={() => inputRef.current?.click()} />
     </>
   );
 }

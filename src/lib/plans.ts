@@ -27,7 +27,8 @@ export const PLANS: Record<PlanId, Plan> = {
     perks: [
       "Portfolio, gallery and posts",
       "Commissions and adoptables",
-      "Accent color and banner focus",
+      "5 themes, name color and free avatar frames",
+      "An About board with up to 10 blocks",
     ],
     finish: "Matte",
   },
@@ -37,9 +38,10 @@ export const PLANS: Record<PlanId, Plan> = {
     priceUsd: 6.99,
     tagline: "Make your profile entirely yours.",
     perks: [
+      "Every theme, your own colors and background images",
+      "Name fonts, gradients and effects; button styles and layout",
+      "Custom CSS, HTML blocks and a 60-block About board",
       "Animated GIF profile picture and cover",
-      "Fully custom profiles: button shapes, layout and more",
-      "Small extras as they ship",
     ],
     finish: "Foil",
   },

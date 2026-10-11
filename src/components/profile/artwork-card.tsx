@@ -34,7 +34,7 @@ export function ArtworkCard({ artwork, priority }: { artwork: Artwork; priority?
             className="h-auto w-full transition-transform duration-500 ease-out group-hover/art:scale-[1.03]"
           />
           <ArtworkBadge artwork={artwork} />
-          <ArtworkLikeButton title={title} />
+          <ArtworkLikeButton id={artwork.id} title={title} />
         </div>
         <figcaption className="mt-2.5 px-1">
           <p className="truncate font-display text-[0.9375rem] font-bold text-ink">{title}</p>

@@ -33,7 +33,7 @@ export const boardImageSrc = (path: string) => (path.startsWith("/") ? path : ar
 export function AboutBoard({ board }: { board: Board }) {
   const stacked = readingOrder(board.blocks);
   return (
-    <div className="about-board">
+    <div data-part="board" className="about-board">
       <div
         className="about-board-inner relative hidden overflow-hidden rounded-panel @[640px]:block"
         style={{
@@ -44,6 +44,8 @@ export function AboutBoard({ board }: { board: Board }) {
         {board.blocks.map((block) => (
           <div
             key={block.id}
+            data-part="block"
+            data-block={block.type}
             className="absolute"
             style={{
               left: `calc(var(--u) * ${block.x})`,

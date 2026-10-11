@@ -281,7 +281,8 @@ function BlockToolbar({
       onPointerDown={(e) => e.stopPropagation()}
       className="absolute z-[950] flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border bg-surface p-1 shadow-lift"
       style={{
-        left: `calc(var(--u) * ${block.x + block.w / 2})`,
+        // Kept inside the board even when the block hangs off an edge.
+        left: `clamp(5.5rem, calc(var(--u) * ${block.x + block.w / 2}), calc(100% - 5.5rem))`,
         top: `max(4px, calc(var(--u) * ${block.y} - 5.25rem))`,
       }}
     >

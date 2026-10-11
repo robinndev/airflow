@@ -133,3 +133,31 @@ export function moodsOf(palette: string[] = []): MoodSlug[] {
   }
   return [...moods];
 }
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * One palette from many: the colors a collection keeps coming back to (the
+ * moodboard's swatch card). Swatches are weighed by rank and a little by
+ * chroma, so white paper doesn't win every time; near-identical colors
+ * (ΔE under 14 in CIELAB) pool together. The heaviest pools come back light
+ * to dark, like a swatch card.
+ */
+export function blendPalettes(palettes: string[][], count = 6): string[] {
+  const pools: { hex: string; lab: [number, number, number]; weight: number }[] = [];
+  for (const palette of palettes) {
+    palette.slice(0, RANK_WEIGHT.length).forEach((hex, i) => {
+      if (!HEX.test(hex)) return;
+      const lab = toLab(hex);
+      const weight = RANK_WEIGHT[i] * (0.6 + Math.min(Math.hypot(lab[1], lab[2]), 60) / 100);
+      const near = pools.find((p) => Math.hypot(p.lab[0] - lab[0], p.lab[1] - lab[1], p.lab[2] - lab[2]) < 14);
+      if (near) near.weight += weight;
+      else pools.push({ hex: hex.toLowerCase(), lab, weight });
+    });
+  }
+  return pools
+    .toSorted((a, b) => b.weight - a.weight)
+    .slice(0, count)
+    .toSorted((a, b) => b.lab[0] - a.lab[0])
+    .map((p) => p.hex);
+}

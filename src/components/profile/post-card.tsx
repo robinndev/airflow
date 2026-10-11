@@ -28,6 +28,7 @@ export function PostCard({
     <article
       id={post.id}
       aria-labelledby={`${post.id}-author`}
+      data-part="post"
       className="scroll-mt-24 rounded-card border border-border bg-surface shadow-soft"
     >
       {post.pinned && (

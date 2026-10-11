@@ -2,6 +2,7 @@
 
 import { Bookmark, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useState, type CSSProperties } from "react";
+import { useFavorite } from "@/components/favorites/store";
 import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
@@ -39,7 +40,7 @@ function Splat({ colors }: { colors: string[] }) {
 const pill =
   "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/70 px-2.5 text-[0.8125rem] font-semibold text-ink backdrop-blur-sm transition-colors hover:border-ink/25 hover:bg-surface [&_svg]:size-4";
 
-// Likes and saves are UI-only until they're persisted; comments and reposts are real.
+// Likes are UI-only until they're persisted; saves (favorites), comments and reposts are real.
 export function PostReactions({
   postId,
   handle,
@@ -67,7 +68,7 @@ export function PostReactions({
 }) {
   const [liked, setLiked] = useState(false);
   const [splashes, setSplashes] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const { saved, toggle: toggleSaved } = useFavorite({ kind: "post", id: postId });
   const [shared, setShared] = useState(false);
 
   function toggleLike() {
@@ -124,10 +125,10 @@ export function PostReactions({
         <button
           type="button"
           aria-pressed={saved}
-          aria-label={saved ? "Remove from moodboard" : "Save to moodboard"}
-          title={saved ? "Saved to your moodboard" : "Save to moodboard"}
-          onClick={() => setSaved((v) => !v)}
-          className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface/80 hover:text-ink aria-pressed:text-ocean [&_svg]:size-[1.125rem] aria-pressed:[&_svg]:fill-current"
+          aria-label={saved ? "Remove from favorites" : "Save to favorites"}
+          title={saved ? "On your moodboard" : "Save to favorites"}
+          onClick={toggleSaved}
+          className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface/80 hover:text-ink aria-pressed:text-ocean [&_svg]:size-[1.125rem] aria-pressed:[&_svg]:animate-pop aria-pressed:[&_svg]:fill-current"
         >
           <Bookmark aria-hidden />
         </button>

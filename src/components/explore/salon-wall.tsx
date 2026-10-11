@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Check, Dices, Heart } from "lucide-react";
 import { useMemo, useState, type CSSProperties } from "react";
+import { useFavorite } from "@/components/favorites/store";
 import type { WallPiece } from "@/lib/explore";
 import { formatCompact, formatUsd } from "@/lib/format";
 import type { Mood, MoodSlug } from "@/lib/palette";
@@ -246,7 +247,7 @@ function PaintChip({
 }
 
 function WallTile({ piece, delay }: { piece: WallPiece; delay: number }) {
-  const [liked, setLiked] = useState(false);
+  const { saved: liked, toggle } = useFavorite({ kind: "art", id: piece.id, title: piece.title });
   const ratio = ratioOf(piece.image);
   const tag = piece.adopt
     ? piece.adopt.status === "adopted"
@@ -311,7 +312,7 @@ function WallTile({ piece, delay }: { piece: WallPiece; delay: number }) {
         type="button"
         aria-pressed={liked}
         aria-label={liked ? `Unfavorite ${piece.title}` : `Favorite ${piece.title}`}
-        onClick={() => setLiked((v) => !v)}
+        onClick={toggle}
         className={`absolute top-2 right-2 inline-flex h-8 items-center gap-1 rounded-full bg-paper/90 px-2.5 text-xs font-semibold shadow-soft backdrop-blur-sm transition-[opacity,scale] focus-visible:opacity-100 active:scale-95 group-hover:opacity-100 pointer-coarse:hidden ${
           liked ? "text-like opacity-100" : "text-on-paper opacity-0"
         }`}

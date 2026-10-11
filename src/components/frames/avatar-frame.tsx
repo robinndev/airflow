@@ -23,14 +23,17 @@ export function FramedAvatar({
   frame,
   children,
   className = "",
+  part,
 }: {
   frame?: FrameId | string | null;
   children: ReactNode;
   className?: string;
+  /** Optional `data-part` hook for profile custom CSS. */
+  part?: string;
 }) {
   const Draw = frame ? DRAWINGS[frame as FrameId] : undefined;
   return (
-    <span className={`relative inline-grid shrink-0 place-items-center ${className}`}>
+    <span data-part={part} className={`relative inline-grid shrink-0 place-items-center ${className}`}>
       {children}
       {Draw && <FrameSvg Draw={Draw} />}
     </span>

@@ -13,7 +13,6 @@ const SECTIONS: Record<string, { title: string; description: string }> = {
   worlds: { title: "Worlds", description: "Shared universes and the characters who live there." },
   commissions: { title: "Open commissions", description: "Artists taking requests right now." },
   adoptables: { title: "Adoptables", description: "Original characters looking for a new home." },
-  saved: { title: "Saved", description: "Posts, services and characters you bookmarked." },
 };
 
 export function generateStaticParams() {

@@ -14,8 +14,10 @@
     "predev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-demo-art.ts",
     "invites": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/invites.ts",
     "plans": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plans.ts",
+    "ai-check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ai-check.ts",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.78",

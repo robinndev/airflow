@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Brush, Clock, LayoutGrid, Link2, NotebookPen } from "lucide-react";
+import { ArrowUpRight, Brush, Clock, LayoutGrid, Link2 } from "lucide-react";
 import { SocialIcon } from "@/components/icons/social-icon";
 import { buttonClasses } from "@/components/ui/button";
 import { formatUsd } from "@/lib/format";
@@ -10,7 +10,6 @@ export function ProfileSidebar({ profile }: { profile: ArtistProfile }) {
   return (
     <div className="grid gap-4">
       <CommissionsCard profile={profile} />
-      {hasAbout(profile) && <AboutCard profile={profile} />}
       {profile.links.length > 0 && <LinksCard profile={profile} />}
       <GalleryCard profile={profile} />
     </div>
@@ -36,35 +35,6 @@ function CardHeading({
   );
 }
 
-const hasAbout = (profile: ArtistProfile) => (profile.about?.blocks.length ?? 0) > 0;
-
-/** A peek at the About board: its first line of text, linking to the whole thing. */
-function aboutTeaser(profile: ArtistProfile) {
-  for (const block of profile.about?.blocks ?? []) {
-    if (block.type === "text" && block.text.trim()) return block.text.trim().split("\n")[0];
-    if (block.type === "list" && block.title) return block.title;
-  }
-  return "Likes, DNIs and fun facts";
-}
-
-function AboutCard({ profile }: { profile: ArtistProfile }) {
-  return (
-    <Link
-      href={`/${profile.handle}/about`}
-      className="group block rounded-card border border-border bg-surface p-4 shadow-soft transition-[border-color,box-shadow] hover:border-sky/60 hover:shadow-lift"
-    >
-      <div className="flex items-center justify-between">
-        <CardHeading icon={<NotebookPen />} title="About me" />
-        <ArrowUpRight
-          aria-hidden
-          className="size-4 text-accent-strong transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-        />
-      </div>
-      <p className="mt-2 line-clamp-2 text-sm text-muted">{aboutTeaser(profile)}</p>
-    </Link>
-  );
-}
-
 /** A new account that hasn't set up any commission service yet. */
 const hasNoServices = ({ commissions }: ArtistProfile) =>
   commissions.types.length === 0 && commissions.slotsTotal === 0 && commissions.startingPriceUsd === 0;
@@ -83,7 +53,7 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
 
   if (hasNoServices(profile)) {
     return (
-      <section aria-labelledby="commissions-heading" className="rounded-card border border-border bg-surface p-4 shadow-soft">
+      <section aria-labelledby="commissions-heading" data-part="card" className="rounded-card border border-border bg-surface p-4 shadow-soft">
         <CardHeading id="commissions-heading" icon={<Brush />} title="Commissions" />
         <p className="mt-2 text-sm text-muted">Not taking commissions yet.</p>
       </section>
@@ -93,6 +63,7 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
   return (
     <section
       aria-labelledby="commissions-heading"
+      data-part="card"
       className="rounded-card border border-border bg-surface p-4 shadow-soft"
     >
       <div className="flex items-center justify-between gap-3">
@@ -162,6 +133,7 @@ function GalleryCard({ profile }: { profile: ArtistProfile }) {
     <Link
       href={`/${handle}/gallery`}
       aria-label={`Gallery, ${gallery.total} artworks`}
+      data-part="card"
       className="group block rounded-card border border-border bg-surface p-4 shadow-soft transition-[border-color,box-shadow] hover:border-sky/60 hover:shadow-lift"
     >
       <div className="flex items-center justify-between">
@@ -204,6 +176,7 @@ function LinksCard({ profile }: { profile: ArtistProfile }) {
   return (
     <section
       aria-labelledby="links-heading"
+      data-part="card"
       className="rounded-card border border-border bg-surface p-4 shadow-soft"
     >
       <CardHeading id="links-heading" icon={<Link2 />} title="Links" />
@@ -267,17 +240,6 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
             <span className="block truncate text-xs text-muted">{gallery.total} artworks</span>
           </span>
         </Link>
-        {hasAbout(profile) && (
-          <Link href={`/${handle}/about`} className={`${tile} col-span-2`}>
-            <span className="grid size-10 shrink-0 place-items-center rounded-input bg-ice text-accent-strong">
-              <NotebookPen aria-hidden className="size-[1.125rem]" />
-            </span>
-            <span className="min-w-0">
-              <span className="block font-display text-sm font-bold text-ink">About me</span>
-              <span className="block truncate text-xs text-muted">{aboutTeaser(profile)}</span>
-            </span>
-          </Link>
-        )}
       </div>
 
       {profile.links.length > 0 && (
