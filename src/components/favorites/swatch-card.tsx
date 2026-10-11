@@ -22,7 +22,7 @@ export function SwatchCard({ items }: { items: FavoriteItem[] | null }) {
     .slice(0, 2);
 
   return (
-    <figure className="relative mx-auto w-full max-w-[23rem] lg:mr-0">
+    <figure className="relative mx-auto mb-6 w-full max-w-[23rem] lg:mr-0 lg:mb-0">
       <div className="grain relative rotate-[2deg] rounded-[6px] bg-paper p-5 pb-6 text-on-paper shadow-lift sm:p-6">
         <Tape tone="lilac" className="-top-3 left-6 w-20 -rotate-[7deg]" />
         <Tape tone="mint" className="-top-3 right-5 w-16 rotate-[9deg]" />

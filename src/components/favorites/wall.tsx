@@ -61,7 +61,8 @@ function WallTile({ item, index }: { item: WallItem; index: number }) {
     <Pinned
       entry={wallEntry(item)}
       target={{ kind: item.kind, id: item.id, title: item.title, savedAt: item.savedAt }}
-      className="isolate animate-rise"
+      // min-w-0: a long caption must not widen the print and break the row.
+      className="isolate min-w-0 animate-rise"
       style={style}
     >
       {item.kind === "art" ? (

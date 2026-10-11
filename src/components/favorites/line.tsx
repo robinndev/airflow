@@ -8,6 +8,7 @@ import { buttonClasses } from "@/components/ui/button";
 import type { FavoriteArt, FavoriteService } from "@/lib/favorites/queries";
 import { formatUsd } from "@/lib/format";
 import { glowOf } from "@/lib/palette";
+import { LineScroller } from "./line-scroller";
 import { Pinned } from "./pinned";
 import { tiltOf } from "./wall";
 
@@ -28,7 +29,7 @@ const sagAt = (t: number) => 4 + 64 * t * (1 - t);
 
 export function Line({ items }: { items: LineItem[] }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-8 [scrollbar-width:none] sm:-mx-6 sm:px-6">
+    <LineScroller>
       <div className="relative w-max min-w-full">
         <svg
           aria-hidden
@@ -73,7 +74,7 @@ export function Line({ items }: { items: LineItem[] }) {
           })}
         </ul>
       </div>
-    </div>
+    </LineScroller>
   );
 }
 
