@@ -77,7 +77,7 @@ export function ExploreMenu() {
           <input
             type="search"
             name="q"
-            aria-label="Search commissions, adoptables and artists"
+            aria-label="Search Artiflow"
             placeholder="Search commissions, adoptables, artists…"
             className="h-11 w-full rounded-input border border-border bg-canvas pr-3 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-muted/80 focus:border-ocean focus:bg-surface"
           />

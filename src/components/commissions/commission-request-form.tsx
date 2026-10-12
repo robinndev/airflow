@@ -2,7 +2,7 @@
 
 import { CircleCheck, LoaderCircle, Send, Sparkles } from "lucide-react";
 import { useActionState, useId, useState } from "react";
-import { submitCommissionRequest, type ActionResult } from "@/app/(site)/[handle]/actions";
+import { submitCommissionRequest, type RequestSent } from "@/app/(site)/[handle]/actions";
 import { buttonClasses } from "@/components/ui/button";
 import { extrasUsd, pickOptions, type Option } from "@/lib/commissions/addons";
 import { formatUsd, formatUsdExact } from "@/lib/format";
@@ -83,7 +83,7 @@ export function CommissionRequestForm({
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [state, formAction, pending] = useActionState(
-    (prev: ActionResult | null, formData: FormData) =>
+    (prev: RequestSent | null, formData: FormData) =>
       submitCommissionRequest(handle, prev, formData),
     null,
   );
@@ -101,7 +101,7 @@ export function CommissionRequestForm({
           <CircleCheck aria-hidden className="size-7" />
         </span>
         <p className="mt-4 font-display text-xl font-extrabold text-ink">
-          {isWaitlist ? "You're on the waitlist!" : "Request sent!"}
+          {state.waitlisted ? "You're on the waitlist!" : "Request sent!"}
         </p>
         <p className="mt-1.5 max-w-sm text-sm text-muted">
           {firstName} will review it and send you a quote. You&apos;ll get a notification — nothing

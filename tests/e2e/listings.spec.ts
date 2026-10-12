@@ -88,7 +88,7 @@ test("an artist lists a service with packages and slots, and an adoptable", asyn
   await expect(editor.getByText("Uploading")).toHaveCount(0);
   await editor.getByRole("button", { name: "List it" }).click();
   await expect(editor).toBeHidden();
-  await expect(page.getByRole("heading", { name: serviceTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceTitle, exact: true })).toBeVisible();
 
   const listed = await service();
   expect(listed.status).toBe("open");
@@ -114,13 +114,13 @@ test("a buyer finds it, requests a package, and the slot is taken", async ({ bro
 
   // Search by name, with filters that match.
   await page.goto(`/explore/search?q=${encodeURIComponent(serviceTitle)}&style=cel_shaded&max=40`);
-  await expect(page.getByRole("heading", { name: serviceTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceTitle, exact: true })).toBeVisible();
   // …and filters that don't.
   await page.goto(`/explore/search?q=${encodeURIComponent(serviceTitle)}&style=pixel`);
   await expect(page.getByText("Nothing matches all of that.")).toBeVisible();
 
   await page.goto(`/${artist.handle}/commissions`);
-  await expect(page.getByRole("heading", { name: serviceTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceTitle, exact: true })).toBeVisible();
   const dialog = page.getByRole("dialog", { name: serviceTitle });
   await expect(async () => {
     await page.getByRole("button", { name: "Request", exact: true }).first().click();
@@ -144,7 +144,7 @@ test("a buyer finds it, requests a package, and the slot is taken", async ({ bro
   await page.goto(`/explore/search?q=${encodeURIComponent(serviceTitle)}`);
   await expect(page.getByText("Nothing matches all of that.")).toBeVisible();
   await page.goto(`/explore/search?q=${encodeURIComponent(serviceTitle)}&avail=waitlist`);
-  await expect(page.getByRole("heading", { name: serviceTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceTitle, exact: true })).toBeVisible();
 
   // The request is on its way, from Artiflow.
   await page.goto("/requests");

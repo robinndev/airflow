@@ -211,11 +211,14 @@ const requestSchema = z.object({
   acceptedTerms: z.literal("on", { error: "Please accept the artist's terms first." }),
 });
 
+/** A sent request says whether it joined the waitlist (it can take the last slot and tip the service over). */
+export type RequestSent = { ok: true; waitlisted: boolean } | { ok: false; error: string };
+
 export async function submitCommissionRequest(
   handle: string,
-  _prev: ActionResult | null,
+  _prev: RequestSent | null,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<RequestSent> {
   const optional = (key: string) => formData.get(key) || undefined;
   const parsed = requestSchema.safeParse({
     serviceId: formData.get("serviceId"),
@@ -264,7 +267,7 @@ export async function submitCommissionRequest(
       acceptedTerms: true,
       createdAt: new Date().toISOString(),
     });
-    return { ok: true };
+    return { ok: true, waitlisted: db.profiles.find((p) => p.handle === handle)?.commissions.status === "waitlist" };
   }
 
   // Real artists: stored, and the request takes a slot (see the listings migration).
@@ -274,7 +277,7 @@ export async function submitCommissionRequest(
   const { data: artist } = await admin.from("profiles").select("id").eq("handle", handle).maybeSingle();
   if (!artist) return { ok: false, error: "That artist doesn't exist anymore." };
 
-  const { error } = await admin.from("commission_requests").insert({
+  const { data: sent, error } = await admin.from("commission_requests").insert({
     buyer_id: viewer.id,
     artist_id: artist.id,
     service_id: service?.id ?? null,
@@ -287,7 +290,7 @@ export async function submitCommissionRequest(
     deadline: parsed.data.deadline ?? null,
     usage,
     budget: service ? null : (parsed.data.budget ?? null),
-  });
+  }).select("status").single();
   if (error?.code === "23505") return { ok: false, error: "You already have a request waiting on this service." };
   // The database's own messages: closed, full, daily limit.
   if (error?.code === "23514" || error?.code === "P0002") return { ok: false, error: error.message };
@@ -298,7 +301,7 @@ export async function submitCommissionRequest(
   updateTag(LISTINGS_TAG);
   updateTag("explore");
   updateTag("search-index");
-  return { ok: true };
+  return { ok: true, waitlisted: sent?.status === "waitlisted" };
 }
 
 export async function setPreviewAsVisitor(enabled: boolean) {

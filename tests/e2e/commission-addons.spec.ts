@@ -20,13 +20,18 @@ test("a buyer ticks add-ons under the price and they carry into the request", as
   await expect(dialog.getByRole("checkbox", { name: /Merchandising/ })).toBeDisabled();
   await expect(dialog.locator('[data-option="license:commercialMerch"]')).toContainText("Not offered");
 
+  // Packages: the cheapest is picked first; the full render costs $45.
+  await expect(dialog.locator('[data-package="sketch"] input')).toBeChecked();
+  await dialog.locator('[data-package="render"]').click();
+  await expect(dialog.locator('[data-package="render"] input')).toBeChecked();
+
   // Fixed extras: $45 + $10 + $10.
   await dialog.locator('[data-option="shading"]').click();
   await dialog.locator('[data-option="animation"]').click();
   await expect(dialog.getByRole("checkbox", { name: /Full shading/ })).toBeChecked();
   await expect(dialog.getByText("from $65", { exact: true })).toBeVisible();
 
-  // A percentage of the "from" price: +50% of $45.
+  // A percentage of the package's price: +50% of $45.
   await dialog.locator('[data-option="license:commercialContent"]').click();
   await expect(dialog.getByText("from $87.50", { exact: true })).toBeVisible();
 
