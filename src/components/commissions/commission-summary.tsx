@@ -15,14 +15,18 @@ export function CommissionSummary({ commissions }: { commissions: Summary }) {
           <span className="text-muted">({commissions.rating.count} reviews)</span>
         </span>
       )}
-      <span className="inline-flex items-center gap-1.5 text-muted">
-        <Clock aria-hidden className="size-4" />
-        Usually {commissions.turnaround}
-      </span>
-      <span className="inline-flex items-center gap-1.5 text-muted">
-        <Users aria-hidden className="size-4" />
-        {slotsLeft} of {commissions.slotsTotal} slots left
-      </span>
+      {commissions.turnaround && (
+        <span className="inline-flex items-center gap-1.5 text-muted">
+          <Clock aria-hidden className="size-4" />
+          Usually {commissions.turnaround}
+        </span>
+      )}
+      {commissions.slotsTotal > 0 && (
+        <span className="inline-flex items-center gap-1.5 text-muted">
+          <Users aria-hidden className="size-4" />
+          {slotsLeft} of {commissions.slotsTotal} slots left
+        </span>
+      )}
     </div>
   );
 }

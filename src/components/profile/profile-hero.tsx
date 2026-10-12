@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { Avatar } from "@/components/ui/avatar";
@@ -11,6 +11,7 @@ import { nameStyle } from "@/lib/customization/style";
 import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
 import { AvailabilityBadge } from "./availability-badge";
+import { FollowerCount } from "./follow-button";
 import { CommissionStatusPill } from "./commission-status-pill";
 import { OwnerImageControls, ProfileActions } from "./profile-actions";
 
@@ -98,7 +99,8 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        {/* The stats column is the sidebar's width, so the card lines up with the cards below it. */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
           <div className="max-w-2xl">
             {profile.headline && (
               <p data-part="headline" className="font-display text-[1.0625rem] font-semibold text-ink">
@@ -143,10 +145,12 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
             </ul>
           </div>
 
-          <dl data-part="stats" className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft">
-            <Stat label="Followers" value={profile.stats.followers} />
-            <Stat label="Following" value={profile.stats.following} />
-            <Stat label="Artworks" value={profile.stats.artworks} />
+          <dl data-part="stats" className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft sm:max-w-[300px] lg:max-w-none">
+            <Stat label="Followers">
+              <FollowerCount handle={profile.handle} count={profile.stats.followers} />
+            </Stat>
+            <Stat label="Following">{formatCompact(profile.stats.following)}</Stat>
+            <Stat label="Artworks">{formatCompact(profile.stats.artworks)}</Stat>
           </dl>
         </div>
       </div>
@@ -171,13 +175,11 @@ export function BannerScrims() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-24 flex-col-reverse items-center rounded-input px-4 py-2 text-center">
+    <div className="flex min-w-0 flex-1 flex-col-reverse items-center rounded-input px-2 py-2 text-center">
       <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className="font-display text-lg font-bold text-ink tabular-nums">
-        {formatCompact(value)}
-      </dd>
+      <dd className="font-display text-lg font-bold text-ink tabular-nums">{children}</dd>
     </div>
   );
 }

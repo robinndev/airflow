@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Brush, Clock, LayoutGrid, Link2 } from "lucide-react";
+import { ArrowUpRight, Brush, Clock, LayoutGrid, Link2, Tag } from "lucide-react";
 import { SocialIcon } from "@/components/icons/social-icon";
 import { buttonClasses } from "@/components/ui/button";
 import { formatUsd } from "@/lib/format";
@@ -10,6 +10,7 @@ export function ProfileSidebar({ profile }: { profile: ArtistProfile }) {
   return (
     <div className="grid gap-4">
       <CommissionsCard profile={profile} />
+      {profile.adopts && <AdoptsCard profile={profile} />}
       {profile.links.length > 0 && <LinksCard profile={profile} />}
       <GalleryCard profile={profile} />
     </div>
@@ -80,14 +81,18 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
         <p className={`inline-flex items-center gap-1.5 font-semibold ${status.text}`}>
           <span aria-hidden className={`size-1.5 rounded-full ${status.dot}`} />
           {status.label}
-          <span className="font-medium text-muted">
-            · {slotsLeft}/{commissions.slotsTotal} slots left
-          </span>
+          {commissions.slotsTotal > 0 && (
+            <span className="font-medium text-muted">
+              · {slotsLeft}/{commissions.slotsTotal} slots left
+            </span>
+          )}
         </p>
-        <p className="inline-flex shrink-0 items-center gap-1 text-muted">
-          <Clock aria-hidden className="size-3.5" />
-          {commissions.turnaround}
-        </p>
+        {commissions.turnaround && (
+          <p className="inline-flex shrink-0 items-center gap-1 text-muted">
+            <Clock aria-hidden className="size-3.5" />
+            {commissions.turnaround}
+          </p>
+        )}
       </div>
       {/* Slot meter: one segment per slot so the state isn't color-only. */}
       <div className="mt-2 flex gap-1" aria-hidden>
@@ -118,9 +123,37 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
           className: "mt-3 w-full",
         })}
       >
-        {isOpen ? "Request a commission" : "Join the waitlist"}
+        {isOpen ? "Request a commission" : commissions.status === "waitlist" ? "Join the waitlist" : "See services"}
       </Link>
     </section>
+  );
+}
+
+/** Ready-made characters for sale: a peek at the hang-tagged ones. */
+function AdoptsCard({ profile }: { profile: ArtistProfile }) {
+  const { adopts, handle } = profile;
+  if (!adopts) return null;
+  return (
+    <Link
+      href={`/${handle}/adoptables`}
+      aria-label={`Adoptables, ${adopts.available} available`}
+      data-part="card"
+      className="group block rounded-card border border-border bg-surface p-4 shadow-soft transition-[border-color,box-shadow] hover:border-sky/60 hover:shadow-lift"
+    >
+      <div className="flex items-center justify-between">
+        <CardHeading icon={<Tag />} title="Adoptables" />
+        <span className="text-xs font-semibold text-muted">
+          {adopts.available > 0 ? `${adopts.available} looking for a home` : "All adopted"}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        {adopts.preview.map((image) => (
+          <div key={image.src} className="relative aspect-square overflow-hidden rounded-[10px] bg-ice" style={{ backgroundColor: image.palette?.[0] }}>
+            <Image src={image.src} alt="" fill sizes="90px" className="object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+          </div>
+        ))}
+      </div>
+    </Link>
   );
 }
 

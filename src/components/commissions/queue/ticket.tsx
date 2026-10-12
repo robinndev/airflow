@@ -82,11 +82,12 @@ export function Ticket({
     <article
       data-order={order.id}
       data-part="ticket"
-      draggable
-      onDragStart={start}
+      // Real requests move only as the order is processed (decided 2026-10-11): answer them from the drawer.
+      draggable={!order.real}
+      onDragStart={order.real ? undefined : start}
       onDragEnd={onDragEnd}
       onClick={onOpen}
-      className={`group/ticket relative cursor-grab pt-2.5 transition-[rotate,translate,opacity] duration-300 ease-out [rotate:var(--tilt)] hover:-translate-y-0.5 hover:[rotate:0deg] active:cursor-grabbing ${
+      className={`group/ticket relative pt-2.5 ${order.real ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-[rotate,translate,opacity] duration-300 ease-out [rotate:var(--tilt)] hover:-translate-y-0.5 hover:[rotate:0deg] ${
         dragging ? "opacity-30" : ""
       } ${fresh ? "animate-rise" : ""}`}
       style={{ "--tilt": `${tiltOf(order.id)}deg` } as CSSProperties}

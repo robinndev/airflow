@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { Archive, ArchiveRestore, Check, Lock, Pause, Play, X } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { respondToRequest } from "@/app/(site)/request-actions";
+import { showToast } from "@/components/favorites/toast-events";
 import { Tape } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
 import {
@@ -189,6 +191,12 @@ function Folder({
               {order.client.name} · {formatLongDate(order.requestedAt)}
             </figcaption>
           </figure>
+          {order.referenceLinks && (
+            <p className="mt-3 text-sm break-words text-muted">
+              <span className="font-semibold text-ink">References: </span>
+              {order.referenceLinks}
+            </p>
+          )}
           <ul className="mt-4 flex flex-wrap gap-1.5 text-xs font-medium">
             <Chip>{order.usage === "commercial" ? "Commercial use" : "Personal use"}</Chip>
             {order.private && (
@@ -322,24 +330,41 @@ function NextStep({
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
 }) {
   const name = `${order.client.name}'s ${order.service.toLowerCase()}`;
+  const [answering, startAnswer] = useTransition();
+
+  /** A real request is answered on the server first (the buyer hears, a declined one frees its slot). */
+  function answer(kind: "accept" | "waitlist" | "decline", patch: OrderPatch, label: string) {
+    if (!order.real) return onPatch(order, patch, label);
+    startAnswer(async () => {
+      const result = await respondToRequest(order.id, kind);
+      if (result.ok) onPatch(order, patch, label);
+      else showToast({ message: result.error });
+    });
+  }
 
   if (order.lane === "request" && !order.archived && !order.paused) {
     return (
       <div className="rounded-[18px] bg-ice p-4">
         <p className="text-sm font-semibold">Take this one on?</p>
-        <p className="mt-0.5 text-sm text-muted">Accepting sends {order.client.name} a proposal to pay. Declining lets them know kindly.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <p className="mt-0.5 text-sm text-muted">
+          {order.real
+            ? `Accepting tells ${order.client.name} you're in; quotes and checkout open soon. Declining gives the slot back.`
+            : `Accepting sends ${order.client.name} a proposal to pay. Declining lets them know kindly.`}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2" aria-busy={answering}>
           <button
             type="button"
-            onClick={() => onPatch(order, moveTo(order, "proposal", new Date()), `Sent a proposal for ${name}`)}
+            disabled={answering}
+            onClick={() => answer("accept", moveTo(order, "proposal", new Date()), order.real ? `Accepted ${name}` : `Sent a proposal for ${name}`)}
             className={buttonClasses({ size: "sm" })}
           >
-            Accept & send proposal
+            {order.real ? "Accept" : "Accept & send proposal"}
           </button>
           {!order.waitlist && (
             <button
               type="button"
-              onClick={() => onPatch(order, { waitlist: true }, `Moved ${name} to the waitlist`)}
+              disabled={answering}
+              onClick={() => answer("waitlist", { waitlist: true }, `Moved ${name} to the waitlist`)}
               className={buttonClasses({ variant: "secondary", size: "sm" })}
             >
               Waitlist
@@ -347,7 +372,8 @@ function NextStep({
           )}
           <button
             type="button"
-            onClick={() => onPatch(order, { archived: true, declined: true }, `Declined ${name}`)}
+            disabled={answering}
+            onClick={() => answer("decline", { archived: true, declined: true }, `Declined ${name}`)}
             className={buttonClasses({ variant: "ghost", size: "sm" })}
           >
             Decline
@@ -362,7 +388,9 @@ function NextStep({
       <div className="rounded-[18px] bg-ice p-4 text-sm">
         <p className="font-semibold">Waiting on {order.client.name}</p>
         <p className="mt-0.5 text-muted">
-          They have the proposal and the pay link. It moves to Up next by itself once they pay; if it expires, the slot comes back.
+          {order.real
+            ? "You accepted. Quotes and checkout open soon; until then, agree the details in Messages."
+            : "They have the proposal and the pay link. It moves to Up next by itself once they pay; if it expires, the slot comes back."}
         </p>
       </div>
     );

@@ -19,7 +19,7 @@ import { getExploreData, TAGS } from "@/lib/explore";
 import { glowOf } from "@/lib/palette";
 import { getAllProfiles, getFeed, getProfile, type FeedEntry } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
-import { getFollowing } from "@/lib/social";
+import { fetchFollowing } from "@/lib/social";
 
 // The artist's handwriting: margin notes, signatures, asides.
 const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
@@ -81,14 +81,15 @@ async function Feed({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const tab: FeedTab = params.feed === "following" ? "following" : "for-you";
   const stage = parseStage(params.stage);
   const viewer = await getViewer();
-  const [entries, viewerProfile, profiles, explore] = await Promise.all([
+  const [entries, viewerProfile, profiles, explore, follows] = await Promise.all([
     getFeed(),
     viewer ? getProfile(viewer.handle) : null,
     getAllProfiles(),
     getExploreData(),
+    viewer ? fetchFollowing(viewer.id) : [],
   ]);
 
-  const following = new Set(viewer ? [viewer.handle, ...getFollowing(viewer.handle)] : []);
+  const following = new Set(viewer ? [viewer.handle, ...follows] : []);
   const visible = entries.filter(
     (e) => (tab === "for-you" || following.has(e.author.handle)) && (!stage || e.post.kind === stage),
   );

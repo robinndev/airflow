@@ -9,7 +9,7 @@ import { isLineItem, Line, type LineItem } from "@/components/favorites/line";
 import { SwatchCard, SwatchCardSkeleton } from "@/components/favorites/swatch-card";
 import { Wall } from "@/components/favorites/wall";
 import { SiteHeader } from "@/components/site/site-header";
-import { getViewerFavorites, type FavoriteArt, type FavoritePost } from "@/lib/favorites/queries";
+import { getViewerFavorites, type FavoriteArt, type FavoriteCharacter, type FavoritePost } from "@/lib/favorites/queries";
 
 // The artist's handwriting: the hand-lettered title and the asides.
 const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
@@ -87,8 +87,11 @@ async function Moodboard() {
     return <div className={`${container} mt-6`}>{items ? <EmptyWall /> : <SignedOutWall />}</div>;
   }
 
-  const line = items.filter((item): item is LineItem => item.kind !== "post" && isLineItem(item));
-  const wall = items.filter((item): item is FavoriteArt | FavoritePost => item.kind === "post" || (item.kind === "art" && !isLineItem(item)));
+  const line = items.filter((item): item is LineItem => (item.kind === "art" || item.kind === "service") && isLineItem(item));
+  const wall = items.filter(
+    (item): item is FavoriteArt | FavoritePost | FavoriteCharacter =>
+      item.kind === "post" || item.kind === "character" || (item.kind === "art" && !isLineItem(item)),
+  );
 
   return (
     <>

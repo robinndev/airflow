@@ -8,6 +8,7 @@ import { Stamp } from "@/components/explore/stamp";
 import { buttonClasses } from "@/components/ui/button";
 import { formatUsd } from "@/lib/format";
 import type { FeedEntry, ResolvedEmbed } from "@/lib/profile/queries";
+import { categoryLabel } from "@/lib/listings/catalog";
 
 // Ticket stub: the perforation sits 11rem down, with a half-circle bite on each side.
 const STUB = "11rem";
@@ -58,7 +59,7 @@ export function CommissionTicket({ embed }: { embed: ServiceEmbed }) {
 
         <div className="p-5 pt-4">
           <p className="text-[0.625rem] font-bold tracking-[0.18em] text-muted uppercase">
-            Commission · {service.category}
+            Commission · {categoryLabel(service.category)}
           </p>
           <h3 className="mt-1 font-display text-xl leading-tight font-extrabold text-ink">
             <Link href={href} className="after:absolute after:inset-0">

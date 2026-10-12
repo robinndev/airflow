@@ -31,7 +31,9 @@ import type {
   Review,
 } from "@/lib/profile/types";
 import { serviceOptions } from "@/lib/commissions/addons";
-import { OptionsPicker, OptionsTotal } from "./addon-picker";
+import { categoryLabel } from "@/lib/listings/catalog";
+import { slotsLeft as slotsLeftOf } from "@/lib/listings/slots";
+import { OptionsPicker, OptionsTotal, PackagePicker } from "./addon-picker";
 import { CommissionRequestForm } from "./commission-request-form";
 import { CUSTOM_SERVICE_ID, OPEN_SERVICE_EVENT, openService } from "./events";
 import { ExampleCarousel } from "./example-carousel";
@@ -63,6 +65,8 @@ export function CommissionDialog(props: CommissionDialogProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   // Ticked add-ons carry from the details view into the request form.
   const [addonIds, setAddonIds] = useState<string[]>([]);
+  // The package carries into the request too; add-on percentages apply to its price.
+  const [packageId, setPackageId] = useState<string | null>(null);
   const [round, setRound] = useState(0);
 
   const open = useCallback(
@@ -73,6 +77,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
       setView(isCustom ? "request" : "details");
       setTermsAccepted(false);
       setAddonIds([]);
+      setPackageId(services.find((s) => s.id === id)?.packages?.[0]?.id ?? null);
       setRound((r) => r + 1);
       history.replaceState(null, "", `#${id}`);
       if (!dialogRef.current?.open) dialogRef.current?.showModal();
@@ -83,16 +88,27 @@ export function CommissionDialog(props: CommissionDialogProps) {
   useEffect(() => {
     const onOpen = (event: Event) => open((event as CustomEvent<string>).detail);
     window.addEventListener(OPEN_SERVICE_EVENT, onOpen);
-    // Deep link (/mira/commissions#svc_halfbody) goes through the same event.
-    const hash = decodeURIComponent(window.location.hash.slice(1));
-    if (hash) openService(hash);
     return () => window.removeEventListener(OPEN_SERVICE_EVENT, onOpen);
   }, [open]);
+
+  // Deep link (/mira/commissions#svc_halfbody), once: a request refreshes the
+  // services (slots), and reopening then would wipe the "Request sent!" view.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (linked.current) return;
+    linked.current = true;
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    if (hash) openService(hash);
+  }, []);
 
   const close = () => dialogRef.current?.close();
 
   const service = services.find((s) => s.id === activeId);
   const isCustom = activeId === CUSTOM_SERVICE_ID;
+  // Real services have their own status and slots; demo ones follow the artist's.
+  const status = service?.status ?? props.status;
+  const slotsLeft = service?.slots !== undefined ? (slotsLeftOf(service.slots) ?? Infinity) : props.slotsLeft;
+  const chosen = service?.packages?.find((p) => p.id === packageId) ?? service?.packages?.[0];
   const firstName = artist.displayName.split(" ")[0];
   const hasTerms = Boolean(props.terms?.length);
 
@@ -154,6 +170,8 @@ export function CommissionDialog(props: CommissionDialogProps) {
                   firstName={firstName}
                   addonIds={addonIds}
                   onAddons={setAddonIds}
+                  packageId={chosen?.id ?? null}
+                  onPackage={setPackageId}
                 />
               ) : (
                 <div>
@@ -170,7 +188,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
                     )}
                     <div className="min-w-0">
                       <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                        {props.status === "waitlist" ? "Join the waitlist" : "New request"}
+                        {status === "waitlist" ? "Join the waitlist" : "New request"}
                       </p>
                       <h2 className="truncate font-display text-2xl font-extrabold">
                         {service ? service.title : "Custom piece"}
@@ -182,7 +200,10 @@ export function CommissionDialog(props: CommissionDialogProps) {
                       key={round}
                       handle={artist.handle}
                       artistName={artist.displayName}
-                      status={props.status}
+                      status={status}
+                      packageId={chosen?.id}
+                      packagePrice={chosen?.priceUsd}
+                      hasTerms={hasTerms}
                       services={services.map(({ id, title, priceFromUsd }) => ({
                         id,
                         title,
@@ -204,7 +225,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
 
             {view === "details" && service && (
               <footer className="grid gap-3 border-t border-border bg-surface px-6 py-5 sm:px-8">
-                {props.status !== "closed" && hasTerms && (
+                {status !== "closed" && hasTerms && (
                   <label className="flex cursor-pointer items-center gap-3 rounded-[14px] border border-border px-4 py-3 transition-colors has-checked:border-ocean has-checked:bg-ice/60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ocean">
                     <input
                       type="checkbox"
@@ -218,7 +239,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
                   </label>
                 )}
                 <div className="flex items-center gap-3">
-                  {props.status === "closed" ? (
+                  {status === "closed" ? (
                     <p className="flex-1 text-sm text-muted">Commissions are closed right now.</p>
                   ) : (
                     <button
@@ -229,7 +250,7 @@ export function CommissionDialog(props: CommissionDialogProps) {
                     >
                       {hasTerms && !termsAccepted
                         ? "Accept terms to start request"
-                        : props.status === "waitlist"
+                        : status === "waitlist"
                           ? "Join the waitlist"
                           : "Start request"}
                     </button>
@@ -247,9 +268,9 @@ export function CommissionDialog(props: CommissionDialogProps) {
                     <MessageCircle aria-hidden className="size-5" />
                   </button>
                 </div>
-                {props.slotsLeft > 0 && props.slotsLeft <= 2 && props.status === "open" && (
+                {slotsLeft > 0 && slotsLeft <= 2 && status === "open" && (
                   <p className="text-center text-xs font-semibold text-mint-ink">
-                    Only {props.slotsLeft} {props.slotsLeft === 1 ? "slot" : "slots"} left
+                    Only {slotsLeft} {slotsLeft === 1 ? "slot" : "slots"} left
                   </p>
                 )}
               </footer>
@@ -284,14 +305,20 @@ function ServiceDetails({
   firstName,
   addonIds,
   onAddons,
+  packageId,
+  onPackage,
 }: CommissionDialogProps & {
   service: CommissionService;
   firstName: string;
   addonIds: string[];
   onAddons: (ids: string[]) => void;
+  packageId: string | null;
+  onPackage: (id: string) => void;
 }) {
   const [tab, setTab] = useState<"description" | "reviews">("description");
   const options = serviceOptions(service);
+  const chosen = service.packages?.find((p) => p.id === packageId);
+  const base = chosen?.priceUsd ?? service.priceFromUsd;
   const original = service.discountPercent
     ? Math.round(service.priceFromUsd / (1 - service.discountPercent / 100))
     : null;
@@ -309,16 +336,16 @@ function ServiceDetails({
           )}
           <span className="inline-flex items-center gap-2 text-sm text-muted">
             <span aria-hidden className="size-2 rounded-full bg-mint" />
-            {service.category}
+            {categoryLabel(service.category)}
           </span>
         </div>
         <h2 className="mt-3 font-display text-[2rem] leading-[1.1] font-extrabold tracking-tight">
           {service.title}
         </h2>
         <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <span className="text-lg text-muted">From</span>
+          <span className="text-lg text-muted">{chosen ? chosen.label : "From"}</span>
           <span className="font-display text-[1.75rem] leading-none font-extrabold text-accent-strong">
-            {formatUsd(service.priceFromUsd)}
+            {formatUsd(base)}
           </span>
           {original && <s className="text-base text-muted">{formatUsd(original)}</s>}
         </div>
@@ -328,10 +355,13 @@ function ServiceDetails({
         </p>
         {/* Licenses and add-ons right under the price, ticked like a commission sheet: included ones come ticked. */}
         <div className="mt-5 rounded-[16px] border border-border px-4 pt-3.5 pb-3">
+          {service.packages && service.packages.length > 1 && packageId && (
+            <PackagePicker packages={service.packages} selected={packageId} onChange={onPackage} className="mb-4" />
+          )}
           <OptionsPicker options={options} selected={addonIds} onChange={onAddons} />
           {addonIds.length > 0 && (
             <div className="mt-2 border-t border-dashed border-border pt-2.5">
-              <OptionsTotal base={service.priceFromUsd} options={options} selected={addonIds} />
+              <OptionsTotal base={base} options={options} selected={addonIds} />
             </div>
           )}
         </div>

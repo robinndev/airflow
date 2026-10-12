@@ -23,10 +23,11 @@ import { getAlertPrefs } from "./prefs";
  * Two ways to hear about new messages, chosen to keep Realtime connections
  * (capped per plan: 500 at once on Pro) for the people actually chatting:
  *
- * - Pulse (the default): every 15s (60s in a background tab) the browser asks
- *   Supabase `message_pulse()` over plain HTTP: unread count, and when the
- *   newest message from someone else arrived. Tiny, and it never touches our
- *   server. Only when it changes is the inbox loaded (a Server Action).
+ * - Pulse (the default): the browser asks Supabase `message_pulse()` over
+ *   plain HTTP: unread count, and when the newest message from someone else
+ *   arrived. Tiny, and it never touches our server. One tab per browser asks
+ *   and shares the answer; every 20s while you use the page, slower when you
+ *   don't (see the rhythm below). Only when it changes is the inbox loaded.
  * - Live: while the chat window is open (or minimized), a WebSocket joins the
  *   viewer's private `inbox:<id>` channel, and the open conversation's
  *   `chat:<id>` (typing, presence). It closes 30s after the window does.
@@ -70,12 +71,45 @@ export type LiveEvent =
   /** Something may have been missed (the socket came back, or a pulse brought news): reload. */
   | { type: "resync" };
 
-const PULSE_VISIBLE_MS = 15_000;
-const PULSE_HIDDEN_MS = 60_000;
+/*
+ * Pulse rhythm, sized for thousands of people online at once, most of them
+ * just browsing: one pulse per browser (its tabs share the answer), quick
+ * while you're using the page, slower when you aren't, with a little jitter
+ * so browsers don't all ask at the same second.
+ */
+/** The page is in front of you and you used it in the last 2 minutes. */
+const PULSE_ACTIVE_MS = 20_000;
+/** In front of you, untouched for 2+ minutes. */
+const PULSE_IDLE_MS = 60_000;
+/** Another tab or app is in front. */
+const PULSE_HIDDEN_MS = 90_000;
+/** In the background for 15+ minutes. */
+const PULSE_DORMANT_MS = 300_000;
 /** The chat is open but its socket is down (retrying): pulse often until it's back. */
 const PULSE_CHATTING_MS = 5_000;
+const IDLE_AFTER_MS = 2 * 60_000;
+const DORMANT_AFTER_MS = 15 * 60_000;
 /** The socket outlives the chat window a little, so closing and reopening doesn't reconnect. */
 const SOCKET_GRACE_MS = 30_000;
+
+/**
+ * When a WebSocket is open. "chat" (default): only while the chat window is
+ * open. "visible": also while the tab is in front, so letters arrive instantly
+ * everywhere, at one Realtime connection per visible tab and no pulses from
+ * it. Switch with NEXT_PUBLIC_MESSAGES_LIVE=visible once the plan's connection
+ * quota allows it (Pro with the spend cap: 500; without it, $10 per 1,000).
+ */
+const LIVE_WHEN = process.env.NEXT_PUBLIC_MESSAGES_LIVE === "visible" ? "visible" : "chat";
+
+/** `notes_*`: the same pulse carries notifications (absent on a database before that migration). */
+type Pulse = { unread: number; latest: string | null; notes_unread?: number; notes_latest?: string | null };
+
+/**
+ * What the notifications store hears from here, so the site never opens a
+ * second channel: each pulse's notification half (this tab's or a sibling's),
+ * and notices that arrive live on the open chat socket.
+ */
+export type NotificationSignal = { type: "pulse"; unread: number; latest: string | null } | { type: "live"; at: string };
 
 let state: State = {
   viewer: undefined,
@@ -90,6 +124,7 @@ let state: State = {
 };
 const listeners = new Set<() => void>();
 const live = new Set<(event: LiveEvent) => void>();
+const noteListeners = new Set<(signal: NotificationSignal) => void>();
 let channel: RealtimeChannel | null = null;
 let pulseTimer: ReturnType<typeof setTimeout> | undefined;
 let graceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -97,6 +132,11 @@ let inboxLoad: Promise<InboxEntry[] | null> | null = null;
 /** Newest message from someone else that this tab already knows of (pulse baseline). */
 let newestSeen: string | null | undefined;
 let watching = false;
+/** Tabs of this browser share their pulses, so only one of them asks. */
+let tabs: BroadcastChannel | null = null;
+let heardAt = 0;
+let lastActive = Date.now();
+let hiddenSince: number | null = null;
 /** The conversation on screen right now (open, not minimized, tab visible): its messages need no announcing. */
 let onScreen: string | null = null;
 
@@ -198,44 +238,75 @@ function announceArrival(entry: InboxEntry) {
 
 // Pulse -------------------------------------------------------------------------
 
+function pulseEvery() {
+  if (state.open) return PULSE_CHATTING_MS;
+  if (!isVisible()) {
+    return hiddenSince && Date.now() - hiddenSince > DORMANT_AFTER_MS ? PULSE_DORMANT_MS : PULSE_HIDDEN_MS;
+  }
+  return Date.now() - lastActive < IDLE_AFTER_MS ? PULSE_ACTIVE_MS : PULSE_IDLE_MS;
+}
+
 function schedulePulse(delay?: number) {
   clearTimeout(pulseTimer);
   if (!state.viewer || state.connection === "live") return;
-  const wait = delay ?? (state.open ? PULSE_CHATTING_MS : isVisible() ? PULSE_VISIBLE_MS : PULSE_HIDDEN_MS);
+  // ±15%, so thousands of browsers don't pulse in step.
+  const wait = delay ?? pulseEvery() * (0.85 + Math.random() * 0.3);
   pulseTimer = setTimeout(() => void pulse(), wait);
 }
 
-/** Asks Supabase whether anything changed; loads the inbox and announces arrivals only if so. */
+/** Asks Supabase whether anything changed (unless another tab just did) and shares the answer with the other tabs. */
 async function pulse() {
   const viewer = state.viewer;
   if (!viewer) return;
   try {
+    if (Date.now() - heardAt < pulseEvery() * 0.8) return;
     const { data: row } = await supabaseBrowser().rpc("message_pulse").single();
-    const data = row as { unread: number; latest: string | null } | null;
+    const data = row as Pulse | null;
     if (!data || state.viewer?.id !== viewer.id) return;
-    const since = newestSeen;
-    newestSeen = later(newestSeen, data.latest);
-    // First pulse: just the baseline (and the badge).
-    if (since === undefined) {
-      if (!state.inbox) update({ unreadHint: data.unread });
-      return;
-    }
-    if (data.latest && (!since || data.latest > since)) {
-      const inbox = await reloadInbox();
-      for (const entry of inbox ?? []) {
-        if (entry.unread && !entry.last.fromMe && (!since || entry.last.at > since)) announceArrival(entry);
-      }
-      broadcast({ type: "resync" });
-    } else if (state.inbox ? data.unread !== unreadIn(state.inbox) : data.unread !== state.unreadHint) {
-      // Read (or archived) on another device.
-      if (state.inbox) void reloadInbox();
-      else update({ unreadHint: data.unread });
-    }
+    tabs?.postMessage({ type: "pulse", viewer: viewer.id, data });
+    await takePulse(data);
   } catch {
     // Offline for a moment: the next pulse tries again.
   } finally {
     schedulePulse();
   }
+}
+
+/** What a pulse says: load the inbox and announce arrivals only if something changed. */
+async function takePulse(data: Pulse) {
+  if (typeof data.notes_unread === "number") {
+    signalNotes({ type: "pulse", unread: data.notes_unread, latest: data.notes_latest ?? null });
+  }
+  const since = newestSeen;
+  newestSeen = later(newestSeen, data.latest);
+  // First pulse: just the baseline (and the badge).
+  if (since === undefined) {
+    if (!state.inbox) update({ unreadHint: data.unread });
+    return;
+  }
+  if (data.latest && (!since || data.latest > since)) {
+    const inbox = await reloadInbox();
+    for (const entry of inbox ?? []) {
+      if (entry.unread && !entry.last.fromMe && (!since || entry.last.at > since)) announceArrival(entry);
+    }
+    broadcast({ type: "resync" });
+  } else if (state.inbox ? data.unread !== unreadIn(state.inbox) : data.unread !== state.unreadHint) {
+    // Read (or archived) on another device.
+    if (state.inbox) void reloadInbox();
+    else update({ unreadHint: data.unread });
+  }
+}
+
+function listenToTabs() {
+  if (tabs || typeof BroadcastChannel === "undefined") return;
+  tabs = new BroadcastChannel("artiflow-messages");
+  tabs.onmessage = (event: MessageEvent<{ type?: string; viewer?: string; data?: Pulse }>) => {
+    const note = event.data;
+    if (note?.type !== "pulse" || !note.data || note.viewer !== state.viewer?.id) return;
+    heardAt = Date.now();
+    void takePulse(note.data);
+    schedulePulse();
+  };
 }
 
 // Live socket ---------------------------------------------------------------------
@@ -285,6 +356,9 @@ async function connect(viewer: ChatViewer) {
     .channel(inboxTopic(viewer.id), { config: { private: true } })
     .on("broadcast", { event: "message" }, ({ payload }: { payload: MessageBroadcast }) => onMessage(payload))
     .on("broadcast", { event: "read" }, ({ payload }: { payload: ReadBroadcast }) => onRead(payload))
+    .on("broadcast", { event: "notification" }, ({ payload }: { payload: { at: string } }) =>
+      signalNotes({ type: "live", at: payload.at }),
+    )
     .subscribe((status: string) => {
       if (state.viewer?.id !== viewer.id || !channel) return;
       if (status !== "SUBSCRIBED") {
@@ -317,10 +391,10 @@ function disconnect() {
   if (state.connection !== "pulse") update({ connection: "pulse" });
 }
 
-/** A socket while the chat window is open (or minimized); back to pulses a little after it closes. */
+/** A socket while the chat window is open (or minimized; or the tab is visible, see LIVE_WHEN); back to pulses a little after. */
 function syncSocket() {
   const viewer = state.viewer;
-  if (viewer && state.open) {
+  if (viewer && (state.open || (LIVE_WHEN === "visible" && isVisible()))) {
     clearTimeout(graceTimer);
     graceTimer = undefined;
     if (!channel && state.connection !== "connecting") {
@@ -339,16 +413,27 @@ function syncSocket() {
   }
 }
 
-/** Coming back to the tab, or back online: check right away. */
+/** Coming back to the tab or online: check right away. Using the page again after a while: check soon. */
 function watchPage() {
   if (watching || typeof window === "undefined") return;
   watching = true;
   const check = () => {
-    if (!state.viewer || state.connection === "live") return;
-    schedulePulse(isVisible() ? 0 : undefined);
+    hiddenSince = isVisible() ? null : (hiddenSince ?? Date.now());
+    if (!state.viewer) return;
+    syncSocket();
+    if (state.connection !== "live") schedulePulse(isVisible() ? 0 : undefined);
+  };
+  const touched = () => {
+    const now = Date.now();
+    const wasIdle = now - lastActive > IDLE_AFTER_MS;
+    lastActive = now;
+    if (wasIdle && state.viewer && state.connection !== "live") schedulePulse(800);
   };
   document.addEventListener("visibilitychange", check);
   window.addEventListener("online", check);
+  for (const type of ["pointerdown", "keydown", "wheel", "touchstart"]) {
+    window.addEventListener(type, touched, { passive: true, capture: true });
+  }
 }
 
 /** Called by the header with the signed-in viewer: a new viewer starts from their own inbox. */
@@ -370,11 +455,10 @@ export function syncViewer(viewer: ChatViewer | null) {
   if (!viewer) return;
   armChime();
   watchPage();
-  schedulePulse(0);
-  if (state.open) {
-    ensureInbox();
-    syncSocket();
-  }
+  listenToTabs();
+  schedulePulse(Math.random() * 1500);
+  if (state.open) ensureInbox();
+  syncSocket();
 }
 
 // Inbox edits from the window ------------------------------------------------------
@@ -400,6 +484,18 @@ export function setOnScreen(conversationId: string | null) {
 
 export function dismissLetter(key: string) {
   if (state.letter?.key === key) update({ letter: null });
+}
+
+function signalNotes(signal: NotificationSignal) {
+  for (const listener of noteListeners) listener(signal);
+}
+
+/** For the notifications store: pulses and live notices (see NotificationSignal). */
+export function onNotificationSignal(listener: (signal: NotificationSignal) => void) {
+  noteListeners.add(listener);
+  return () => {
+    noteListeners.delete(listener);
+  };
 }
 
 export function onLive(listener: (event: LiveEvent) => void) {

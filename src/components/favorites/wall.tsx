@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { HandNote, Tape } from "@/components/explore/doodles";
 import { STAGES } from "@/components/feed/stages";
-import type { FavoriteArt, FavoritePost } from "@/lib/favorites/queries";
+import type { FavoriteArt, FavoriteCharacter, FavoritePost } from "@/lib/favorites/queries";
 import { glowOf } from "@/lib/palette";
 import type { ImageAsset } from "@/lib/profile/types";
 import { Pinned, WallView, type PinEntry } from "./pinned";
@@ -11,11 +11,12 @@ import { Pinned, WallView, type PinEntry } from "./pinned";
 /*
  * The wall: saved art and posts pinned up in justified rows, so every piece
  * keeps its own shape. Art hangs as a print with a strip of tape dyed in its
- * own colors, posts as polaroids, text posts as sticky notes. The rows hold
- * because every tile is its art's width at the row height, plus the paper.
+ * own colors, posts as polaroids, text posts as sticky notes, characters as
+ * a convention badge in their colors. The rows hold because every tile is its
+ * art's width at the row height, plus the paper.
  */
 
-type WallItem = FavoriteArt | FavoritePost;
+type WallItem = FavoriteArt | FavoritePost | FavoriteCharacter;
 
 /** A stable little tilt per piece, so the wall hangs the same way on every visit. */
 export function tiltOf(id: string, max = 1.6) {
@@ -32,7 +33,7 @@ const ratioOf = ({ width, height }: Pick<ImageAsset, "width" | "height">) =>
 const NOTE_RATIO = 0.86;
 
 export function wallEntry(item: WallItem): PinEntry {
-  return { key: item.key, group: item.kind === "art" ? "art" : "post", moods: item.moods };
+  return { key: item.key, group: item.kind === "post" ? "post" : "art", moods: item.moods };
 }
 
 export function Wall({ items }: { items: WallItem[] }) {
@@ -48,7 +49,7 @@ export function Wall({ items }: { items: WallItem[] }) {
 }
 
 function WallTile({ item, index }: { item: WallItem; index: number }) {
-  const image = item.kind === "art" ? item.image : item.media[0];
+  const image = item.kind === "art" || item.kind === "character" ? item.image : item.media[0];
   const ratio = image ? ratioOf(image) : NOTE_RATIO;
   const tilt = tiltOf(item.id);
   const style = {
@@ -67,6 +68,8 @@ function WallTile({ item, index }: { item: WallItem; index: number }) {
     >
       {item.kind === "art" ? (
         <Print item={item} ratio={ratio} tilt={tilt} />
+      ) : item.kind === "character" ? (
+        <Badge item={item} ratio={ratio} tilt={tilt} />
       ) : image ? (
         <Polaroid item={item} image={image} ratio={ratio} tilt={tilt} />
       ) : (
@@ -110,6 +113,39 @@ function Print({ item, ratio, tilt }: { item: FavoriteArt; ratio: number; tilt: 
           {item.commissionFromUsd !== undefined && (
             <span className="max-sm:hidden"> · takes commissions</span>
           )}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/** A character: a convention badge on a clip, in their colors, their name big. */
+function Badge({ item, ratio, tilt }: { item: FavoriteCharacter; ratio: number; tilt: number }) {
+  const [main] = item.palette;
+  return (
+    <Link
+      href={item.href}
+      className={`${paper} bg-paper`}
+      style={{ "--tilt": `${tilt}deg`, backgroundColor: main && `color-mix(in oklab, ${main} 16%, var(--paper))` } as CSSProperties}
+    >
+      <span aria-hidden className="absolute -top-2.5 left-1/2 h-4 w-9 -translate-x-1/2 rounded-[5px] bg-muted/80 shadow-soft" />
+      <span aria-hidden className="absolute top-1.5 left-1/2 h-1.5 w-8 -translate-x-1/2 rounded-full bg-canvas/80 ring-1 ring-on-paper/10" />
+      {item.image ? (
+        <Art image={item.image} ratio={ratio} sizes={SIZES} />
+      ) : (
+        <span className="grid place-items-center font-hand text-xl text-paper-muted" style={{ aspectRatio: ratio }}>
+          no art yet
+        </span>
+      )}
+      <span aria-hidden className="mt-1 flex h-1.5 overflow-hidden rounded-full">
+        {item.palette.slice(0, 5).map((color) => (
+          <span key={color} className="flex-1" style={{ backgroundColor: color }} />
+        ))}
+      </span>
+      <span className="flex h-[var(--cap)] min-w-0 flex-col justify-center px-0.5 leading-tight">
+        <span className="truncate font-display text-[0.8125rem] font-extrabold text-on-paper sm:text-[0.9375rem]">{item.name}</span>
+        <span className="truncate text-[0.625rem] font-semibold text-paper-muted sm:text-[0.6875rem]">
+          {item.species ? `${item.species} · ` : ""}@{item.artist.handle}&apos;s OC
         </span>
       </span>
     </Link>

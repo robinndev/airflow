@@ -11,6 +11,7 @@ import { glowOf } from "@/lib/palette";
 import { LineScroller } from "./line-scroller";
 import { Pinned } from "./pinned";
 import { tiltOf } from "./wall";
+import { categoryLabel } from "@/lib/listings/catalog";
 
 /*
  * The line: what you're saving up for (commission services and adoptables),
@@ -138,7 +139,7 @@ function Ticket({ item }: { item: FavoriteService }) {
 
         <span className="block p-4 pt-3">
           <span className="block text-[0.5625rem] font-bold tracking-[0.18em] text-paper-muted uppercase">
-            Commission · {service.category}
+            Commission · {categoryLabel(service.category)}
           </span>
           <span className="mt-1 line-clamp-2 font-display text-[1.0625rem] leading-tight font-extrabold">{service.title}</span>
           <span className="mt-1.5 flex items-center gap-1.5 text-xs text-paper-muted">

@@ -50,6 +50,8 @@ export type MyRequest = {
   delivery?: ImageAsset;
   /** Made from a request you really sent on Artiflow (not the sample). */
   real?: boolean;
+  /** Still waiting on the artist, so the buyer can take it back. */
+  cancellable?: boolean;
 };
 
 /** The stops on the route, each stamped with its date once it's reached. */

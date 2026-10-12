@@ -3,6 +3,7 @@
 import { Info } from "lucide-react";
 import { extrasUsd, isOptional, pickOptions, type Option } from "@/lib/commissions/addons";
 import { formatUsd, formatUsdExact } from "@/lib/format";
+import type { ServicePackage } from "@/lib/profile/types";
 
 /**
  * Licenses and add-ons, ticked the way artists mark them on a commission
@@ -104,6 +105,54 @@ function Row({ option, on, onToggle }: { option: Option; on: boolean; onToggle: 
         </span>
       </label>
     </li>
+  );
+}
+
+/**
+ * The packages of a service (sketch → lineart → full color) as a price list
+ * you circle one line of. A radio group named `packageId` underneath.
+ */
+export function PackagePicker({
+  packages,
+  selected,
+  onChange,
+  className = "",
+}: {
+  packages: ServicePackage[];
+  selected: string;
+  onChange: (id: string) => void;
+  className?: string;
+}) {
+  return (
+    <fieldset className={className}>
+      <legend className="text-xs font-bold tracking-wider text-muted uppercase">Package</legend>
+      <ul className="mt-2 grid gap-0.5">
+        {packages.map((p) => {
+          const on = p.id === selected;
+          return (
+            <li key={p.id}>
+              <label
+                data-package={p.id}
+                className={`-mx-2 flex cursor-pointer items-start gap-3 rounded-[12px] px-2 py-1.5 transition-colors hover:bg-ice/60 has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-ocean ${on ? "bg-ice/50" : ""}`}
+              >
+                <input type="radio" name="packageId" value={p.id} checked={on} onChange={() => onChange(p.id)} className="sr-only" />
+                <HandTick state={on ? "on" : "off"} />
+                <span className="min-w-0 flex-1 pt-0.5">
+                  <span className="flex items-baseline gap-2">
+                    <span className="shrink-0 text-[0.9375rem] font-semibold text-ink">{p.label}</span>
+                    <span aria-hidden className="mb-1 min-w-4 flex-1 border-b-2 border-dotted border-border" />
+                    <span className={`shrink-0 font-display text-base font-extrabold tabular-nums ${on ? "text-ink" : "text-muted"}`}>
+                      {formatUsdExact(p.priceUsd)}
+                    </span>
+                  </span>
+                  {p.includes.length > 0 && <span className="block text-xs text-muted">{p.includes.join(" · ")}</span>}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </fieldset>
   );
 }
 

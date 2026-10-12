@@ -4,9 +4,12 @@
  * See supabase/migrations/*_favorites.sql for the table.
  */
 
-export const FAVORITE_KINDS = ["post", "art", "service"] as const;
+export const FAVORITE_KINDS = ["post", "art", "service", "character"] as const;
 
-/** A post (bookmark), a piece of art (heart on galleries and Explore's wall) or a commission service (bookmark). */
+/**
+ * A post (bookmark), a piece of art (heart on galleries and Explore's wall), a
+ * commission service (bookmark) or a character (their page's Save button).
+ */
 export type FavoriteKind = (typeof FAVORITE_KINDS)[number];
 
 /** `kind:id`, e.g. `art:pool-12088040`. */
@@ -17,5 +20,5 @@ export const favoriteKey = (kind: FavoriteKind, id: string): FavoriteKey => `${k
 export const isFavoriteKind = (value: unknown): value is FavoriteKind =>
   FAVORITE_KINDS.includes(value as FavoriteKind);
 
-/** Demo ids (`pst_3`, `art_4`, `pool-12088040`, `svc_full`), as the table's `demo_id` check allows. */
+/** Demo ids (`pst_3`, `art_4`, `kin_nap`, `pool-12088040`, `svc_full`, `chr_kinako`), as the table's `demo_id` check allows. */
 export const DEMO_ID = /^[a-z]+[_-][a-z0-9_-]{1,60}$/;

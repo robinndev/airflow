@@ -51,6 +51,10 @@ export type QueueOrder = {
   deliveredAt?: string;
   /** Private to the artist. */
   note?: string;
+  /** Links the buyer pasted (real requests take links, not uploads yet). */
+  referenceLinks?: string;
+  /** A request really sent on Artiflow: it moves only when the order is processed (no dragging). */
+  real?: boolean;
 };
 
 export const LANES: Lane[] = ["request", "proposal", "queued", "wip", "delivered"];

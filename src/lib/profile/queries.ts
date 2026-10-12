@@ -1,4 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { fetchAdoptablesByHandle, fetchServicesByHandle } from "@/lib/listings/server";
+import { summarizeServices } from "@/lib/listings/slots";
+import { withFollowCounts, withLikeCounts } from "@/lib/social";
 import {
   fetchAccount,
   fetchHandleForUser,
@@ -9,6 +12,7 @@ import {
 import { fetchConversations, isRealPostId } from "./conversation";
 import { db } from "./mock-db";
 import type {
+  Adoptable,
   ArtistProfile,
   Artwork,
   CommissionService,
@@ -22,6 +26,9 @@ export const userTag = (userId: string) => `user:${userId}`;
 export const postsTag = (handle: string) => `posts:${handle}`;
 export const artworksTag = (handle: string) => `artworks:${handle}`;
 export const servicesTag = (handle: string) => `services:${handle}`;
+export const adoptablesTag = (handle: string) => `adoptables:${handle}`;
+/** Everything discovery lists (search, Explore, trending): any listing change invalidates it. */
+export const LISTINGS_TAG = "listings";
 export const FEED_TAG = "feed";
 
 export type ResolvedEmbed =
@@ -47,13 +54,34 @@ export function normalizeHandle(handle: string) {
   return decodeURIComponent(handle).replace(/^@/, "").toLowerCase();
 }
 
-/** Demo artists first (mock-db), then real accounts. */
+/**
+ * Demo artists first (mock-db), then real accounts. Follower counts are part
+ * of the profile: following someone invalidates both profiles' tags.
+ */
 export async function getProfile(handle: string): Promise<ArtistProfile | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(profileTag(handle));
+  cacheTag(profileTag(handle), servicesTag(handle), adoptablesTag(handle));
 
-  return db.profiles.find((p) => p.handle === handle) ?? (await fetchAccount(handle));
+  const demo = db.profiles.find((p) => p.handle === handle);
+  const profile = demo ?? (await withListings(await fetchAccount(handle)));
+  if (!profile) return null;
+  const adopts = demo ? db.adoptables.filter((a) => a.ownerHandle === handle) : await fetchAdoptablesByHandle(handle);
+  return (await withFollowCounts([{ ...profile, adopts: adoptSummary(adopts) }]))[0];
+}
+
+/** A real account's commission card comes from its services: most open status, slots, cheapest price. */
+async function withListings(profile: ArtistProfile | null): Promise<ArtistProfile | null> {
+  if (!profile) return null;
+  const services = await fetchServicesByHandle(profile.handle);
+  if (services.length === 0) return profile;
+  return { ...profile, commissions: { ...profile.commissions, ...summarizeServices(services) } };
+}
+
+function adoptSummary(adopts: Adoptable[]): ArtistProfile["adopts"] {
+  if (adopts.length === 0) return undefined;
+  const available = adopts.filter((a) => a.status !== "sold");
+  return { total: adopts.length, available: available.length, preview: (available.length ? available : adopts).slice(0, 3).map((a) => a.images[0]) };
 }
 
 /** The handle of a signed-in account (handles never change). */
@@ -92,9 +120,9 @@ const demoAuthor = (handle: string): PostAuthor | undefined => {
 
 /**
  * Fills in what doesn't live on the post itself: the original a repost pins
- * (fetched when it isn't in `known`), comment and repost counts, and the
- * newest comment. Call it inside a cached read; comment and repost actions
- * invalidate the feed and the authors' post tags.
+ * (fetched when it isn't in `known`), like, comment and repost counts, and
+ * the newest comment. Call it inside a cached read; like, comment and repost
+ * actions invalidate the feed and the authors' post tags.
  */
 async function hydratePosts(posts: Post[], known: Post[] = posts, authors = new Map<string, PostAuthor>()): Promise<Post[]> {
   const byId = new Map([...db.posts, ...known].map((p) => [p.id, p]));
@@ -103,8 +131,8 @@ async function hydratePosts(posts: Post[], known: Post[] = posts, authors = new 
   for (const p of extra.posts) byId.set(p.id, p);
   for (const a of extra.authors) authors.set(a.handle, toPostAuthorFromProfile(a));
 
-  const conversations = await fetchConversations(posts);
-  return posts.map((post) => {
+  const [conversations, liked] = await Promise.all([fetchConversations(posts), withLikeCounts(posts)]);
+  return liked.map((post) => {
     const original = post.quotePostId ? byId.get(post.quotePostId) : undefined;
     const originalAuthor = original && (demoAuthor(original.authorHandle) ?? authors.get(original.authorHandle));
     const talk = conversations.get(post.id);
@@ -133,15 +161,33 @@ export async function getArtworks(handle: string): Promise<Artwork[]> {
     .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Cheapest first. */
+/** Demo artists: cheapest first. Real accounts: in the artist's order, open before closed. */
 export async function getServices(handle: string): Promise<CommissionService[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(servicesTag(handle));
 
+  if (!db.profiles.some((p) => p.handle === handle)) {
+    const services = await fetchServicesByHandle(handle);
+    // Closed services stay on the profile, greyed out, at the end.
+    return services.toSorted((a, b) => Number(a.status === "closed") - Number(b.status === "closed"));
+  }
   return db.services
     .filter((s) => s.ownerHandle === handle)
     .toSorted((a, b) => a.priceFromUsd - b.priceFromUsd);
+}
+
+/** Ready-made characters for sale: available first, then on hold, then adopted; in the artist's order. */
+export async function getAdoptables(handle: string): Promise<Adoptable[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(adoptablesTag(handle));
+
+  const order = { available: 0, reserved: 1, sold: 2 } as const;
+  const adopts = db.profiles.some((p) => p.handle === handle)
+    ? db.adoptables.filter((a) => a.ownerHandle === handle)
+    : await fetchAdoptablesByHandle(handle);
+  return adopts.toSorted((a, b) => order[a.status] - order[b.status]);
 }
 
 /** Newest first. */
@@ -216,7 +262,8 @@ export async function getFeed(): Promise<FeedEntry[]> {
 export async function getAllProfiles(): Promise<ArtistProfile[]> {
   "use cache";
   cacheLife("hours");
-  return db.profiles;
+  cacheTag(...db.profiles.map((p) => profileTag(p.handle)));
+  return withFollowCounts(db.profiles);
 }
 
 /** Profiles prerendered at build time; everything else gets the App Shell. */

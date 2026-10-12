@@ -10,6 +10,7 @@ import { daysUntil, relativeDay, STEP_LABEL } from "@/lib/commissions/queue";
 import type { MyRequest } from "@/lib/commissions/requests";
 import { formatShortDate, formatUsd, formatUsdExact } from "@/lib/format";
 import { Postmark, PostageStamp, type PostmarkTone } from "./postage";
+import { CancelRequestButton } from "./cancel-request";
 import { RouteLine } from "./route-line";
 
 // Airmail edging, in the theme's own two colors.
@@ -185,17 +186,25 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
       );
     case "sent":
       return (
-        <p>
-          <span className="font-semibold">Waiting for {first} to reply.</span>{" "}
-          <span className="text-paper-muted">Asked {relativeDay(daysUntil(request.sentAt, today))}. Nothing to pay until you get a quote.</span>
-        </p>
+        <div className="grid gap-2">
+          <p>
+            <span className="font-semibold">{request.artistNote ? `${first} accepted!` : `Waiting for ${first} to reply.`}</span>{" "}
+            <span className="text-paper-muted">
+              {request.artistNote ?? `Asked ${relativeDay(daysUntil(request.sentAt, today))}. Nothing to pay until you get a quote.`}
+            </span>
+          </p>
+          {request.cancellable && <CancelRequestButton id={request.id} artist={first} />}
+        </div>
       );
     case "waitlisted":
       return (
-        <p>
-          <span className="font-semibold">On {first}&apos;s waitlist.</span>{" "}
-          <span className="text-paper-muted">No date yet and nothing to pay; you can leave any time.</span>
-        </p>
+        <div className="grid gap-2">
+          <p>
+            <span className="font-semibold">On {first}&apos;s waitlist.</span>{" "}
+            <span className="text-paper-muted">No date yet and nothing to pay; you can leave any time.</span>
+          </p>
+          {request.cancellable && <CancelRequestButton id={request.id} artist={first} />}
+        </div>
       );
     case "delivered":
       return (

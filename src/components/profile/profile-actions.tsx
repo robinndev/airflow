@@ -6,6 +6,7 @@ import { fetchPlanForUser } from "@/lib/profile/accounts";
 import { customizationFor } from "@/lib/customization/model";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer, isPreviewingAsVisitor } from "@/lib/session";
+import { isFollowing } from "@/lib/social";
 import { EditProfileButton } from "./edit-profile-dialog";
 import { FollowButton } from "./follow-button";
 import { ImagePickerButton } from "./image-picker-button";
@@ -54,9 +55,12 @@ export async function ProfileActions({ handle }: { handle: string }) {
     );
   }
 
+  const profile = viewer && (await getProfile(handle));
+  const following = Boolean(profile && (await isFollowing(viewer.id, profile)));
+
   return (
     <>
-      <FollowButton handle={handle} />
+      <FollowButton handle={handle} initial={following} />
       <MessageButton handle={handle} />
       <Link
         href={`/${handle}/commissions`}

@@ -4,15 +4,12 @@ import { Suspense } from "react";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
 
-// Placeholder for discovery (blueprint §7). Static route, so it wins over /[handle].
+// Placeholders for what's still to come (blueprint §7). Search, trending,
+// open commissions, adoptables and recent have their own routes, which win
+// over this one.
 const SECTIONS: Record<string, { title: string; description: string }> = {
-  popular: { title: "Popular characters", description: "What the community is loving this week." },
-  recent: { title: "Recent characters", description: "Freshly uploaded, newest first." },
-  search: { title: "Character search", description: "Filter by tags, species, traits and price." },
   literatures: { title: "Literatures", description: "Stories, lore and worldbuilding docs." },
   worlds: { title: "Worlds", description: "Shared universes and the characters who live there." },
-  commissions: { title: "Open commissions", description: "Artists taking requests right now." },
-  adoptables: { title: "Adoptables", description: "Original characters looking for a new home." },
 };
 
 export function generateStaticParams() {
@@ -43,8 +40,8 @@ async function ExploreSection({ params }: Pick<PageProps<"/explore/[section]">, 
         {section.title}
       </h1>
       <p className="mt-2 text-muted">{section.description}</p>
-      <Link href="/mira" className={buttonClasses({ variant: "secondary", className: "mt-8" })}>
-        Back to a profile
+      <Link href="/explore/search" className={buttonClasses({ variant: "secondary", className: "mt-8" })}>
+        Search what's open
       </Link>
     </main>
   );

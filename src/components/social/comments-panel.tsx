@@ -8,7 +8,7 @@ import { HandNote } from "@/components/explore/doodles";
 import { Avatar } from "@/components/ui/avatar";
 import { formatShortDate } from "@/lib/format";
 import type { CommentThread, PostComment } from "@/lib/profile/types";
-import { OPEN_COMMENTS_EVENT, type CommentsTarget } from "./events";
+import { mountCommentsPanel, OPEN_COMMENTS_EVENT, type CommentsTarget } from "./events";
 
 const MAX_LENGTH = 1000;
 
@@ -53,7 +53,13 @@ export function CommentsPanel() {
       else setLoadError(true);
     }
     window.addEventListener(OPEN_COMMENTS_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_COMMENTS_EVENT, onOpen);
+    // Arrived from a notification about a comment: open its thread.
+    const { pending, unmount } = mountCommentsPanel();
+    if (pending) void onOpen(new CustomEvent(OPEN_COMMENTS_EVENT, { detail: pending }));
+    return () => {
+      window.removeEventListener(OPEN_COMMENTS_EVENT, onOpen);
+      unmount();
+    };
   }, []);
 
   function startReply(thread: CommentThread, to: PostComment) {

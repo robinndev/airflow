@@ -1,5 +1,6 @@
 import type { Board } from "@/lib/customization/about";
 import type { Customization } from "@/lib/customization/model";
+import type { AdoptStatus, ServiceCategory, StyleTag } from "@/lib/listings/catalog";
 import type { DrawTag } from "./draws";
 
 export type Plan = "free" | "pro";
@@ -101,6 +102,8 @@ export type ArtistProfile = {
   /** Highlighted "open to work" status, shown next to the name when set. */
   availability?: { note: string };
   commissions: CommissionSummary;
+  /** Ready-made characters for sale (filled in by `getProfile`); absent = none listed. */
+  adopts?: { total: number; available: number; preview: ImageAsset[] };
   gallery: {
     total: number;
     preview: ImageAsset[];
@@ -146,21 +149,70 @@ export type ServiceAddon = {
   hint?: string;
 };
 
+/** A step of the same piece ("Sketch", "Lineart", "Full color"), with its price and what it adds. */
+export type ServicePackage = {
+  id: string;
+  label: string;
+  priceUsd: number;
+  includes: string[];
+};
+
+/**
+ * Made to order: the buyer requests, the artist quotes, then draws. Demo
+ * artists' services live in mock-db.ts; real ones in Supabase (`services`,
+ * src/lib/listings/server.ts).
+ */
 export type CommissionService = {
   id: string;
   ownerHandle: string;
-  category: string;
+  category: ServiceCategory;
+  /** How it looks (up to four); search filters by it. */
+  styles?: StyleTag[];
   title: string;
   usage: UsageRights;
   discountPercent?: number;
   description: string;
+  /** The cheapest package, or the one price when there are no packages. */
   priceFromUsd: number;
   turnaround: string;
+  /** The same turnaround in days, so discovery can filter by it. */
+  turnaroundDays: { min: number; max: number };
+  /** What every package includes. */
   includes: string[];
   examples: ImageAsset[];
   popular?: boolean;
   /** Optional extras the buyer can add. Absent or empty: the service has none. */
   addons?: ServiceAddon[];
+  /** Sketch → lineart → full color, cheapest first. Absent: one price. */
+  packages?: ServicePackage[];
+  /** The service's own status. Absent: the artist's (demo artists). */
+  status?: CommissionStatus;
+  /** Its own slots; null = no limit. Absent: the artist's (demo artists). */
+  slots?: { total: number; taken: number } | null;
+  /** What it switches to when the last slot goes. */
+  whenFull?: "waitlist" | "closed";
+  /** Closed by "Pause all" (it reopens as it was on resume). */
+  paused?: boolean;
+  createdAt?: string;
+};
+
+/**
+ * Ready-made: a character that's already drawn, sold once at a fixed price.
+ * Whoever pays first owns it (no request, no quote).
+ */
+export type Adoptable = {
+  id: string;
+  ownerHandle: string;
+  name: string;
+  species: string;
+  description: string;
+  /** The first is the cover. */
+  images: ImageAsset[];
+  priceUsd: number;
+  includes: string[];
+  status: AdoptStatus;
+  createdAt: string;
+  soldAt?: string;
 };
 
 export type Review = {
@@ -188,6 +240,8 @@ export type CommissionRequest = {
   budget?: CommissionBudget;
   deadline?: string;
   references?: string;
+  /** The package they picked, priced when they asked. */
+  package?: { id: string; label: string; priceUsd: number };
   /** What the buyer ticked on top (licenses and add-ons), priced in USD when they asked; later price changes don't touch it. */
   addons?: { id: string; label: string; priceUsd: number }[];
   acceptedTerms: true;

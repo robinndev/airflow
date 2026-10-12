@@ -52,6 +52,15 @@ export function syncViewer(viewer: string | null) {
     .catch(() => {});
 }
 
+/** Who's signed in (their account id), as the header said: undefined until it streams in, null for visitors. */
+export function useViewerId() {
+  return useSyncExternalStore(
+    subscribe,
+    () => state.viewer,
+    () => undefined,
+  );
+}
+
 export type SaveTarget = { kind: FavoriteKind; id: string; title?: string };
 
 /** Saved state of one thing, and a toggle that sends visitors to sign in. */

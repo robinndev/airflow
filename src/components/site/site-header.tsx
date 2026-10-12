@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { FavoritesSession } from "@/components/favorites/favorites-session";
 import { MessagesMenu, MessagesSession } from "@/components/messages/messages-menu";
-import { getNotifications } from "@/lib/notifications";
+import { SocialSession } from "@/components/social/social-session";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
 import { AccountMenu } from "./account-menu";
@@ -11,6 +11,7 @@ import { CopyLinkButton } from "./copy-link-button";
 import { ExploreMenu } from "./explore-menu";
 import { HeaderShell } from "./header-shell";
 import { NotificationsMenu } from "./notifications-menu";
+import { sinceMonth } from "@/components/notifications/time";
 import { ThemeMenu } from "./theme-menu";
 import { Logo } from "./logo";
 
@@ -88,6 +89,7 @@ async function ViewerNav() {
     return (
       <>
         <FavoritesSession viewer={null} />
+        <SocialSession viewer={null} />
         <MessagesSession viewer={null} />
         <Link
           href="/sign-in"
@@ -109,12 +111,16 @@ async function ViewerNav() {
   return (
     <>
       <FavoritesSession viewer={viewer.id} />
+      <SocialSession viewer={viewer.id} />
       <MessagesSession viewer={viewer} />
       <CircleButton label="Cart" className="hidden sm:grid">
         <ShoppingBag aria-hidden />
       </CircleButton>
       <MessagesMenu />
-      <NotificationsMenu items={await getNotifications(viewer.handle)} />
+      <NotificationsMenu
+        viewer={viewer.id}
+        owner={{ name: profile.displayName, handle: profile.handle, since: sinceMonth(profile.joinedAt) }}
+      />
       <AccountMenu
         viewer={{
           handle: profile.handle,

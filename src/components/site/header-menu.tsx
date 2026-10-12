@@ -9,6 +9,8 @@ type HeaderMenuProps = {
   triggerClassName: string;
   /** Width/extra classes for the panel on sm+ screens. */
   panelClassName?: string;
+  /** Told whenever the menu opens or closes (e.g. to load or mark things read). */
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode | ((close: () => void) => ReactNode);
 };
 
@@ -23,6 +25,7 @@ export function HeaderMenu({
   trigger,
   triggerClassName,
   panelClassName = "sm:w-[26rem]",
+  onOpenChange,
   children,
 }: HeaderMenuProps) {
   const panelId = useId();
@@ -31,6 +34,10 @@ export function HeaderMenu({
   const [open, setOpen] = useState(false);
 
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (!open) return;

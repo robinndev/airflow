@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
+import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, Store, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
 import { UnreadMessages } from "@/components/messages/messages-menu";
@@ -65,6 +65,10 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
               <Link href={`/${viewer.handle}`} className={item}>
                 <UserRound aria-hidden />
                 Your profile
+              </Link>
+              <Link href="/studio" className={item}>
+                <Store aria-hidden />
+                Your studio
               </Link>
               <Link href="/commissions" className={item}>
                 <Brush aria-hidden />

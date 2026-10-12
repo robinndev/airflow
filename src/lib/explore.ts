@@ -1,9 +1,13 @@
 import { cacheLife, cacheTag } from "next/cache";
+import type { ServiceCategory, StyleTag } from "./listings/catalog";
+import { fetchAllAdoptables, fetchAllServices } from "./listings/server";
 import { MOODS, moodsOf, type MoodSlug } from "./palette";
 import { demoImages as art, demoPool, type PoolTheme } from "./profile/demo-images";
 import type { DrawTag } from "./profile/draws";
 import { db } from "./profile/mock-db";
+import { LISTINGS_TAG } from "./profile/queries";
 import type { ImageAsset } from "./profile/types";
+import type { AdoptHit, ArtistHit, ServiceHit } from "./search/query";
 
 /*
  * Explore data. Real artists, services and adoptables come from the mock DB;
@@ -26,6 +30,8 @@ export type StickerShape = "circle" | "scallop" | "arch" | "squircle" | "blob" |
 export type Category = {
   slug: string;
   label: string;
+  /** Where the sticker leads: search, filtered. */
+  href: string;
   /** Artists offering it. */
   count: number;
   cover: ImageAsset;
@@ -185,18 +191,20 @@ function ownerOf(image: (typeof demoPool)[number]): string {
 
 /* --------------------------------------------------------------- categories */
 
+const searchFor = (query: string) => `/explore/search?${query}`;
+
 export const CATEGORIES: Category[] = [
-  { slug: "illustration", label: "Illustration", count: 4210, cover: asset(art.sunsetReflection), shape: "arch" },
-  { slug: "character-design", label: "Character design", count: 2860, cover: pool("12307987"), shape: "scallop" },
-  { slug: "adoptables", label: "Adoptables", count: 1940, cover: asset(art.bunnyAdopt), shape: "cloud" },
-  { slug: "icons", label: "Icons & avatars", count: 3320, cover: pool("12322633"), shape: "circle" },
-  { slug: "ref-sheets", label: "Ref sheets", count: 1210, cover: pool("12069081"), shape: "squircle" },
-  { slug: "chibi", label: "Chibi", count: 1580, cover: pool("12338874"), shape: "burst" },
-  { slug: "furry", label: "Furry", count: 1650, cover: pool("12088040"), shape: "blob" },
-  { slug: "backgrounds", label: "Backgrounds", count: 740, cover: pool("12274809"), shape: "arch" },
-  { slug: "emotes", label: "Emotes & badges", count: 980, cover: pool("12338155"), shape: "scallop" },
-  { slug: "pixel-art", label: "Pixel art", count: 610, cover: pool("12160940"), shape: "squircle" },
-  { slug: "comics", label: "Comics", count: 420, cover: pool("12121283"), shape: "circle" },
+  { slug: "illustration", label: "Illustration", href: searchFor("category=illustration"), count: 4210, cover: asset(art.sunsetReflection), shape: "arch" },
+  { slug: "character-design", label: "Character design", href: searchFor("category=character-design"), count: 2860, cover: pool("12307987"), shape: "scallop" },
+  { slug: "adoptables", label: "Adoptables", href: searchFor("type=adoptables"), count: 1940, cover: asset(art.bunnyAdopt), shape: "cloud" },
+  { slug: "icons", label: "Icons & avatars", href: searchFor("category=icons"), count: 3320, cover: pool("12322633"), shape: "circle" },
+  { slug: "ref-sheets", label: "Ref sheets", href: searchFor("category=ref-sheets"), count: 1210, cover: pool("12069081"), shape: "squircle" },
+  { slug: "chibi", label: "Chibi", href: searchFor("category=chibi"), count: 1580, cover: pool("12338874"), shape: "burst" },
+  { slug: "furry", label: "Furry", href: searchFor("draws=anthro"), count: 1650, cover: pool("12088040"), shape: "blob" },
+  { slug: "backgrounds", label: "Backgrounds", href: searchFor("category=backgrounds"), count: 740, cover: pool("12274809"), shape: "arch" },
+  { slug: "emotes", label: "Emotes & badges", href: searchFor("category=emotes"), count: 980, cover: pool("12338155"), shape: "scallop" },
+  { slug: "pixel-art", label: "Pixel art", href: searchFor("category=pixel-art"), count: 610, cover: pool("12160940"), shape: "squircle" },
+  { slug: "comics", label: "Comics", href: searchFor("category=comics"), count: 420, cover: pool("12121283"), shape: "circle" },
 ];
 
 /* ------------------------------------------------------------------ studios */
@@ -465,6 +473,175 @@ function resident(): Resident | null {
   };
 }
 
+/* ------------------------------------------------------------ real studios */
+
+/**
+ * Real artists' open services as commission sheets: one sheet per artist,
+ * tiers from a service's packages (sketch → full color) or, failing that,
+ * from up to three of their services.
+ */
+async function realStudios(): Promise<Studio[]> {
+  const listed = (await fetchAllServices()).filter(({ listing }) => listing.status !== "closed" && listing.examples.length > 0);
+  const byArtist = new Map<string, typeof listed>();
+  for (const entry of listed) byArtist.set(entry.owner.handle, [...(byArtist.get(entry.owner.handle) ?? []), entry]);
+
+  return [...byArtist.values()].map((entries) => {
+    const { owner } = entries[0];
+    const services = entries.map((e) => e.listing);
+    const laddered = services.find((s) => (s.packages?.length ?? 0) > 1);
+    const tiers = laddered
+      ? laddered.packages!.slice(0, 3).map((p, i) => ({ label: p.label, priceUsd: p.priceUsd, image: laddered.examples[i % laddered.examples.length] }))
+      : services.slice(0, 3).map((s) => ({ label: s.title, priceUsd: s.priceFromUsd, image: s.examples[0] }));
+    const capped = services.filter((s) => s.slots);
+    const slots = {
+      total: capped.reduce((sum, s) => sum + s.slots!.total, 0),
+      taken: capped.reduce((sum, s) => sum + s.slots!.taken, 0),
+    };
+    const left = slots.total - slots.taken;
+    const quickest = services.toSorted((a, b) => a.turnaroundDays.max - b.turnaroundDays.max)[0];
+    return {
+      id: `studio-${owner.handle}`,
+      artist: { handle: owner.handle, name: owner.displayName, avatar: owner.avatar, href: `/${owner.handle}`, isPro: owner.plan === "pro" },
+      specialty: owner.headline || (laddered ?? services[0]).title,
+      draws: owner.draws,
+      tiers,
+      slots,
+      turnaround: quickest.turnaround,
+      rating: { average: 5, count: 0 },
+      status: slots.total > 0 && left > 0 && left <= 2 ? "closing" : "open",
+      href: `/${owner.handle}/commissions`,
+    } satisfies Studio;
+  });
+}
+
+/** Real adoptables still looking for a home, newest first. */
+async function realAdopts(): Promise<Adopt[]> {
+  return (await fetchAllAdoptables(24))
+    .filter(({ listing }) => listing.status !== "sold")
+    .map(({ listing, owner }) => ({
+      id: listing.id,
+      name: listing.name,
+      species: listing.species,
+      image: listing.images[0],
+      artist: { handle: owner.handle, name: owner.displayName, avatar: owner.avatar, href: `/${owner.handle}` },
+      sale: { type: "flat", priceUsd: listing.priceUsd },
+      status: listing.status === "reserved" ? "reserved" : "available",
+      href: `/${owner.handle}/adoptables#${listing.id}`,
+    }));
+}
+
+/* --------------------------------------------------------- pool for search */
+
+const THEME_LISTING: Record<PoolTheme, { category: ServiceCategory; styles: StyleTag[] }> = {
+  furry: { category: "illustration", styles: ["cel_shaded", "cartoon"] },
+  creature: { category: "character-design", styles: ["painterly", "semi_realistic"] },
+  kemonomimi: { category: "illustration", styles: ["anime"] },
+  chibi: { category: "chibi", styles: ["cartoon", "anime"] },
+  scenery: { category: "backgrounds", styles: ["painterly"] },
+  pixel: { category: "pixel-art", styles: ["pixel"] },
+  traditional: { category: "illustration", styles: ["traditional", "sketchy"] },
+};
+
+/** "1–2 weeks", "10 days" → days. */
+function daysOf(label: string) {
+  const [a, b = a] = (label.match(/\d+/g) ?? ["7"]).map(Number);
+  const unit = /month/.test(label) ? 30 : /week/.test(label) ? 7 : 1;
+  return { min: a * unit, max: b * unit };
+}
+
+/** A stable "listed on" date within the last few weeks. */
+const listedAt = (key: string, now: number) => new Date(now - Math.floor(noise(`${key}:listed`) * 40) * 86_400_000).toISOString();
+
+/**
+ * The demo community (the generated pool artists) as search hits: each open
+ * studio is one service whose tiers are its packages, plus their adoptables.
+ */
+function poolSearch(now: number, studios: Studio[], adoptList: Adopt[]) {
+  const services: ServiceHit[] = STUDIO_PLAN.map((plan) => {
+    const a = POOL_ARTISTS.find((p) => p.handle === plan.handle)!;
+    const studio = studios.find((s) => s.id === `studio-${plan.handle}`)!;
+    const { category, styles } = THEME_LISTING[a.theme];
+    const prices = studio.tiers.map((t) => t.priceUsd);
+    return {
+      kind: "service",
+      id: studio.id,
+      title: `${studio.specialty} commission`,
+      description: `${TIERS[a.theme].tiers.map(([label]) => label).join(", ")}. ${studio.turnaround} turnaround.`,
+      category,
+      styles,
+      draws: DRAWS[a.theme],
+      artist: studio.artist,
+      priceFromUsd: Math.min(...prices),
+      priceToUsd: Math.max(...prices),
+      packages: studio.tiers.map((t, i) => ({ id: `tier-${i}`, label: t.label, priceUsd: t.priceUsd, includes: [] })),
+      turnaround: studio.turnaround,
+      turnaroundDays: daysOf(studio.turnaround),
+      status: studio.status === "soon" ? "soon" : "open",
+      ...(studio.opensAt && { opensAt: studio.opensAt }),
+      slots: studio.status === "soon" ? null : studio.slots,
+      examples: studio.tiers.map((t) => t.image),
+      createdAt: listedAt(plan.handle, now),
+      popularity: studio.rating.count * 12,
+      href: studio.href,
+    };
+  });
+
+  const adoptables: AdoptHit[] = adoptList.flatMap((adopt) => {
+    const a = POOL_ARTISTS.find((p) => p.handle === adopt.artist.handle);
+    if (!a || adopt.sale.type !== "flat") return [];
+    return [
+      {
+        kind: "adoptable",
+        id: adopt.id,
+        name: adopt.name,
+        species: adopt.species,
+        description: "",
+        draws: DRAWS[a.theme],
+        artist: adopt.artist,
+        priceUsd: adopt.sale.priceUsd,
+        status: adopt.status === "adopted" ? "sold" : adopt.status,
+        image: adopt.image,
+        createdAt: listedAt(adopt.id, now),
+        popularity: Math.round(noise(adopt.id) * 400),
+        href: adopt.href,
+      },
+    ];
+  });
+
+  const artists: ArtistHit[] = POOL_ARTISTS.map((a) => {
+    const plan = STUDIO_PLAN.find((p) => p.handle === a.handle);
+    const service = services.find((s) => s.artist.handle === a.handle);
+    const ref = poolArtist(a.handle);
+    const r = noise(`${a.handle}:followers`);
+    return {
+      kind: "artist",
+      handle: a.handle,
+      name: a.name,
+      headline: TIERS[a.theme].specialty,
+      avatar: ref.avatar,
+      draws: DRAWS[a.theme],
+      styles: THEME_LISTING[a.theme].styles,
+      categories: [THEME_LISTING[a.theme].category],
+      commissions: !plan || plan.status === "soon" ? "closed" : "open",
+      fromUsd: service?.priceFromUsd,
+      turnaroundMaxDays: service?.turnaroundDays.max,
+      followers: Math.round(800 + r * r * 24000),
+      isPro: a.isPro,
+      createdAt: listedAt(`${a.handle}:joined`, now - 200 * 86_400_000),
+      popularity: Math.round(800 + r * r * 24000),
+      href: ref.href,
+    };
+  });
+
+  return { services, adoptables, artists };
+}
+
+/** The pool's share of the search catalog (see src/lib/search/catalog.ts). */
+export function poolSearchListings(now: number) {
+  const studios = STUDIO_PLAN.map((plan) => poolStudio(plan, now));
+  return poolSearch(now, studios, adopts(now));
+}
+
 /* -------------------------------------------------------------------- reads */
 
 export type ExploreData = {
@@ -482,14 +659,16 @@ export type ExploreData = {
 export async function getExploreData(): Promise<ExploreData> {
   "use cache";
   cacheLife("minutes");
-  cacheTag("explore");
+  cacheTag("explore", LISTINGS_TAG);
 
   // Countdowns are anchored to the top of the hour so cached copies stay believable.
   const now = Math.floor(Date.now() / 3_600_000) * 3_600_000;
 
   const mira = miraStudio();
-  const studios = [...(mira ? [mira] : []), ...STUDIO_PLAN.map((plan) => poolStudio(plan, now))];
-  const adoptList = adopts(now);
+  const [real, realAdoptList] = await Promise.all([realStudios(), realAdopts()]);
+  // Real artists first: they can actually be commissioned.
+  const studios = [...real, ...(mira ? [mira] : []), ...STUDIO_PLAN.map((plan) => poolStudio(plan, now))];
+  const adoptList = [...realAdoptList.slice(0, 4), ...adopts(now)].slice(0, Math.max(6, realAdoptList.length));
   const pieces = wall(studios, adoptList);
 
   const heroPiece = (id: string, title: string, owner: string): HeroPiece => ({
@@ -540,7 +719,7 @@ export async function getExploreData(): Promise<ExploreData> {
 
 /** Compact search entries — shipped to the client for instant autocomplete. */
 export type SearchIndex = {
-  categories: { slug: string; label: string }[];
+  categories: { slug: string; label: string; href: string }[];
   artists: { handle: string; displayName: string; headline: string; avatar: ImageAsset; isPro: boolean; href: string }[];
   services: { id: string; title: string; ownerHandle: string; priceFromUsd: number; cover?: ImageAsset; href: string }[];
   tags: string[];
@@ -549,13 +728,24 @@ export type SearchIndex = {
 export async function getSearchIndex(): Promise<SearchIndex> {
   "use cache";
   cacheLife("hours");
-  cacheTag("search-index");
+  cacheTag("search-index", LISTINGS_TAG);
 
   const strip = ({ src, alt, width, height, focus }: ImageAsset): ImageAsset => ({ src, alt, width, height, focus });
+  // Real artists who list something, and their services, come first.
+  const real = await fetchAllServices(200);
+  const realArtists = new Map(real.map(({ owner }) => [owner.handle, owner]));
 
   return {
-    categories: CATEGORIES.map(({ slug, label }) => ({ slug, label })),
+    categories: CATEGORIES.map(({ slug, label, href }) => ({ slug, label, href })),
     artists: [
+      ...[...realArtists.values()].map((p) => ({
+        handle: p.handle,
+        displayName: p.displayName,
+        headline: p.headline,
+        avatar: strip(p.avatar),
+        isPro: p.plan === "pro",
+        href: `/${p.handle}`,
+      })),
       ...db.profiles.map((p) => ({
         handle: p.handle,
         displayName: p.displayName,
@@ -577,6 +767,14 @@ export async function getSearchIndex(): Promise<SearchIndex> {
       }),
     ],
     services: [
+      ...real.map(({ listing: s }) => ({
+        id: s.id,
+        title: s.title,
+        ownerHandle: s.ownerHandle,
+        priceFromUsd: s.priceFromUsd,
+        cover: s.examples[0] && strip(s.examples[0]),
+        href: `/${s.ownerHandle}/commissions#${s.id}`,
+      })),
       ...db.services.map((s) => ({
         id: s.id,
         title: s.title,

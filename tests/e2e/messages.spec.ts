@@ -86,8 +86,8 @@ async function signedIn(browser: Browser, person: Account) {
   return page;
 }
 
-/** With the chat closed there's no socket: news comes with the next pulse (every 15s). */
-const PULSE = 25_000;
+/** With the chat closed there's no socket: news comes with the next pulse (every ~20s while the page is in use). */
+const PULSE = 35_000;
 
 const chat = (page: Page) => page.locator("dialog[open]");
 const headerMessages = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Messages/ }).last();
@@ -161,7 +161,10 @@ test("two artists talk live: unread, seen, sketching, reply", async ({ browser }
 test("a letter arrives while the chat is closed: chime, title, Reply", async ({ browser }) => {
   const a = await signedIn(browser, ana);
   const b = await signedIn(browser, bo);
+  // Messages already waiting when a page opens show as a badge, not a letter: let Bo's page take its first pulse.
+  const firstPulse = b.waitForResponse((response) => response.url().includes("/rpc/message_pulse"));
   await b.goto("/explore");
+  await firstPulse;
   // Browsers only allow sound after the first click on the page.
   await b.mouse.click(4, 300);
 

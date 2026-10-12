@@ -3,6 +3,7 @@
 import { Bookmark, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { useFavorite } from "@/components/favorites/store";
+import { useLike } from "@/components/social/store";
 import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
@@ -40,7 +41,6 @@ function Splat({ colors }: { colors: string[] }) {
 const pill =
   "inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-surface/70 px-2.5 text-[0.8125rem] font-semibold text-ink backdrop-blur-sm transition-colors hover:border-ink/25 hover:bg-surface [&_svg]:size-4";
 
-// Likes are UI-only until they're persisted; saves (favorites), comments and reposts are real.
 export function PostReactions({
   postId,
   handle,
@@ -66,13 +66,13 @@ export function PostReactions({
   /** WIPs and sketches invite critique rather than comments. */
   askingForFeedback?: boolean;
 }) {
-  const [liked, setLiked] = useState(false);
+  const { liked, count: likeCount, toggle: like } = useLike(postId, likes);
   const [splashes, setSplashes] = useState(0);
   const { saved, toggle: toggleSaved } = useFavorite({ kind: "post", id: postId });
   const [shared, setShared] = useState(false);
 
   function toggleLike() {
-    setLiked(!liked);
+    like();
     if (!liked) setSplashes((n) => n + 1);
   }
 
@@ -101,7 +101,7 @@ export function PostReactions({
           <Heart key={String(liked)} aria-hidden className={liked ? "animate-pop fill-current" : ""} />
           {liked && splashes > 0 && <Splat key={splashes} colors={colors} />}
         </span>
-        <span className="tabular-nums">{formatCompact(likes + (liked ? 1 : 0))}</span>
+        <span className="tabular-nums">{formatCompact(likeCount)}</span>
       </button>
 
       <button type="button" onClick={() => openComments(conversation)} className={pill}>

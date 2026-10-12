@@ -51,7 +51,6 @@ const MASKS = Object.fromEntries(
 
 const TILTS = [-6, 4, -3, 7, -5, 3, 5, -7, 2, -4, 6, -2];
 
-const searchHref = (label: string) => `/explore/search?q=${encodeURIComponent(label)}`;
 
 function StickerLink({
   href,
@@ -105,7 +104,7 @@ export function StickerSheet({ categories }: { categories: Category[] }) {
         {categories.map((category, i) => (
           <StickerLink
             key={category.slug}
-            href={searchHref(category.label)}
+            href={category.href}
             shape={category.shape}
             index={i}
             label={category.label}
@@ -123,7 +122,7 @@ export function StickerSheet({ categories }: { categories: Category[] }) {
           </StickerLink>
         ))}
         <StickerLink
-          href="/explore/commissions"
+          href="/explore/search"
           shape="circle"
           index={categories.length}
           label="Everything else"

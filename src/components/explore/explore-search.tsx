@@ -44,12 +44,24 @@ function readRecent(): string[] {
  * index (categories, artists, services, tags). Implements the WAI-ARIA
  * combobox pattern: arrows move, Enter opens, Esc closes.
  */
-export function ExploreSearch({ index, popular }: { index: SearchIndex; popular: string[] }) {
+export function ExploreSearch({
+  index,
+  popular,
+  initialValue = "",
+  compact = false,
+}: {
+  index: SearchIndex;
+  popular: string[];
+  /** The search being shown (the search page keeps it in the box). */
+  initialValue?: string;
+  /** A slimmer box, for the search page's header. */
+  compact?: boolean;
+}) {
   const router = useRouter();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [recent, setRecent] = useState<string[]>([]);
@@ -58,7 +70,7 @@ export function ExploreSearch({ index, popular }: { index: SearchIndex; popular:
   const groups = useMemo(() => {
     if (!query) return null;
     const categories = rank(index.categories, (c) => c.label, query, 3).map(
-      (c): Option => ({ kind: "category", id: `cat-${c.slug}`, label: c.label, href: searchHref(c.label) }),
+      (c): Option => ({ kind: "category", id: `cat-${c.slug}`, label: c.label, href: c.href }),
     );
     const artists = rank(index.artists, (a) => `${a.displayName} @${a.handle}`, query, 4).map(
       (a): Option => ({ kind: "artist", id: `artist-${a.handle}`, label: a.displayName, href: a.href, item: a }),
@@ -172,7 +184,7 @@ export function ExploreSearch({ index, popular }: { index: SearchIndex; popular:
             setOpen(true);
           }}
           onKeyDown={onKeyDown}
-          className={`h-14 w-full border border-border bg-surface pr-24 pl-13 text-base text-ink shadow-lift outline-none transition-[border-color,box-shadow,border-radius] placeholder:text-muted/80 focus:border-ocean sm:h-16 sm:text-lg [&::-webkit-search-cancel-button]:hidden ${
+          className={`w-full border border-border bg-surface pr-24 pl-13 text-base text-ink shadow-lift outline-none transition-[border-color,box-shadow,border-radius] placeholder:text-muted/80 focus:border-ocean [&::-webkit-search-cancel-button]:hidden ${compact ? "h-13" : "h-14 sm:h-16 sm:text-lg"} ${
             showPanel ? "rounded-t-[28px] rounded-b-none" : "rounded-full"
           }`}
         />

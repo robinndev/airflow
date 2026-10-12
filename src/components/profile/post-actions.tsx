@@ -3,6 +3,7 @@
 import { Bookmark, Heart, MessageCircle, Repeat2, Share2 } from "lucide-react";
 import { useState } from "react";
 import { useFavorite } from "@/components/favorites/store";
+import { useLike } from "@/components/social/store";
 import { openComments, openRepost, type CommentsTarget, type RepostTarget } from "@/components/social/events";
 import { formatCompact } from "@/lib/format";
 
@@ -16,9 +17,8 @@ type PostActionsProps = {
   repost: RepostTarget;
 };
 
-// Likes are UI-only until they're persisted; saves (favorites), comments and reposts are real.
 export function PostActions({ postId, handle, likes, comments, reposts = 0, conversation, repost }: PostActionsProps) {
-  const [liked, setLiked] = useState(false);
+  const { liked, count: likeCount, toggle: toggleLike } = useLike(postId, likes);
   const { saved, toggle: toggleSaved } = useFavorite({ kind: "post", id: postId });
   const [copied, setCopied] = useState(false);
 
@@ -42,14 +42,14 @@ export function PostActions({ postId, handle, likes, comments, reposts = 0, conv
         type="button"
         aria-pressed={liked}
         aria-label={liked ? "Unlike" : "Like"}
-        onClick={() => setLiked((v) => !v)}
+        onClick={toggleLike}
         className={`${action} ${liked ? "text-like hover:text-like" : ""}`}
       >
         <Heart
           aria-hidden
           className={`transition-transform duration-200 ${liked ? "scale-110 fill-current" : ""}`}
         />
-        <span className="tabular-nums">{formatCompact(likes + (liked ? 1 : 0))}</span>
+        <span className="tabular-nums">{formatCompact(likeCount)}</span>
       </button>
 
       <button type="button" aria-label={`Comments (${comments})`} onClick={() => openComments(conversation)} className={action}>

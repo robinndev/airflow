@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getViewer } from "@/lib/session";
 import type { QueueOrder } from "./queue";
+import { fetchIncomingRequests, fetchSentRequests } from "./real";
 import type { MyRequest } from "./requests";
 import { sampleQueue } from "./sample";
 import { sampleRequests, sentRequests } from "./sample-requests";
@@ -24,7 +25,9 @@ export const getViewerQueue = cache(async function getViewerQueue(): Promise<Vie
   if (!viewer) return null;
   // getViewer() has already awaited connection(), so reading the clock is allowed.
   const now = new Date();
-  return { handle: viewer.handle, today: now.toISOString().slice(0, 10), orders: sampleQueue(now), sample: true };
+  // Requests really sent to this artist come first; the sample fills the rest of the wall.
+  const real = await fetchIncomingRequests(viewer);
+  return { handle: viewer.handle, today: now.toISOString().slice(0, 10), orders: [...real, ...sampleQueue(now)], sample: true };
 });
 
 export type ViewerRequests = {
@@ -43,10 +46,11 @@ export const getViewerRequests = cache(async function getViewerRequests(): Promi
   const viewer = await getViewer();
   if (!viewer) return null;
   const now = new Date();
+  const real = await fetchSentRequests(viewer);
   return {
     handle: viewer.handle,
     today: now.toISOString().slice(0, 10),
-    requests: [...sentRequests(viewer.handle), ...sampleRequests(now)],
+    requests: [...real, ...sentRequests(viewer.handle), ...sampleRequests(now)],
     sample: true,
   };
 });

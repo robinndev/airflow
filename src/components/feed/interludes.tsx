@@ -4,10 +4,10 @@ import { ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { HandNote, Sparkle, Tape } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
-import { FollowButton } from "@/components/profile/follow-button";
+import { FollowButton, FollowerCount } from "@/components/profile/follow-button";
 import { buttonClasses } from "@/components/ui/button";
 import type { Studio } from "@/lib/explore";
-import { formatCompact, formatUsd } from "@/lib/format";
+import { formatUsd } from "@/lib/format";
 import type { ArtistProfile } from "@/lib/profile/types";
 
 /*
@@ -182,7 +182,10 @@ export function StudioVisit({ profile }: { profile: ArtistProfile }) {
           <p className="mt-5 max-w-md text-lg leading-relaxed text-pretty text-ink/85">{profile.bio}</p>
           <p className="mt-5 flex gap-5 text-sm text-muted">
             <span>
-              <span className="font-display text-lg font-extrabold text-ink">{formatCompact(profile.stats.followers)}</span> followers
+              <span className="font-display text-lg font-extrabold text-ink">
+                <FollowerCount handle={profile.handle} count={profile.stats.followers} />
+              </span>{" "}
+              followers
             </span>
             <span>
               <span className="font-display text-lg font-extrabold text-ink">{profile.stats.artworks}</span> pieces

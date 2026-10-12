@@ -1,5 +1,6 @@
 import { demoImages } from "./demo-images";
 import type {
+  Adoptable,
   ArtistProfile,
   Artwork,
   CommissionRequest,
@@ -394,13 +395,20 @@ const services: CommissionService[] = [
   {
     id: "svc_headshot",
     ownerHandle: "mira",
-    category: "Portraits",
+    category: "icons",
+    styles: ["painterly", "semi_realistic"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "percent", percent: 50 }, commercialMerch: null },
     title: "Headshot & icon",
     description: "A clean shoulders-up portrait of your character — perfect for avatars and socials.",
-    priceFromUsd: 45,
+    priceFromUsd: 25,
     turnaround: "5–7 days",
-    includes: ["1 character", "Shoulders up", "Simple background", "1 revision", "High-res PNG"],
+    turnaroundDays: { min: 5, max: 7 },
+    includes: ["1 character", "Shoulders up", "1 revision", "High-res PNG"],
+    packages: [
+      { id: "sketch", label: "Sketch", priceUsd: 25, includes: ["Clean sketch", "Flat gray"] },
+      { id: "flats", label: "Flat color", priceUsd: 35, includes: ["Lineart", "Flat colors"] },
+      { id: "render", label: "Full render", priceUsd: 45, includes: ["Painted shading", "Simple background"] },
+    ],
     examples: [art.silverHair, art.kitchenMorning, art.nightDrive],
     addons: [
       { id: "shading", label: "Full shading", price: { kind: "fixed", usd: 10 } },
@@ -411,13 +419,15 @@ const services: CommissionService[] = [
   {
     id: "svc_halfbody",
     ownerHandle: "mira",
-    category: "Illustration",
+    category: "illustration",
+    styles: ["painterly", "semi_realistic"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "included" }, commercialMerch: { kind: "percent", percent: 200 } },
     discountPercent: 20,
     title: "Half-body illustration",
     description: "Waist-up illustration with a soft painted background and lighting that matches the mood.",
     priceFromUsd: 85,
     turnaround: "1–2 weeks",
+    turnaroundDays: { min: 7, max: 14 },
     includes: ["1 character", "Waist up", "Painted background", "2 revisions", "Process timelapse"],
     examples: [art.nightDrive, art.shopKeeper, art.kitchenMorning],
     popular: true,
@@ -431,24 +441,28 @@ const services: CommissionService[] = [
   {
     id: "svc_full",
     ownerHandle: "mira",
-    category: "Illustration",
+    category: "illustration",
+    styles: ["painterly"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "included" }, commercialMerch: { kind: "percent", percent: 100 } },
     title: "Full illustration",
     description: "A complete scene with environment, atmosphere and storytelling — my favorite thing to paint.",
     priceFromUsd: 160,
     turnaround: "2–3 weeks",
+    turnaroundDays: { min: 14, max: 21 },
     includes: ["Up to 2 characters", "Full scene", "2 revisions", "Print-ready file", "Commercial use available"],
     examples: [art.sunsetReflection, art.rainyRoad, art.skyWhirl],
   },
   {
     id: "svc_refsheet",
     ownerHandle: "mira",
-    category: "Character design",
+    category: "ref-sheets",
+    styles: ["semi_realistic", "cel_shaded"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "included" }, commercialMerch: null },
     title: "Character ref sheet",
     description: "Front and back views, palette and expressions so your OC stays consistent everywhere.",
     priceFromUsd: 120,
     turnaround: "2 weeks",
+    turnaroundDays: { min: 14, max: 14 },
     includes: ["Front & back view", "Color palette", "3 expressions", "2 revisions"],
     examples: [art.silverHair, art.shopKeeper, art.nightDrive],
     addons: [
@@ -459,12 +473,14 @@ const services: CommissionService[] = [
   {
     id: "svc_adopt",
     ownerHandle: "kai",
-    category: "Adoptables",
+    category: "character-design",
+    styles: ["cartoon", "cel_shaded"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "included" }, commercialMerch: { kind: "included" } },
     title: "Custom adoptable",
     description: "An original creature designed around your vibe, delivered with a full ref sheet.",
     priceFromUsd: 30,
     turnaround: "3–4 weeks",
+    turnaroundDays: { min: 21, max: 28 },
     includes: ["Original design", "Full ref sheet", "Commercial rights"],
     examples: [art.bunnyAdopt, art.pinkBunny, art.plushBunny],
     popular: true,
@@ -472,13 +488,20 @@ const services: CommissionService[] = [
   {
     id: "svc_chibi",
     ownerHandle: "kai",
-    category: "Chibi",
+    category: "chibi",
+    styles: ["cartoon", "cel_shaded"],
     usage: { personal: { kind: "included" }, commercialContent: { kind: "percent", percent: 50 }, commercialMerch: { kind: "percent", percent: 100 } },
     title: "Chibi",
     description: "Tiny, squishy and full of personality. Great for stickers and emotes.",
-    priceFromUsd: 30,
+    priceFromUsd: 15,
     turnaround: "2 weeks",
+    turnaroundDays: { min: 14, max: 14 },
     includes: ["1 character", "Transparent background", "1 revision"],
+    packages: [
+      { id: "sketch", label: "Sketch", priceUsd: 15, includes: ["Rough sketch"] },
+      { id: "lineart", label: "Lineart", priceUsd: 22, includes: ["Clean lineart", "Flat colors"] },
+      { id: "color", label: "Full color", priceUsd: 30, includes: ["Cel shading", "Sticker-ready"] },
+    ],
     examples: [art.plushBunny, art.campfire, art.pinkBunny],
     addons: [
       { id: "transparent", label: "Transparent background", price: { kind: "included" } },
@@ -495,10 +518,52 @@ const reviews: Review[] = [
   { id: "rev_4", artistHandle: "kai", author: "ronin.wolf", authorAvatar: { ...art.campfire, focus: "70% 30%" }, rating: 5, serviceTitle: "Custom adoptable", text: "Kai turned three vague words into my favorite character. The ref sheet is gorgeous.", createdAt: "2026-09-16" },
 ];
 
+/** Kai's adoptables: ready-made characters (the gallery shows the same pieces as artworks). */
+const adoptables: Adoptable[] = [
+  {
+    id: "adopt_pip",
+    ownerHandle: "kai",
+    name: "Pip",
+    species: "Bunny mechanic",
+    description: "Grease on her paws, a wrench in her ear and a soft spot for broken things. Comes with a full ref sheet.",
+    images: [art.bunnyAdopt],
+    priceUsd: 45,
+    includes: ["Full ref sheet", "Transparent PNG", "Commercial rights"],
+    status: "available",
+    createdAt: "2026-10-03T17:00:00Z",
+  },
+  {
+    id: "adopt_marsh",
+    ownerHandle: "kai",
+    name: "Marsh",
+    species: "Plush bunny",
+    description: "Never seen without her plush. Shy at first, then impossible to stop talking to.",
+    images: [art.plushBunny],
+    priceUsd: 40,
+    includes: ["Full ref sheet", "Transparent PNG"],
+    status: "available",
+    createdAt: "2026-09-26T14:00:00Z",
+  },
+  {
+    id: "adopt_rosie",
+    ownerHandle: "kai",
+    name: "Rosie",
+    species: "Braided bunny",
+    description: "A pink-braided florist bunny.",
+    images: [art.pinkBunny],
+    priceUsd: 40,
+    includes: ["Full ref sheet"],
+    status: "sold",
+    createdAt: "2026-09-26T14:00:00Z",
+    soldAt: "2026-09-28T10:00:00Z",
+  },
+];
+
 type Store = {
   profiles: ArtistProfile[];
   posts: Post[];
   artworks: Artwork[];
+  adoptables: Adoptable[];
   services: CommissionService[];
   reviews: Review[];
   requests: CommissionRequest[];
@@ -514,13 +579,14 @@ const SEED_VERSION = 2;
 
 // Re-seed when the seed data above changes (e.g. a new field), otherwise keep
 // the store across hot reloads so posts/images created in dev survive.
-const seed = JSON.stringify({ SEED_VERSION, profiles, posts, artworks, services, reviews });
+const seed = JSON.stringify({ SEED_VERSION, profiles, posts, artworks, adoptables, services, reviews });
 if (globalForStore.__artiflowSeed !== seed) {
   globalForStore.__artiflowSeed = seed;
   globalForStore.__artiflowStore = structuredClone({
     profiles,
     posts,
     artworks,
+    adoptables,
     services,
     reviews,
     requests: [],

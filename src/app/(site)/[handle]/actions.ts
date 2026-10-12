@@ -7,8 +7,10 @@ import { z } from "zod";
 import { ART_BUCKET, artUrl, isOwnArtPath, type ArtFolder } from "@/lib/art-storage";
 import { fetchPostInfo, postRef } from "@/lib/profile/conversation";
 import { db } from "@/lib/profile/mock-db";
-import { FEED_TAG, postsTag, profileTag } from "@/lib/profile/queries";
+import { fetchServicesByHandle } from "@/lib/listings/server";
+import { FEED_TAG, LISTINGS_TAG, postsTag, profileTag, servicesTag } from "@/lib/profile/queries";
 import { getViewer, PREVIEW_AS_VISITOR_COOKIE } from "@/lib/session";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -229,28 +231,73 @@ export async function submitCommissionRequest(
   }
 
   const { serviceId } = parsed.data;
-  const service = db.services.find((s) => s.id === serviceId && s.ownerHandle === handle);
+  const isDemo = db.profiles.some((p) => p.handle === handle);
+  const service = isDemo
+    ? db.services.find((s) => s.id === serviceId && s.ownerHandle === handle)
+    : serviceId === "custom"
+      ? undefined
+      : (await fetchServicesByHandle(handle)).find((s) => s.id === serviceId);
   if (serviceId !== "custom" && !service) {
     return { ok: false, error: "That service is no longer available." };
   }
-  // Only what this service sells on top, priced as it is now (the request keeps that snapshot).
+  // The package they picked, then only what this service sells on top, priced
+  // as it is now (the request keeps that snapshot). Percentages apply to the package.
+  const packageId = formData.get("packageId");
+  const chosen = service?.packages?.find((p) => p.id === packageId) ?? service?.packages?.[0];
+  const base = chosen?.priceUsd ?? service?.priceFromUsd ?? 0;
   const ids = formData.getAll("addonIds").filter((value): value is string => typeof value === "string");
   const picked = service ? pickOptions(serviceOptions(service), ids) : [];
-  const addons = picked.map(({ id, label, price }) => ({ id, label, priceUsd: optionUsd(price, service!.priceFromUsd) }));
+  const addons = picked.map(({ id, label, price }) => ({ id, label, priceUsd: optionUsd(price, base) }));
   const usage = service ? usageOf(service.usage, ids) : (parsed.data.usage ?? "personal");
+  const pkg = chosen && { id: chosen.id, label: chosen.label, priceUsd: chosen.priceUsd };
 
   const viewer = await getViewer();
-  db.requests.push({
-    id: `req_${crypto.randomUUID()}`,
-    artistHandle: handle,
-    requesterHandle: viewer?.handle ?? null,
-    ...parsed.data,
-    usage,
-    ...(addons.length > 0 && { addons }),
-    acceptedTerms: true,
-    createdAt: new Date().toISOString(),
-  });
+  if (isDemo) {
+    db.requests.push({
+      id: `req_${crypto.randomUUID()}`,
+      artistHandle: handle,
+      requesterHandle: viewer?.handle ?? null,
+      ...parsed.data,
+      usage,
+      ...(pkg && { package: pkg }),
+      ...(addons.length > 0 && { addons }),
+      acceptedTerms: true,
+      createdAt: new Date().toISOString(),
+    });
+    return { ok: true };
+  }
 
+  // Real artists: stored, and the request takes a slot (see the listings migration).
+  if (!viewer) return { ok: false, error: "Sign in to send a request, so the artist can answer you." };
+  if (viewer.handle === handle) return { ok: false, error: "That's your own service." };
+  const admin = createSupabaseAdmin();
+  const { data: artist } = await admin.from("profiles").select("id").eq("handle", handle).maybeSingle();
+  if (!artist) return { ok: false, error: "That artist doesn't exist anymore." };
+
+  const { error } = await admin.from("commission_requests").insert({
+    buyer_id: viewer.id,
+    artist_id: artist.id,
+    service_id: service?.id ?? null,
+    service_title: service?.title ?? "Custom piece",
+    package: pkg ?? null,
+    addons,
+    estimate_usd: service ? base + addons.reduce((sum, addon) => sum + addon.priceUsd, 0) : null,
+    description: parsed.data.description,
+    reference_links: parsed.data.references ?? null,
+    deadline: parsed.data.deadline ?? null,
+    usage,
+    budget: service ? null : (parsed.data.budget ?? null),
+  });
+  if (error?.code === "23505") return { ok: false, error: "You already have a request waiting on this service." };
+  // The database's own messages: closed, full, daily limit.
+  if (error?.code === "23514" || error?.code === "P0002") return { ok: false, error: error.message };
+  if (error) return { ok: false, error: "Couldn't send your request. Try again in a moment." };
+
+  updateTag(servicesTag(handle)); // Slots and maybe status.
+  updateTag(profileTag(handle));
+  updateTag(LISTINGS_TAG);
+  updateTag("explore");
+  updateTag("search-index");
   return { ok: true };
 }
 

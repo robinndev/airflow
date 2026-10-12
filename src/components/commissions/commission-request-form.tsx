@@ -28,6 +28,11 @@ type CommissionRequestFormProps = {
   lockService?: boolean;
   /** Terms were already accepted in the service details view. */
   termsAccepted?: boolean;
+  /** The package picked in the details view, and its price (add-on percentages apply to it). */
+  packageId?: string;
+  packagePrice?: number;
+  /** The artist wrote terms of service (otherwise the buyer agrees to Artiflow's rules). */
+  hasTerms?: boolean;
 };
 
 const CUSTOM = CUSTOM_SERVICE_ID;
@@ -63,6 +68,9 @@ export function CommissionRequestForm({
   onDone,
   lockService = false,
   termsAccepted = false,
+  packageId,
+  packagePrice,
+  hasTerms = true,
 }: CommissionRequestFormProps) {
   const id = useId();
   const firstName = artistName.split(" ")[0];
@@ -83,7 +91,8 @@ export function CommissionRequestForm({
   const isCustom = serviceId === CUSTOM;
   const selected = services.find((s) => s.id === serviceId);
   const isWaitlist = status === "waitlist";
-  const extra = selected ? extrasUsd(pickOptions(options, addonIds), selected.priceFromUsd) : 0;
+  const base = packagePrice ?? selected?.priceFromUsd ?? 0;
+  const extra = selected ? extrasUsd(pickOptions(options, addonIds), base) : 0;
 
   if (state?.ok) {
     return (
@@ -112,6 +121,7 @@ export function CommissionRequestForm({
   return (
     <form action={formAction} className="grid gap-6 p-5 sm:p-6">
       {lockService && <input type="hidden" name="serviceId" value={serviceId} />}
+      {packageId && <input type="hidden" name="packageId" value={packageId} />}
       <fieldset hidden={lockService}>
         <legend className={label}>What would you like?</legend>
         <div className="mt-2.5 grid gap-2">
@@ -280,7 +290,9 @@ export function CommissionRequestForm({
             className="mt-0.5 size-4 shrink-0 accent-ocean"
           />
           <span>
-            I&apos;ve read the service details and accept {firstName}&apos;s terms of service.
+            {hasTerms
+              ? <>I&apos;ve read the service details and accept {firstName}&apos;s terms of service.</>
+              : <>I&apos;ve read the service details and agree to Artiflow&apos;s commission rules.</>}
           </span>
         </label>
       )}
@@ -291,7 +303,7 @@ export function CommissionRequestForm({
             {selected ? (
               <>
                 Estimated{" "}
-                <span className="font-display font-extrabold">from {formatUsdExact(selected.priceFromUsd + extra)}</span>
+                <span className="font-display font-extrabold">from {formatUsdExact(base + extra)}</span>
                 {extra > 0 && <span className="text-muted"> incl. {formatUsdExact(extra)} in extras</span>}
               </>
             ) : (

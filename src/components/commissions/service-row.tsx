@@ -1,4 +1,6 @@
 import { Check, Clock, MessageCircle, Sparkles } from "lucide-react";
+import { SlotMeter } from "@/components/explore/slot-meter";
+import { PriceLadder, StatusStamp } from "@/components/listings/service-sheet";
 import { formatUsd } from "@/lib/format";
 import type { CommissionService, CommissionStatus } from "@/lib/profile/types";
 import { CUSTOM_SERVICE_ID } from "./events";
@@ -14,14 +16,17 @@ const media = "relative m-2 aspect-[4/3] overflow-hidden rounded-[18px] sm:mr-0 
 
 export function ServiceRow({
   service,
-  status,
+  status: artistStatus,
 }: {
   service: CommissionService;
+  /** The artist's status, for demo services that don't have their own. */
   status: CommissionStatus;
 }) {
+  const status = service.status ?? artistStatus;
+  const closed = status === "closed";
   return (
-    <article className={`${row} border-border`}>
-      <div className={`${media} bg-ice`}>
+    <article id={service.id} data-part="service" className={`${row} scroll-mt-24 border-border ${closed ? "[&_[data-art]]:saturate-[0.35]" : ""}`}>
+      <div data-art className={`${media} bg-ice`}>
         <ExampleCarousel images={service.examples} title={service.title} serviceId={service.id} />
         {service.popular && (
           <span className="pointer-events-none absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-scrim/85 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
@@ -51,8 +56,11 @@ export function ServiceRow({
             <Clock aria-hidden className="size-3.5" />
             {service.turnaround}
           </span>
+          {service.status && <StatusStamp status={status} slots={service.slots ?? null} className="ml-1 -rotate-2 self-center" />}
         </p>
+        {service.slots && !closed && <SlotMeter total={service.slots.total} taken={service.slots.taken} className="mt-2 [&>span:last-child]:text-xs" />}
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted">{service.description}</p>
+        {service.packages && service.packages.length > 1 && <PriceLadder service={service} className="mt-3 max-w-sm" />}
 
         <ul aria-label="Includes" className="mt-4 flex flex-wrap gap-1.5">
           {service.includes.map((item) => (
@@ -137,7 +145,7 @@ function RowActions({
   return (
     <div className="mt-auto flex items-center gap-2 pt-5">
       {status === "closed" ? (
-        <p className="flex-1 text-sm text-muted">Commissions are closed right now.</p>
+        <p className="flex-1 text-sm text-muted">Closed for now.</p>
       ) : (
         <OpenServiceButton serviceId={serviceId} className={buttonClasses({ className: "flex-1" })}>
           {status === "waitlist" ? "Join waitlist" : (label ?? "Request")}

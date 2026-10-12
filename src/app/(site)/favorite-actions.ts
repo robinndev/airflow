@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { DEMO_ID, favoriteKey, isFavoriteKind, type FavoriteKey, type FavoriteKind } from "@/lib/favorites/keys";
-import { fetchFavoriteRefs, isSavable } from "@/lib/favorites/queries";
+import { fetchFavoriteRefs, isRealGalleryId, isSavable } from "@/lib/favorites/queries";
 import { fetchPostInfo, isRealPostId } from "@/lib/profile/conversation";
 import { getViewer } from "@/lib/session";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -39,7 +39,15 @@ export async function setFavorite(
   if (!isFavoriteKind(kind) || typeof id !== "string" || !(isRealPostId(id) || DEMO_ID.test(id))) {
     return { ok: false, error: "That can't be saved." };
   }
-  const target = kind === "post" && isRealPostId(id) ? { post_id: id } : { demo_id: id };
+  // Real rows by their own column; whatever is still demo data by `demo_id`.
+  const target =
+    kind === "post" && isRealPostId(id)
+      ? { post_id: id }
+      : isRealGalleryId(kind, id)
+        ? kind === "art"
+          ? { artwork_id: id }
+          : { character_id: id }
+        : { demo_id: id };
   const supabase = await createSupabaseServer();
 
   if (!saved) {
