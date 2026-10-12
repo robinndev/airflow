@@ -9,7 +9,7 @@ import {
   type Collection,
   type Gallery,
   type Piece,
-} from "./types";
+} from "./types.ts";
 
 /*
  * Turns stored rows (Supabase or the demo data, same shape) into the

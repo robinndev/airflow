@@ -41,7 +41,7 @@ async function ExploreSection({ params }: Pick<PageProps<"/explore/[section]">, 
       </h1>
       <p className="mt-2 text-muted">{section.description}</p>
       <Link href="/explore/search" className={buttonClasses({ variant: "secondary", className: "mt-8" })}>
-        Search what's open
+        Search what&apos;s open
       </Link>
     </main>
   );

@@ -275,6 +275,24 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
         </Link>
       </div>
 
+      {profile.adopts && (
+        <Link href={`/${handle}/adoptables`} className={tile}>
+          <span className="flex shrink-0 -space-x-3">
+            {profile.adopts.preview.slice(0, 3).map((image) => (
+              <span key={image.src} className="relative size-10 overflow-hidden rounded-input bg-ice ring-2 ring-surface">
+                <Image src={image.src} alt="" fill sizes="40px" className="object-cover" />
+              </span>
+            ))}
+          </span>
+          <span className="min-w-0">
+            <span className="block font-display text-sm font-bold text-ink">Adoptables</span>
+            <span className="block truncate text-xs text-muted">
+              {profile.adopts.available > 0 ? `${profile.adopts.available} looking for a home` : "All adopted"}
+            </span>
+          </span>
+        </Link>
+      )}
+
       {profile.links.length > 0 && (
         <ul
           aria-label="Links"

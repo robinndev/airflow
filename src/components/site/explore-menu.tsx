@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BookOpen,
+  Brush,
   ChevronDown,
   Clock,
   Compass,
@@ -11,6 +13,7 @@ import {
   Flame,
   Rss,
   Search,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { HeaderMenu } from "./header-menu";
@@ -19,17 +22,19 @@ type ExploreItem = { href: string; label: string; hint: string; icon: LucideIcon
 
 const SECTIONS: { title: string; items: ExploreItem[] }[] = [
   {
-    title: "Characters",
+    title: "Discover",
     items: [
-      { href: "/explore/popular", label: "Popular", hint: "Trending this week", icon: Flame },
+      { href: "/explore/popular", label: "Trending", hint: "Most liked this week", icon: Flame },
       { href: "/?feed=following", label: "Feed", hint: "From artists you follow", icon: Rss },
-      { href: "/explore/recent", label: "Recent", hint: "Freshly uploaded", icon: Clock },
-      { href: "/explore/search", label: "Search", hint: "Filter by tags & traits", icon: Search },
+      { href: "/explore/recent", label: "Recent", hint: "Newest listings", icon: Clock },
+      { href: "/explore/search?type=artists", label: "Artists", hint: "By name, style and price", icon: Search },
     ],
   },
   {
-    title: "Browse",
+    title: "Shop",
     items: [
+      { href: "/explore/commissions", label: "Open commissions", hint: "Made to order", icon: Brush },
+      { href: "/explore/adoptables", label: "Adoptables", hint: "Ready-made characters", icon: Tag },
       { href: "/explore/literatures", label: "Literatures", hint: "Stories and lore", icon: BookOpen },
       { href: "/explore/worlds", label: "Worlds", hint: "Shared universes", icon: Earth },
     ],
@@ -37,6 +42,7 @@ const SECTIONS: { title: string; items: ExploreItem[] }[] = [
 ];
 
 export function ExploreMenu() {
+  const router = useRouter();
   return (
     <HeaderMenu
       label="Explore"
@@ -56,8 +62,12 @@ export function ExploreMenu() {
       <div className="rounded-[20px] border border-border bg-surface p-3 shadow-lift">
         <form
           role="search"
-          // The /search route lands with discovery; keep the field inert for now.
-          onSubmit={(e) => e.preventDefault()}
+          action="/explore/search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+            router.push(q ? `/explore/search?q=${encodeURIComponent(q)}` : "/explore/search");
+          }}
           className="relative"
         >
           <Search
@@ -66,8 +76,9 @@ export function ExploreMenu() {
           />
           <input
             type="search"
-            aria-label="Search characters, artists and worlds"
-            placeholder="Search characters, artists, worlds…"
+            name="q"
+            aria-label="Search commissions, adoptables and artists"
+            placeholder="Search commissions, adoptables, artists…"
             className="h-11 w-full rounded-input border border-border bg-canvas pr-3 pl-10 text-sm text-ink outline-none transition-colors placeholder:text-muted/80 focus:border-ocean focus:bg-surface"
           />
         </form>

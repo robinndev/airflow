@@ -38,9 +38,12 @@ export function AdoptShelf({ artist, adoptables }: { artist: Artist; adoptables:
     [adoptables],
   );
 
+  // A link to /{handle}/adoptables#<id> opens that one, once the page is up.
   useEffect(() => {
     const hash = decodeURIComponent(window.location.hash.slice(1));
-    if (hash) open(hash);
+    if (!hash) return;
+    const frame = requestAnimationFrame(() => open(hash));
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   // The cards are plain links to #id; open the sheet instead of jumping.

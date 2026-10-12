@@ -40,9 +40,15 @@ export function AdoptableEditor({
   const [saving, startSaving] = useTransition();
   const titleId = useId();
 
-  useEffect(() => {
+  // A new listing to edit starts a fresh draft (set during render, not in an effect).
+  const [shownFor, setShownFor] = useState(initial);
+  if (initial !== shownFor) {
+    setShownFor(initial);
     setDraft(initial);
     setError(null);
+  }
+
+  useEffect(() => {
     const dialog = dialogRef.current;
     if (initial && !dialog?.open) dialog?.showModal();
     if (!initial && dialog?.open) dialog.close();

@@ -3,7 +3,7 @@
 Living plan for what we build and in what order. The blueprint (`docs/brand/Aqua_Product_Brand_Blueprint.docx`, §9) sets the vision and the phases; this file turns them into concrete items, tracks their status, and records stakeholder requests.
 
 - **Maintained by:** Claude (roadmap owner), with input from stakeholders via the project lead.
-- **Last updated:** 2026-10-11
+- **Last updated:** 2026-10-12
 
 **Status legend**
 
@@ -38,7 +38,7 @@ The roadmap owner's order of work. The goal is the blueprint's closed beta (§13
 5. [Per-service status in one click](#brief-per-service-status-set-in-one-click), the data model the rest builds on.
 6. [Commission flow](#brief-commission-flow-request--proposal--payment--delivery): inbox (accept / decline / waitlist), proposals, orders, delivery.
 7. ["Notify me"](#brief-notify-me-when-a-service-reopens), on the in-app notifications (built 2026-10-12; a new `service_reopened` kind) plus email.
-8. Character (OC) pages, the blueprint's other pillar, which nothing blocks.
+8. ~~Character (OC) pages, the blueprint's other pillar~~ **Built 2026-10-12** as part of the [gallery](#brief-the-gallery-characters-and-collections). Next for characters: art other artists made of your OC (delivered commissions, credited), then ownership transfer.
 
 **Later in Phase 1:** [artist track record](#brief-artist-track-record) (needs real orders), account deletion & data export, the rest of the AI-training protection.
 
@@ -54,8 +54,8 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | ↳ **Artist invite codes** | "Got an invite from another artist?" at sign-up; invite links; who brought whom | **Prototype (UI)** | Request, 2026-10-10. Code entry, invite links and the inviter reveal are built on mock codes. Where codes come from and what they unlock are open. See the [brief](#brief-artist-invite-codes). |
 | Artist profile | Banner, identity, links, post feed + composer, free vs Pro appearance | Prototype | `/[handle]`. Pro gating in `resolveAppearance()`. |
 | ↳ **What you draw: artist categories** | Sign-up asks "What do you draw?" (Humans, Anthro / furry, Humanoids, Ferals, Ponies; several or all); Edit profile adds what you make (OC design, concept art, backgrounds, chibi, pixel art, emotes, ref sheets, animation). The profile shows them as labels ("Furry artist", "OC designer", "Draws it all"); Explore's open studios filter by them, and each label opens that filter | **Built** | Request (Sabrina), 2026-10-11. `profiles.draws` (enum `draw_tag`), list in `src/lib/profile/draws.ts`. Explore's studios are demo data, so the filter runs over them until real services exist. See the [brief](#brief-what-you-draw-artist-categories). |
-| Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | Prototype | Gallery + filter exist; real upload pipeline is under "Media". |
-| Characters (OCs) | Character page: lore, refs, gallery, creator, credits | Planned | Only Explore placeholders so far. |
+| Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | **Built (real)**, partly | Request, 2026-10-12. `/{handle}/gallery` with characters, collections and every piece (Supabase `artworks`, `characters`, `collections`). Upload up to 12 at once (AI check), titles, personal / commission for @client, tags. **Not yet:** content tags (their own [brief](#brief-content-rating-mature-art-hidden-until-you-click)), visibility, reordering, "add from your posts". See the [brief](#brief-the-gallery-characters-and-collections). |
+| Characters (OCs) | Character page: lore, refs, gallery, creator, credits | **Built (first pass)** | 2026-10-12. `/{handle}/characters/{slug}`: a reference sheet (cover, colors, species, pronouns, designed by / kept by, personality, tags), story, art in sections; saved on their own to favorites; linked to their adoption listing. **Not yet:** art by other artists on your OC, ownership transfer and history (needs the license decision), characters in Explore and search. See the [brief](#brief-the-gallery-characters-and-collections). |
 | Adoptable listings | Create/edit listing; flatsale, auction, offer; available / reserved / adopted | Prototype | Display only (Explore hang tags). No creation flow. |
 | Commission services | Services with examples, price, turnaround, ToS; request form | Prototype | `/[handle]/commissions`, request dialog. ToS acceptance is already required. |
 | ↳ **Licenses and add-ons, ticked under the price** | Each service lists its licenses (Personal, Commercial: Content, Commercial: Merchandising) and optional add-ons right under the price. Each one is **included** (comes ticked and locked), sold on top for a fixed amount (+$10) or a share of the price (+200%), or, for licenses, not offered. Ticking updates the price; the ticks carry into the request | **Prototype** | Request, 2026-10-11 (sketch: "$50 · +10 shading · +10 animation"; "when it's included it comes ticked"). Only some services have add-ons. Rules in `src/lib/commissions/addons.ts`; the request stores what was ticked, priced in USD, as a snapshot. Percentages apply to the "from" price. Editing them waits on service editing. |
@@ -583,6 +583,72 @@ Artists specialize: some draw only humans, some only furries or ponies, some onl
 
 ---
 
+## Brief: the gallery, characters and collections
+
+- **Requested by:** stakeholder suggestion via the project lead, 2026-10-12 ("Para galery"). **Status:** built the same day, on real data.
+
+### The idea
+
+The gallery isn't a tab of loose images. It's the artist's creative center, with three kinds of thing in it:
+
+- **Artwork:** one piece (an illustration, a sketch, a painting). It can stand alone: you don't need a character to post a piece.
+- **Character:** an OC with a name, a description, references and many pieces (design, outfit variations, expressions and poses, alternate versions, related art).
+- **Collection:** a themed group of pieces (fanart, landscapes, studies, a project).
+
+Every character gets a page of their own: a cover, a description, their variations, species, personality, tags and credits. Visitors can save a character on their own, not just the artist. Later, a character can link to their adoption listing, with a button to buy them.
+
+This matches the blueprint (§2 "OC sheets: name, lore, species, personality, references, gallery, creator, credits", §3 "character pages", "favorite works/characters", and the suggested Gallery and Characters tabs). We put characters inside the gallery, as the stakeholder suggested, with their own addresses.
+
+### How it works
+
+- **Gallery** (`/{handle}/gallery`): three shelves.
+  - **Characters:** each one is a **file folder**. Their name is on the index tab, the folder is dyed in their colors, the cover is clipped to the front (never cropped) and more sheets stick out of the top. An adoptable shows an "Adopt me · $45" tag; a sold one, an "Adopted ♥" stamp.
+  - **Collections:** a **stack of prints** taped together, the cover on top.
+  - **Every piece:** justified rows (no piece is cropped), All / Personal / Commissions / Adoptables, a lightbox, and a heart that saves to favorites.
+- **Character page** (`/{handle}/characters/{slug}`), inside the artist's profile (so it wears their customization):
+  - Their **reference sheet**, printed on paper. Their colors run along the top like a printer's color bar, with the cover taped on and their name plus a line in the artist's hand. A facts box holds species, pronouns, designed by, kept by (when someone else designed them) and the number of pieces.
+  - Their **colors** as swatches with the hex printed under each (click to copy), personality words **circled in pen**, and tags.
+  - **Save {name}** and Copy link.
+  - When they're up for adoption, the price and **Adopt {name}**, which opens the listing (`/{handle}/adoptables#id`). Once sold, "Adopted ♥".
+  - Their **story**, then their art in five sections: **Design**, **Outfits**, **Expressions & poses**, **Alternate versions**, **Art**.
+- **Collection page** (`/{handle}/collections/{slug}`): title, note, pieces.
+- **The artist's tools** (owner only, on the same pages):
+  - **Add art:** up to 12 pictures at once. Each goes through the AI check, then you title it. Mark it personal or a commission for @someone, add tags, and choose **where it shows**: on characters (in a section) and in collections.
+  - **New character:** a live reference card redraws as you type. You set the name, a one-liner, species, pronouns, the cover (picked from your art), personality, story, colors (taken from the cover until you change one), designed by, which adoption listing sells them, and tags.
+  - **New collection.**
+  - Each piece's **"…" menu:** edit details and where it shows, make it the cover, move it to another section, take it off, delete.
+  - Deleting a character or a collection keeps its art in the gallery.
+- **Favorites:** a saved character hangs on the moodboard as a **convention badge** in their colors. Gallery hearts on real pieces now save too.
+- **Data** (`supabase/migrations/*_gallery.sql`):
+  - Tables: `artworks`, `characters` (with `adoptable_id` → `adoptables`), `character_art` (with a section), `collections` and `collection_art`. All public to read; owners write under row level security.
+  - Triggers check that art, covers and adoptables are your own. They also cap a gallery at 2,000 pieces, 100 characters, 100 collections and 300 pieces per character.
+  - `favorites` gains `artwork_id` and `character_id`.
+  - Images go to `art/<user id>/gallery/`.
+- **Demo:** Pebble's fox OC **Kinako** (13 pieces across every section), Kai's adoptables **Pip** and **Marsh** as characters linked to their listings, and Mira's collections "Quiet Worlds" and "After dark".
+- Tests: `tests/e2e/gallery.spec.ts` (visitor; artist builds a character page; other accounts can't write) and `src/lib/gallery/assemble.test.ts`.
+
+### Decisions taken while building (open to change)
+
+| Question | What we did |
+| -------- | ----------- |
+| Fixed sections, or the artist's own? | Fixed five, in the stakeholder's order, so every character page reads the same. Custom sections later if artists ask. |
+| Can a piece be on several characters and collections? | Yes. A piece with two OCs shows on both pages. |
+| Who designed vs. who keeps a character | Separate fields ("Designed by", "Kept by"), as the blueprint asks: buying a character doesn't transfer copyright. |
+| Renaming a character | Their address follows the new name (`/kinako` → `/kina`). Old links break; keeping them working would need a redirect table. |
+
+### Not yet
+
+- **Art by other artists on your character:** a delivered commission shown on the buyer's OC, credited to the artist. This comes with the [commission flow](#brief-commission-flow-request--proposal--payment--delivery) (its step 6 already plans it).
+- **Ownership transfer and history:** when an adoptable sells, the character moves to the buyer. Blocked on the license, ownership and transfer decision.
+- **Arranging and filling:** drag to reorder pieces and characters, and "add from your posts", so you don't upload again.
+- **Content tags on pieces:** see the content rating brief.
+- **Discovery:** characters in Explore and search.
+- **Notifications:** "someone saved your character" (the notifications session offered to add the kind).
+- **Profile count:** the profile's gallery count and preview from real pieces (those files belong to the listings work right now).
+- **Needs:** the `gallery` migration applied to production.
+
+---
+
 ## Brief: payments, how the money moves
 
 - **Requested by:** project lead, 2026-10-11: "someone pays the commission, we take our fee and split the rest to the artist. How does it work, and how complex is it?" Focus markets: **the US and the rest of the world; Brazil is not a priority.**
@@ -745,6 +811,7 @@ Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead c
 | 2026-10-11 | Research payments: buyer pays, we take our fee and split to the artist. How it works and how complex it is. Focus: the US and other countries; Brazil is a small fish. | [Payments brief](#brief-payments-how-the-money-moves): US company, Stripe Connect (separate charges and transfers, held until delivery) for US/UK/EEA/CA/CH artists at launch, PayPal as the second rail, Stripe sales for the other countries. Complexity: high overall, ~4–6 weeks for the Stripe rail; the paperwork is the long pole. |
 | 2026-10-12 | Make following and likes work: like posts, follow other artists. The stats card (Followers / Following / Artworks) looks bigger than the sidebar cards. | **Built:** real follows and likes (Supabase `follows`, `post_likes`), counts move right away and stay after a reload; the Following feed uses real follows. Likes are private (counts only). The stats card is now exactly the sidebar's width (it was 10px wider). **Needs:** the `follows_and_likes` migration applied to production. |
 | 2026-10-12 | Notifications: make them real, with likes, comments, requests and so on showing up there. "Very artistic!" | **Built:** the guest book (bell + `/notifications`), from database triggers: follows, likes (anonymous counts, per the likes-are-private default), comments, replies, mentions, reposts, invites, a welcome note, commission requests and the artist's answer. Badge on the existing pulse, no extra connections. Email and Web Push later. |
+| 2026-10-12 | Gallery as the artist's creative center, not a tab of loose images: three kinds of content (Artwork, Character, Collection); each character has a page (cover, description, variations, species, personality, tags, credits) and can be saved on its own; later, link a character to its adoption listing with a buy button. | **Built (real data):** [gallery brief](#brief-the-gallery-characters-and-collections). Characters as file folders and a reference-sheet page with five art sections; collections as stacks of prints; every piece in justified rows; Add art (up to 12, AI check, "show it on"), character and collection editors, per-piece menus; saved characters as badges on the moodboard; characters link to their adoptable. **Needs:** the `gallery` migration applied to production. |
 
 ## Pending decisions
 

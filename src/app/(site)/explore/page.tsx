@@ -96,6 +96,9 @@ export default async function ExplorePage() {
                     {q}
                   </Link>
                 ))}
+                <Link href="/explore/popular" className="ml-1 font-semibold text-accent-strong underline-offset-4 hover:underline">
+                  or see what&apos;s trending →
+                </Link>
               </div>
             </div>
 
@@ -109,7 +112,7 @@ export default async function ExplorePage() {
             kicker="Browse by craft"
             title="Find your kind of art"
             note="peel one off ✂"
-            action={{ href: "/explore/commissions", label: "All categories" }}
+            action={{ href: "/explore/search", label: "Search everything" }}
           />
           <div className="mt-8">
             <StickerSheet categories={CATEGORIES} />
