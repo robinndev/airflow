@@ -25,5 +25,5 @@ export function toImageAsset(image: StoredImage, alt: string): ImageAsset {
 /** True for a path this user's upload would have produced in that folder. */
 export function isOwnArtPath(path: string, userId: string, folder: ArtFolder) {
   const escaped = userId.replace(/[^a-f0-9-]/gi, "");
-  return new RegExp(`^${escaped}/${folder}/[0-9a-f-]{36}\\.(webp|jpg|gif)$`).test(path);
+  return new RegExp(`^${escaped}/${folder}/[0-9a-f-]{36}\\.(webp|jpg|png|gif)$`).test(path);
 }

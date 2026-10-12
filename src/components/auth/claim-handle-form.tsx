@@ -3,10 +3,12 @@
 import { Mail, Sparkles } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { claimHandle, signOut } from "@/app/(auth)/actions";
+import { DrawsPicker } from "@/components/profile/draws-picker";
 import type { Invite } from "@/lib/auth/invites";
 import { PROVIDER_NAMES, type Provider } from "@/lib/auth/providers";
+import type { DrawTag } from "@/lib/profile/draws";
 import { resetDesk, setDesk } from "./desk";
-import { FormAlert, SubmitButton, TermsCheckbox } from "./form-ui";
+import { FormAlert, SubmitButton, TermsCheckbox, labelClass } from "./form-ui";
 import { HandleField } from "./handle-field";
 import { InviteEnvelope } from "./invite-envelope";
 import { PROVIDER_ICONS } from "./provider-icons";
@@ -23,6 +25,7 @@ export function ClaimHandleForm({ connectedAs, suggestedHandle, next, invite }: 
   const [state, action, pending] = useActionState(claimHandle, null);
   const [handle, setHandle] = useState(suggestedHandle);
   const [terms, setTerms] = useState(false);
+  const [draws, setDraws] = useState<DrawTag[]>([]);
   const [attempt, setAttempt] = useState(0);
   const fields = state?.fields ?? {};
   const provider = connectedAs.provider;
@@ -53,6 +56,15 @@ export function ClaimHandleForm({ connectedAs, suggestedHandle, next, invite }: 
           }}
           error={fields.handle}
         />
+        <div className="mt-6">
+          <p id="claim-draws" className={labelClass}>
+            What do you draw?
+          </p>
+          <p className="mt-1 mb-3 text-xs text-muted">
+            Pick any, or all. Buyers find artists by it. Only here to commission? Skip it.
+          </p>
+          <DrawsPicker value={draws} onChange={setDraws} name="draws" labelledBy="claim-draws" />
+        </div>
         <InviteEnvelope initialCode={invite?.code} initialInvite={invite?.found} initialError={invite?.error} error={fields.invite} />
         <TermsCheckbox checked={terms} onChange={setTerms} error={fields.terms} />
 

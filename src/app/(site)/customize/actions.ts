@@ -9,6 +9,7 @@ import { FREE, PAID_ABOUT_BLOCKS, customizationSchema, paidFieldsUsed, type Cust
 import { fetchOwnedFrames } from "@/lib/customization/queries";
 import { frameById, isFreeFrame } from "@/lib/frames";
 import { fetchPlanForUser } from "@/lib/profile/accounts";
+import { cleanDraws } from "@/lib/profile/draws";
 import { MAX_LINKS, normalizeUrl } from "@/lib/profile/links";
 import { FEED_TAG, profileTag } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
@@ -141,13 +142,15 @@ const detailsSchema = z.object({
   links: z
     .array(z.object({ url: z.string().max(300), label: z.string().trim().max(40).optional() }))
     .max(MAX_LINKS, `Up to ${MAX_LINKS} links.`),
+  draws: z.array(z.string()).max(20).transform(cleanDraws),
 });
 
 export type ProfileDetails = z.infer<typeof detailsSchema>;
 export type DetailsResult = { ok: true } | { ok: false; error: string; field?: keyof ProfileDetails };
 
 /**
- * "Edit profile": name, headline, bio, pronouns, location and links. Written
+ * "Edit profile": name, headline, bio, pronouns, location, links and what
+ * they draw. Written
  * as the signed-in user (column grants + the "Owners can update their
  * profile" policy), so the database itself limits it to their own row.
  */
@@ -170,11 +173,11 @@ export async function updateProfileDetails(input: ProfileDetails): Promise<Detai
     links.push(link.label ? { url, label: link.label } : { url });
   }
 
-  const { displayName, headline, bio, pronouns, location } = parsed.data;
+  const { displayName, headline, bio, pronouns, location, draws } = parsed.data;
   const supabase = await createSupabaseServer();
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName, headline, bio, pronouns, location, links })
+    .update({ display_name: displayName, headline, bio, pronouns, location, links, draws })
     .eq("id", viewer.id);
   if (error) {
     // Surfaces in the server terminal, so a failed save is never a mystery.

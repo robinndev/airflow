@@ -17,6 +17,8 @@ export async function uploadMessageImage(image: PreparedImage, conversationId: s
   const userId = data?.claims?.sub;
   if (!userId) throw new Error("Your session expired. Sign in again to send pictures.");
 
+  // The `messages` bucket takes no PNG; prepareImage() only makes one with `allowPng`.
+  if (image.type === "image/png") throw new Error("That picture couldn't be prepared. Try another one.");
   const ext = { "image/webp": "webp", "image/jpeg": "jpg", "image/gif": "gif" }[image.type];
   const path = `${conversationId}/${userId}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage

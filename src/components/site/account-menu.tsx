@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
+import { UnreadMessages } from "@/components/messages/messages-menu";
 import { openInbox } from "@/components/messages/store";
 import { Avatar } from "@/components/ui/avatar";
 import type { ImageAsset } from "@/lib/profile/types";
@@ -32,7 +33,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
         type="button"
         popoverTarget={MENU_ID}
         aria-label="Account menu"
-        className="flex h-10 items-center gap-1.5 rounded-full bg-surface/75 pr-3 pl-1 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice"
+        className="relative flex h-10 items-center gap-1.5 rounded-full bg-surface/75 pr-3 pl-1 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice"
       >
         {viewer ? (
           <Avatar image={viewer.avatar} size={32} className="size-8" />
@@ -42,6 +43,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
           </span>
         )}
         <Menu aria-hidden className="size-5" />
+        <UnreadMessages dot className="absolute top-0.5 right-0.5 min-[390px]:hidden" />
       </button>
 
       <div
@@ -102,6 +104,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
               <button type="button" onClick={openInbox} className={`${item} sm:hidden`}>
                 <MessageCircle aria-hidden />
                 Messages
+                <UnreadMessages className="ml-auto" />
               </button>
               <button type="button" className={item}>
                 <Wallet aria-hidden />

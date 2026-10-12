@@ -19,7 +19,6 @@ import {
   PULSE,
   getExploreData,
   getSearchIndex,
-  type Studio,
   type StudioStatus,
 } from "@/lib/explore";
 import { formatCompact } from "@/lib/format";
@@ -117,7 +116,7 @@ export default async function ExplorePage() {
           </div>
         </section>
 
-        <section aria-labelledby="studios-heading" className={`${container} mt-24 sm:mt-28`}>
+        <section id="studios" aria-labelledby="studios-heading" className={`${container} mt-24 scroll-mt-20 sm:mt-28`}>
           <SectionHeading
             id="studios-heading"
             kicker={`${PULSE.openedToday} opened today`}
@@ -128,10 +127,13 @@ export default async function ExplorePage() {
           <div className="mt-8">
             <StudioBoard
               label="Commission openings"
-              tabs={BOARD.map(({ status, label }) => {
-                const studios = data.studios.filter((s) => s.status === status);
-                return { key: status, label, count: studios.length, content: <StudioGrid studios={studios} /> };
-              })}
+              tabs={BOARD.map(({ status, label }) => ({
+                key: status,
+                label,
+                sheets: data.studios
+                  .filter((s) => s.status === status)
+                  .map((studio) => ({ id: studio.id, draws: studio.draws, node: <StudioSheet studio={studio} /> })),
+              }))}
             />
           </div>
         </section>
@@ -177,17 +179,5 @@ export default async function ExplorePage() {
         </div>
       </main>
     </>
-  );
-}
-
-function StudioGrid({ studios }: { studios: Studio[] }) {
-  return (
-    <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pt-3 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:gap-y-7 sm:overflow-visible sm:px-0 sm:pt-0 sm:pb-0 lg:grid-cols-2 lg:gap-x-5">
-      {studios.map((studio) => (
-        <li key={studio.id} className="w-[88%] shrink-0 snap-start sm:w-auto">
-          <StudioSheet studio={studio} />
-        </li>
-      ))}
-    </ul>
   );
 }

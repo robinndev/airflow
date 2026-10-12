@@ -8,8 +8,10 @@ import { HandNote, Scribble, Sparkle, Tape } from "@/components/explore/doodles"
 import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { SocialIcon } from "@/components/icons/social-icon";
 import { buttonClasses } from "@/components/ui/button";
+import { DrawsPicker } from "./draws-picker";
 import type { Customization } from "@/lib/customization/model";
 import { nameStyle } from "@/lib/customization/style";
+import { artistLabels } from "@/lib/profile/draws";
 import { MAX_LINKS, normalizeUrl, toSocialLink } from "@/lib/profile/links";
 import type { ImageAsset } from "@/lib/profile/types";
 
@@ -167,6 +169,16 @@ export function EditProfileButton({
               )}
               {form.bio && <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-pretty text-on-paper/80">{form.bio}</p>}
 
+              {form.draws.length > 0 && (
+                <p className="mt-3 flex flex-wrap justify-center gap-1.5">
+                  {artistLabels(form.draws).map(({ tag, label }) => (
+                    <span key={tag} className="rounded-full bg-lilac/12 px-2 py-0.5 text-xs font-semibold text-lilac-ink">
+                      {label}
+                    </span>
+                  ))}
+                </p>
+              )}
+
               {(form.pronouns || form.location) && (
                 <p className="mt-4 flex flex-wrap justify-center gap-2">
                   {form.pronouns && (
@@ -287,6 +299,11 @@ export function EditProfileButton({
               </Prompt>
             </div>
 
+            <Prompt label="what do you draw?" id={`${id}-draws`}>
+              <p className="-mt-1 mb-3 text-xs text-paper-muted">Buyers filter Explore by these, so they find you for what you love drawing.</p>
+              <DrawsPicker value={form.draws} onChange={(draws) => set("draws", draws)} specialties tone="paper" labelledBy={`${id}-draws`} />
+            </Prompt>
+
             <Prompt label="find me elsewhere" htmlFor={`${id}-link`} count={[form.links.length, MAX_LINKS]}>
               {form.links.length > 0 && (
                 <ul className="mb-3 flex flex-wrap gap-2">
@@ -370,11 +387,14 @@ export function EditProfileButton({
 function Prompt({
   label,
   htmlFor,
+  id,
   count,
   children,
 }: {
   label: string;
-  htmlFor: string;
+  /** The field it labels; a group of buttons passes `id` instead and points at it with aria-labelledby. */
+  htmlFor?: string;
+  id?: string;
   count?: [number, number];
   children: ReactNode;
 }) {
@@ -382,7 +402,7 @@ function Prompt({
   return (
     <div>
       <div className="flex items-end justify-between gap-3">
-        <label htmlFor={htmlFor} className="relative font-hand text-[1.375rem] leading-none font-semibold text-lilac-ink">
+        <label htmlFor={htmlFor} id={id} className="relative font-hand text-[1.375rem] leading-none font-semibold text-lilac-ink">
           {label}
           <Scribble className="absolute -bottom-2 left-0 w-full max-w-36 text-lilac/40" />
         </label>

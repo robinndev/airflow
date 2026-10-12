@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { Camera, LoaderCircle } from "lucide-react";
-import { useRef, useState, useTransition, type ChangeEvent } from "react";
+import { useCallback, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { updateProfileImage } from "@/app/(site)/[handle]/actions";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
+import { ImageCropDialog } from "@/components/uploads/image-crop-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
-import { discardArt, prepareImage, uploadArt } from "@/lib/images/prepare";
+import { discardArt, prepareImage, uploadArt, type CropRect } from "@/lib/images/prepare";
 import { UploadNoticeDialog, type UploadNotice } from "./upload-notice-dialog";
 
 type Slot = "avatar" | "banner";
@@ -14,8 +15,9 @@ type Slot = "avatar" | "banner";
 const MAX_DIMENSION: Record<Slot, number> = { banner: 2400, avatar: 512 };
 
 /**
- * Lets the owner pick a new banner/avatar. Shows an instant local preview,
- * then swaps to the server-rendered image once the action revalidates.
+ * Lets the owner pick a new banner/avatar, frame it (zoom + position, see
+ * <ImageCropDialog>), then shows the framed result locally while it uploads
+ * and swaps to the server-rendered image once the action revalidates.
  */
 export function ImagePickerButton({
   handle,
@@ -31,7 +33,9 @@ export function ImagePickerButton({
   const [preview, setPreview] = useState<string | null>(null);
   const [notice, setNotice] = useState<UploadNotice | null>(null);
   const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
+  const [cropping, setCropping] = useState<File | null>(null);
   const [pending, startTransition] = useTransition();
+  const stopCropping = useCallback(() => setCropping(null), []);
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -43,18 +47,22 @@ export function ImagePickerButton({
       setNotice({ kind: "flow-plus", previewUrl: URL.createObjectURL(file) });
       return;
     }
-
-    const objectUrl = URL.createObjectURL(file);
     setNotice(null);
-    setPreview(objectUrl);
+    // Animated GIFs go up whole (cropping would freeze them); everything else is framed first.
+    if (file.type === "image/gif") upload(file);
+    else setCropping(file);
+  }
 
+  function upload(file: File, crop?: CropRect) {
     startTransition(async () => {
       let message: string | null = null;
       let refusal: AiImageError | null = null;
+      let shown: string | null = null;
       try {
         // Straight to storage from the browser, then the profile points at it.
-        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif });
-        URL.revokeObjectURL(image.previewUrl);
+        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif, allowPng: true, crop });
+        shown = image.previewUrl;
+        startTransition(() => setPreview(image.previewUrl));
         const path = await uploadArt(image, slot);
         const result = await updateProfileImage(handle, slot, {
           path,
@@ -75,7 +83,7 @@ export function ImagePickerButton({
         if (message) setNotice({ kind: "error", message });
         if (refusal) setAiRefusal(refusal);
       });
-      URL.revokeObjectURL(objectUrl);
+      if (shown) URL.revokeObjectURL(shown);
     });
   }
 
@@ -141,6 +149,15 @@ export function ImagePickerButton({
         onClose={() => {
           if (notice?.kind === "flow-plus") URL.revokeObjectURL(notice.previewUrl);
           setNotice(null);
+        }}
+      />
+      <ImageCropDialog
+        file={cropping}
+        shape={slot}
+        onCancel={stopCropping}
+        onApply={(file, crop) => {
+          setCropping(null);
+          upload(file, crop);
         }}
       />
       <AiImageDialog error={aiRefusal} onClose={() => setAiRefusal(null)} onPickAnother={() => inputRef.current?.click()} />

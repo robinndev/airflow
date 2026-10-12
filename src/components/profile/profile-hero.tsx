@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import { FramedAvatar } from "@/components/frames/avatar-frame";
@@ -7,6 +8,7 @@ import { HEADER_SENTINEL_ID } from "@/components/site/header-shell";
 import { formatCompact, formatMonthYear } from "@/lib/format";
 import type { Customization } from "@/lib/customization/model";
 import { nameStyle } from "@/lib/customization/style";
+import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
 import { AvailabilityBadge } from "./availability-badge";
 import { CommissionStatusPill } from "./commission-status-pill";
@@ -104,6 +106,21 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
               </p>
             )}
             <p data-part="bio" className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80">{profile.bio}</p>
+            {profile.draws.length > 0 && (
+              <ul data-part="draws" aria-label="What they draw" className="mt-3 flex flex-wrap gap-1.5">
+                {artistLabels(profile.draws).map(({ tag, label }) => (
+                  <li key={tag}>
+                    {/* Each label finds more artists like this one. */}
+                    <Link
+                      href={exploreDrawsHref(tag)}
+                      className="inline-flex h-7 items-center rounded-full bg-lilac/12 px-2.5 text-[0.8125rem] font-semibold text-lilac-ink transition-colors hover:bg-lilac/20"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             <ul data-part="meta" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
               <li>
                 {/* Availability is the headline status; commission details live in the sidebar. */}

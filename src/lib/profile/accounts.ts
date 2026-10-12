@@ -5,6 +5,7 @@ import { normalizeUrl, toSocialLink } from "./links";
 import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { createSupabasePublic } from "@/lib/supabase/server";
 import { defaultArt } from "./default-art";
+import { cleanDraws } from "./draws";
 import type { ArtistProfile, Post, PostAuthor, PostKind } from "./types";
 
 /*
@@ -31,6 +32,7 @@ export type AccountRow = {
   pronouns?: string;
   location?: string;
   links?: { url: string; label?: string }[];
+  draws?: string[];
 };
 
 type PostRow = {
@@ -58,6 +60,7 @@ const COLUMNS = ACCOUNT_COLUMNS;
  * falls back to the next set instead of failing the page.
  */
 const PROFILE_COLUMN_SETS = [
+  `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links`,
   `${ACCOUNT_COLUMNS}, customization, about`,
   COLUMNS,
@@ -210,6 +213,7 @@ export function toArtistProfile(row: AccountRow): ArtistProfile {
       const url = typeof link?.url === "string" ? normalizeUrl(link.url) : null;
       return url ? [toSocialLink(url, link.label)] : [];
     }),
+    draws: cleanDraws(row.draws ?? []),
     appearance: { accent: art.accent, bannerFocusY: 50 },
     ...(row.customization !== undefined && { customization: readCustomization(row.customization) }),
     ...(row.about !== undefined && { about: readBoard(row.about) }),

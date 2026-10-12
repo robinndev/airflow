@@ -92,7 +92,7 @@ export function PostComposer({
     setPreparingImage(true);
     try {
       // One bad file doesn't sink the others: keep what prepared, explain the first failure.
-      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400)));
+      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400, { allowPng: true })));
       const prepared = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
       setImages((current) => [...current, ...prepared].slice(0, MAX_IMAGES));
       const failure = results.find((result) => result.status === "rejected")?.reason;

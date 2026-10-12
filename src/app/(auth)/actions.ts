@@ -11,6 +11,7 @@ import { PASSWORD_MIN, passwordStrength } from "@/lib/auth/password";
 import { enabledProviders } from "@/lib/auth/enabled-providers";
 import { safeNext, siteOrigin } from "@/lib/auth/redirects";
 import { fetchHandleForUser, isHandleRegistered } from "@/lib/profile/accounts";
+import { cleanDraws, isSubject } from "@/lib/profile/draws";
 import { db } from "@/lib/profile/mock-db";
 import { profileTag, userTag } from "@/lib/profile/queries";
 import { PREVIEW_AS_VISITOR_COOKIE } from "@/lib/session";
@@ -208,6 +209,9 @@ const handleField = z
 const termsField = z.literal("on", { error: "Please accept the terms to continue." });
 const inviteField = z.string().trim().max(32).optional();
 
+/** "What do you draw?" on the sign-up form: who they draw (specialties come later, from Edit profile). */
+const subjectsFrom = (formData: FormData) => cleanDraws(formData.getAll("draws")).filter(isSubject);
+
 const signUpSchema = z.object({ handle: handleField, email, password, terms: termsField, invite: inviteField });
 
 export async function signUp(_prev: SignUpState, formData: FormData): Promise<SignUpState> {
@@ -231,7 +235,7 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
     password: parsed.data.password,
     options: {
       // Read by the `handle_new_user` trigger, which creates the profile.
-      data: { handle, display_name: handle, invite_code: invite?.code ?? null },
+      data: { handle, display_name: handle, invite_code: invite?.code ?? null, draws: subjectsFrom(formData) },
       emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/${handle}`,
     },
   });
@@ -310,6 +314,9 @@ export async function claimHandle(_prev: ClaimState, formData: FormData): Promis
     if (error.code === "23505") return { fields: { handle: "That handle was just taken." } };
     return { error: "Couldn't save your handle. Try again in a moment.", fields: {} };
   }
+  // Best effort: the profile exists either way, and they can add these from Edit profile.
+  const draws = subjectsFrom(formData);
+  if (draws.length) await (await createSupabaseServer()).from("profiles").update({ draws }).eq("id", claims.sub);
 
   updateTag(userTag(claims.sub));
   updateTag(profileTag(handle));

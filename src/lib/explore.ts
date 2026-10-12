@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { MOODS, moodsOf, type MoodSlug } from "./palette";
 import { demoImages as art, demoPool, type PoolTheme } from "./profile/demo-images";
+import type { DrawTag } from "./profile/draws";
 import { db } from "./profile/mock-db";
 import type { ImageAsset } from "./profile/types";
 
@@ -40,6 +41,8 @@ export type Studio = {
   id: string;
   artist: ArtistRef;
   specialty: string;
+  /** What the artist draws (their profile's `draws`); Explore filters studios by it. */
+  draws: DrawTag[];
   tiers: { label: string; priceUsd: number; originalUsd?: number; image: ImageAsset }[];
   slots: { total: number; taken: number };
   turnaround: string;
@@ -208,6 +211,16 @@ const TIERS: Record<PoolTheme, { specialty: string; tiers: [string, number][] }>
   traditional: { specialty: "Watercolor & markers", tiers: [["Sketch", 40], ["Watercolor", 65], ["Original", 140]] },
 };
 
+const DRAWS: Record<PoolTheme, DrawTag[]> = {
+  furry: ["anthro", "feral", "ref_sheet"],
+  creature: ["humanoid", "feral", "oc_design"],
+  kemonomimi: ["human", "humanoid", "oc_design"],
+  chibi: ["human", "anthro", "pony", "chibi", "emote"],
+  scenery: ["background", "concept"],
+  pixel: ["human", "anthro", "feral", "pony", "pixel", "emote", "animation"],
+  traditional: ["human", "feral"],
+};
+
 const STUDIO_PLAN: {
   handle: string;
   status: StudioStatus;
@@ -236,6 +249,7 @@ function poolStudio(plan: (typeof STUDIO_PLAN)[number], now: number): Studio {
     id: `studio-${plan.handle}`,
     artist: poolArtist(plan.handle),
     specialty,
+    draws: DRAWS[artist.theme],
     tiers: tiers.map(([label, price], i) => ({
       label,
       priceUsd: plan.discountPercent ? Math.round(price * (1 - plan.discountPercent / 100)) : price,
@@ -270,6 +284,7 @@ function miraStudio(): Studio | null {
     id: "studio-mira",
     artist: realArtist("mira"),
     specialty: "Painted skies & quiet cities",
+    draws: profile.draws,
     tiers: services.map((s) => ({
       label: MIRA_TIERS[s.id],
       priceUsd: s.discountPercent ? Math.round(s.priceFromUsd * (1 - s.discountPercent / 100)) : s.priceFromUsd,

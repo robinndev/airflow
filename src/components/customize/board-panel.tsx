@@ -1,11 +1,11 @@
 "use client";
 
-import { Code2, ImagePlus, List, LoaderCircle, Smile, Type } from "lucide-react";
+import { Code2, ImagePlus, List, LoaderCircle, Scaling, Smile, Type } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Sticker } from "@/components/about/stickers";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
-import { STICKERS, type Block, type Board, type NewBlock, type StickerId } from "@/lib/customization/about";
+import { STICKERS, realSize, type Block, type Board, type NewBlock, type StickerId } from "@/lib/customization/about";
 import { FREE } from "@/lib/customization/model";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
 import { ChipGroup, ColorField, FlowBadge, Section, Slider } from "./controls";
@@ -69,17 +69,16 @@ export function BoardPanel({
     setUploading(true);
     setUploadError(null);
     try {
-      const image = await prepareImage(file, 1600, { allowGif: isPaid });
+      const image = await prepareImage(file, 1600, { allowGif: isPaid, allowPng: true });
       URL.revokeObjectURL(image.previewUrl);
       const path = await uploadArt(image, "about");
-      const w = 300;
+      // As it is: real size, no frame (a polaroid would put paper behind a transparent PNG).
       onAdd({
         type: "image",
         image: { path, width: image.width, height: image.height },
         alt: file.name.replace(/\.[a-z0-9]+$/i, "").slice(0, 120),
-        frame: "polaroid",
-        w,
-        h: Math.round((w * image.height) / image.width) + 50,
+        frame: "none",
+        ...realSize(image),
         rotate: 0,
       });
     } catch (error) {
@@ -297,6 +296,14 @@ function Inspector({ block, isPaid, onUpdate }: { block: Block; isPaid: boolean;
                 { value: "round", label: "Round" },
               ]}
             />
+            <button
+              type="button"
+              onClick={() => onUpdate(realSize(block.image))}
+              className="inline-flex items-center gap-1.5 justify-self-start rounded-button border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-sky/60 hover:bg-ice/60"
+            >
+              <Scaling aria-hidden className="size-3.5 text-accent-strong" />
+              Back to real size
+            </button>
           </>
         )}
 

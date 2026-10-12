@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useActionState, useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 import { signUp } from "@/app/(auth)/actions";
 import { Stamp } from "@/components/explore/stamp";
+import { DrawsPicker } from "@/components/profile/draws-picker";
 import type { Invite } from "@/lib/auth/invites";
+import type { DrawTag } from "@/lib/profile/draws";
 import { resetDesk, setDesk } from "./desk";
 import { FieldError, FormAlert, PasswordField, SubmitButton, TermsCheckbox, fieldClass, labelClass } from "./form-ui";
 import { HandleField } from "./handle-field";
@@ -25,6 +27,7 @@ export function SignUpForm({ header, invite }: SignUpFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [terms, setTerms] = useState(false);
+  const [draws, setDraws] = useState<DrawTag[]>([]);
   const [attempt, setAttempt] = useState(0);
   const fields = state && !state.ok ? state.fields : {};
 
@@ -77,6 +80,16 @@ export function SignUpForm({ header, invite }: SignUpFormProps) {
             onChange={setPassword}
             error={fields.password}
           />
+        </div>
+
+        <div className="mt-6">
+          <p id={`${id}-draws`} className={labelClass}>
+            What do you draw?
+          </p>
+          <p className="mt-1 mb-3 text-xs text-muted">
+            Pick any, or all. Buyers find artists by it. Only here to commission? Skip it.
+          </p>
+          <DrawsPicker value={draws} onChange={setDraws} name="draws" labelledBy={`${id}-draws`} />
         </div>
 
         <InviteEnvelope initialCode={invite?.code} initialInvite={invite?.found} initialError={invite?.error} error={fields.invite} />

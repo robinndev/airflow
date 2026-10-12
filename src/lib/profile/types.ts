@@ -1,5 +1,6 @@
 import type { Board } from "@/lib/customization/about";
 import type { Customization } from "@/lib/customization/model";
+import type { DrawTag } from "./draws";
 
 export type Plan = "free" | "pro";
 
@@ -105,6 +106,8 @@ export type ArtistProfile = {
     preview: ImageAsset[];
   };
   links: SocialLink[];
+  /** What they draw: subjects and specialties (src/lib/profile/draws.ts). Empty = not said. */
+  draws: DrawTag[];
   appearance: ProfileAppearance;
   /**
    * Full customization as saved (src/lib/customization). Gate it with the

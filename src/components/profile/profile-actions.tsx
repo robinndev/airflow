@@ -99,6 +99,7 @@ async function OwnerEditButton({ handle }: { handle: string }) {
         pronouns: profile.pronouns ?? "",
         location: profile.location ?? "",
         links: profile.links.map(({ url, label }) => ({ url, label })),
+        draws: profile.draws,
       }}
     />
   );

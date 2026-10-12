@@ -128,6 +128,7 @@ const PARTS: { label: string; selector: string }[] = [
   { label: "@handle", selector: '[data-part="handle"]' },
   { label: "Headline", selector: '[data-part="headline"]' },
   { label: "Bio", selector: '[data-part="bio"]' },
+  { label: "What you draw", selector: '[data-part="draws"]' },
   { label: "Avatar", selector: '[data-part="avatar"]' },
   { label: "Cover", selector: '[data-part="banner"]' },
   { label: "Stats", selector: '[data-part="stats"]' },

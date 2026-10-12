@@ -7,7 +7,7 @@ import { InboxList } from "./inbox-list";
 import { openChat, openInbox, syncViewer, useChatState, useUnreadCount, type ChatViewer } from "./store";
 
 const TRIGGER =
-  "relative grid size-10 place-items-center rounded-full bg-surface/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface aria-expanded:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice";
+  "relative size-10 place-items-center rounded-full bg-surface/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface aria-expanded:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice";
 
 /** Rendered by the header: tells the chat who's signed in (null = visitor). */
 export function MessagesSession({ viewer }: { viewer: ChatViewer | null }) {
@@ -33,7 +33,14 @@ export function MessagesMenu() {
 
   return (
     <>
-      <button type="button" aria-label={label} title="Messages" onClick={openInbox} className={`${TRIGGER} sm:hidden`}>
+      {/* Phones narrower than 390px have no room in the header: the account menu carries Messages there. */}
+      <button
+        type="button"
+        aria-label={label}
+        title="Messages"
+        onClick={openInbox}
+        className={`${TRIGGER} hidden min-[390px]:grid sm:hidden`}
+      >
         <MessageCircle aria-hidden className="size-[1.125rem]" />
         {badge}
       </button>
@@ -41,7 +48,7 @@ export function MessagesMenu() {
         <HeaderMenu
           label={label}
           panelClassName="sm:w-[25rem]"
-          triggerClassName={TRIGGER}
+          triggerClassName={`${TRIGGER} grid`}
           trigger={
             <>
               <MessageCircle aria-hidden className="size-[1.125rem]" />
@@ -69,5 +76,18 @@ export function MessagesMenu() {
         </HeaderMenu>
       </div>
     </>
+  );
+}
+
+/** Unread conversations, for the account menu on narrow phones: a count beside "Messages", or just a dot. */
+export function UnreadMessages({ dot = false, className = "" }: { dot?: boolean; className?: string }) {
+  const unread = useUnreadCount();
+  if (!unread) return null;
+  if (dot) return <span aria-hidden className={`size-2.5 rounded-full bg-mint ring-2 ring-surface ${className}`} />;
+  return (
+    <span className={`rounded-full bg-mint px-2 py-0.5 text-[0.6875rem] font-bold text-on-mint ${className}`}>
+      {unread}
+      <span className="sr-only"> unread</span>
+    </span>
   );
 }

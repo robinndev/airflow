@@ -212,6 +212,17 @@ export function Conversation({ handle, minimized }: { handle: string; minimized:
       el.scrollTop = el.scrollHeight;
     }
   }, [messages, typing, thread]);
+  // Pictures size the thread only once they load: keep following the bottom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const content = el?.firstElementChild;
+    if (!el || !content) return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current && keepOffset.current === null) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [thread]);
 
   async function loadOlder() {
     const oldest = messages.find((m) => !m.status);

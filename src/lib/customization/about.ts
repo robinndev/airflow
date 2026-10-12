@@ -15,6 +15,24 @@ export const BOARD_MIN_HEIGHT = 600;
 export const BOARD_MAX_HEIGHT = 4000;
 export const GRID = 10;
 
+/**
+ * Board units per CSS pixel on a desktop profile, where the board fills the
+ * content column (1184 max − 2 × 32 padding − 300 sidebar − 24 gap = 796px).
+ */
+const UNITS_PER_PX = BOARD_WIDTH / 796;
+
+/**
+ * An image's real size on the board (a 50×50 doodle stays 50×50 on a desktop
+ * profile instead of being blown up and blurred), only ever shrunk, never
+ * cropped, to fit inside the board's margins.
+ */
+export function realSize(image: { width: number; height: number }) {
+  const w = image.width * UNITS_PER_PX;
+  const h = image.height * UNITS_PER_PX;
+  const fit = Math.min(1, (BOARD_WIDTH - 80) / w, 1200 / h);
+  return { w: Math.max(20, Math.round(w * fit)), h: Math.max(20, Math.round(h * fit)) };
+}
+
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
 const color = z.union([hex, z.literal("transparent")]);
 

@@ -120,13 +120,18 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
     }
 
     case "image": {
+      // "None" shows the image whole, see-through parts included; the frames fill their shape like the real thing.
+      const crops = block.frame !== "none";
+      // Small images (doodles, pixel art, stickers) go out as uploaded: the optimizer's lossy re-encode would smear them.
+      const small = Math.max(block.image.width, block.image.height) <= 640;
       const img = (
         <Image
           src={boardImageSrc(block.image.path)}
           alt={block.alt}
           fill
-          sizes="(min-width: 1024px) 400px, 90vw"
-          className={`object-cover ${block.frame === "round" ? "rounded-full" : block.frame === "none" ? "rounded-[6px]" : ""}`}
+          unoptimized={small}
+          sizes={`(min-width: 1184px) ${Math.ceil(block.w * 0.8)}px, (min-width: 640px) ${Math.ceil(block.w / 10)}vw, 100vw`}
+          className={`${crops ? "object-cover" : "object-contain"} ${block.frame === "round" ? "rounded-full" : ""}`}
         />
       );
       if (block.frame === "polaroid") {
