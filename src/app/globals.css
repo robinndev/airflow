@@ -1090,3 +1090,29 @@ html:has(dialog[open]:modal) {
     stroke-dashoffset: 0;
   }
 }
+
+/* A new message lands like a letter dropped on the desk (<IncomingLetter>). */
+@keyframes letter-in {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) rotate(6deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) rotate(-2.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-1deg);
+  }
+}
+
+@utility letter-in {
+  animation: letter-in 0.55s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter-in {
+    animation: none;
+  }
+}

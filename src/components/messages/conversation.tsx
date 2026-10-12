@@ -67,6 +67,8 @@ export function Conversation({ handle, minimized }: { handle: string; minimized:
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [typing, setTyping] = useState(false);
+  /** The other person has this conversation open right now. */
+  const [here, setHere] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [visible, setVisible] = useState(true);
   const [reload, setReload] = useState(0);
@@ -161,31 +163,47 @@ export function Conversation({ handle, minimized }: { handle: string; minimized:
     [viewerId],
   );
 
-  // Typing hints, over the conversation's own private channel.
+  // The conversation's own private channel: typing hints, and who has it open right now (presence).
   const demo = thread?.person.demo ?? true;
+  const onScreenRef = useRef(onScreen);
   useEffect(() => {
-    if (!conversationId || demo) return;
+    onScreenRef.current = onScreen;
+    const channel = typingChannel.current;
+    if (!channel) return;
+    void (onScreen ? channel.track({ at: Date.now() }) : channel.untrack());
+  }, [onScreen]);
+  useEffect(() => {
+    if (!conversationId || demo || !viewerId) return;
     const supabase = supabaseBrowser();
     let channel: RealtimeChannel | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
     void supabase.realtime.setAuth().then(() => {
       if (cancelled) return;
-      channel = supabase
-        .channel(chatTopic(conversationId), { config: { private: true, broadcast: { self: false } } })
+      const room = supabase.channel(chatTopic(conversationId), {
+        config: { private: true, broadcast: { self: false }, presence: { key: viewerId } },
+      });
+      channel = room;
+      room
         .on("broadcast", { event: "typing" }, ({ payload }: { payload?: { from?: string } }) => {
           if (payload?.from === viewerId) return;
           setTyping(true);
           clearTimeout(timer);
           timer = setTimeout(() => setTyping(false), TYPING_FOR);
         })
-        .subscribe();
-      typingChannel.current = channel;
+        .on("presence", { event: "sync" }, () => {
+          setHere(Object.keys(room.presenceState()).some((key) => key !== viewerId));
+        })
+        .subscribe((status: string) => {
+          if (status === "SUBSCRIBED" && onScreenRef.current) void room.track({ at: Date.now() });
+        });
+      typingChannel.current = room;
     });
     return () => {
       cancelled = true;
       clearTimeout(timer);
       typingChannel.current = null;
+      setHere(false);
       if (channel) void supabase.removeChannel(channel);
     };
   }, [conversationId, demo, viewerId]);
@@ -334,11 +352,13 @@ export function Conversation({ handle, minimized }: { handle: string; minimized:
     ? null
     : person.demo
       ? "Demo artist"
-      : studio?.status === "open"
-        ? "Commissions open"
-        : studio?.status === "waitlist"
-          ? "Commission waitlist"
-          : null;
+      : here
+        ? "Here now"
+        : studio?.status === "open"
+          ? "Commissions open"
+          : studio?.status === "waitlist"
+            ? "Commission waitlist"
+            : null;
 
   return (
     <div
@@ -365,8 +385,14 @@ export function Conversation({ handle, minimized }: { handle: string; minimized:
                 {statusLine && (
                   <>
                     <span aria-hidden>·</span>
-                    {studio?.status === "open" && !person.demo && (
-                      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-mint-strong" />
+                    {here ? (
+                      <span aria-hidden className="relative grid size-1.5 shrink-0 place-items-center">
+                        <span className="absolute size-3 animate-ping rounded-full bg-mint/50 motion-reduce:hidden" />
+                        <span className="size-1.5 rounded-full bg-mint-strong" />
+                      </span>
+                    ) : (
+                      studio?.status === "open" &&
+                      !person.demo && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-mint-strong" />
                     )}
                     <span className="truncate">{statusLine}</span>
                   </>

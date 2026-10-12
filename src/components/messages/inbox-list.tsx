@@ -88,7 +88,7 @@ export function InboxList({
             <p className="font-display font-bold text-ink">Couldn&apos;t load your messages</p>
             <button
               type="button"
-              onClick={reloadInbox}
+              onClick={() => reloadInbox()}
               className="mt-2 text-sm font-semibold text-ocean-ink hover:underline"
             >
               Try again

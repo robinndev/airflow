@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import { MessageIconButton } from "@/components/messages/message-button";
 import { Tape } from "@/components/explore/doodles";
 import { Swatches, tiltOf } from "@/components/commissions/queue/parts";
 import { StepTrack } from "@/components/commissions/queue/step-track";
@@ -67,20 +68,27 @@ export function Postcard({ request, today }: { request: MyRequest; today: string
             <p className="text-[0.625rem] font-bold tracking-[0.18em] text-paper-muted uppercase">
               {request.real ? "Sent from Artiflow" : "Your request"}
             </p>
-            <Link
-              href={`/${artist.handle}`}
-              className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full pr-2 text-sm hover:underline"
-            >
-              <Image
-                src={artist.avatar.src}
-                alt=""
-                width={24}
-                height={24}
-                className="size-6 shrink-0 rounded-full bg-ice object-cover"
-                style={{ objectPosition: artist.avatar.focus }}
+            <div className="mt-2 flex min-w-0 items-center gap-0.5">
+              <Link
+                href={`/${artist.handle}`}
+                className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1 text-sm hover:underline"
+              >
+                <Image
+                  src={artist.avatar.src}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="size-6 shrink-0 rounded-full bg-ice object-cover"
+                  style={{ objectPosition: artist.avatar.focus }}
+                />
+                <span className="truncate font-semibold">{artist.name}</span>
+              </Link>
+              <MessageIconButton
+                handle={artist.handle}
+                name={first}
+                className="text-paper-muted hover:bg-on-paper/5 hover:text-on-paper"
               />
-              <span className="truncate font-semibold">{artist.name}</span>
-            </Link>
+            </div>
             <h3 className="mt-1.5 font-display text-[1.3125rem] leading-tight font-extrabold text-balance">{request.service}</h3>
             {request.character && (
               <p className="mt-1.5 flex items-center gap-1.5 text-sm text-paper-muted">

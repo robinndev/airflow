@@ -3,21 +3,41 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useSyncExternalStore } from "react";
 import { loadInbox } from "@/app/(site)/message-actions";
+import { armChime, ringChime } from "@/lib/messages/chime";
 import {
   inboxTopic,
   previewOf,
+  type ChatPerson,
   type InboxEntry,
   type MessageBroadcast,
   type ReadBroadcast,
 } from "@/lib/messages/types";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { getAlertPrefs } from "./prefs";
 
 /*
  * Direct messages in the browser: who's signed in, the inbox, which chat is
- * open, and the live connection. Pages stay static: the header tells the
- * store who's signed in (<MessagesSession>), the inbox loads once per viewer,
- * then the viewer's private `inbox:<id>` channel keeps it fresh. The chat
+ * open, how new messages reach us and how they announce themselves. The chat
  * window lives in the (site) layout, so it stays open across navigation.
+ *
+ * Two ways to hear about new messages, chosen to keep Realtime connections
+ * (capped per plan: 500 at once on Pro) for the people actually chatting:
+ *
+ * - Pulse (the default): every 15s (60s in a background tab) the browser asks
+ *   Supabase `message_pulse()` over plain HTTP: unread count, and when the
+ *   newest message from someone else arrived. Tiny, and it never touches our
+ *   server. Only when it changes is the inbox loaded (a Server Action).
+ * - Live: while the chat window is open (or minimized), a WebSocket joins the
+ *   viewer's private `inbox:<id>` channel, and the open conversation's
+ *   `chat:<id>` (typing, presence). It closes 30s after the window does.
+ *
+ * The inbox itself loads lazily (opening the menu or the chat, or a pulse
+ * that brings news); until then the header shows the pulse's unread count.
+ *
+ * A message that arrives while its conversation isn't in front of you is
+ * announced: a letter slides in on the page (<IncomingLetter>), the header's
+ * button swings, and one tab (the visible one, if any) rings the studio chime
+ * and, in the background, raises a desktop alert if those are on.
  */
 
 export type ChatViewer = { id: string; handle: string };
@@ -25,27 +45,59 @@ export type ChatViewer = { id: string; handle: string };
 /** What the chat window shows: the inbox (phones), or a conversation with someone. */
 export type ChatView = { view: "inbox" } | { view: "chat"; handle: string };
 
+/** A new message, shown as a letter on the page until it's read or dismissed. */
+export type Letter = { key: string; conversationId: string; person: ChatPerson; preview: string };
+
 type State = {
   /** Undefined until the header has streamed in; null for visitors. */
   viewer: ChatViewer | null | undefined;
   /** Null until loaded. */
   inbox: InboxEntry[] | null;
   inboxFailed: boolean;
+  /** Unread conversations per the last pulse, shown until the inbox is loaded. */
+  unreadHint: number;
   open: ChatView | null;
   minimized: boolean;
+  letter: Letter | null;
+  /** Counts arrivals, so the header can swing its button on each one. */
+  arrivals: number;
+  connection: "pulse" | "connecting" | "live";
 };
 
 export type LiveEvent =
   | { type: "message"; message: MessageBroadcast }
   | { type: "read"; read: ReadBroadcast }
-  /** The connection came back: anything may have been missed. */
+  /** Something may have been missed (the socket came back, or a pulse brought news): reload. */
   | { type: "resync" };
 
-let state: State = { viewer: undefined, inbox: null, inboxFailed: false, open: null, minimized: false };
+const PULSE_VISIBLE_MS = 15_000;
+const PULSE_HIDDEN_MS = 60_000;
+/** The chat is open but its socket is down (retrying): pulse often until it's back. */
+const PULSE_CHATTING_MS = 5_000;
+/** The socket outlives the chat window a little, so closing and reopening doesn't reconnect. */
+const SOCKET_GRACE_MS = 30_000;
+
+let state: State = {
+  viewer: undefined,
+  inbox: null,
+  inboxFailed: false,
+  unreadHint: 0,
+  open: null,
+  minimized: false,
+  letter: null,
+  arrivals: 0,
+  connection: "pulse",
+};
 const listeners = new Set<() => void>();
 const live = new Set<(event: LiveEvent) => void>();
 let channel: RealtimeChannel | null = null;
-/** The conversation on screen right now (open, not minimized), so new messages there aren't counted as unread. */
+let pulseTimer: ReturnType<typeof setTimeout> | undefined;
+let graceTimer: ReturnType<typeof setTimeout> | undefined;
+let inboxLoad: Promise<InboxEntry[] | null> | null = null;
+/** Newest message from someone else that this tab already knows of (pulse baseline). */
+let newestSeen: string | null | undefined;
+let watching = false;
+/** The conversation on screen right now (open, not minimized, tab visible): its messages need no announcing. */
 let onScreen: string | null = null;
 
 function update(next: Partial<State>) {
@@ -59,107 +111,295 @@ function subscribe(listener: () => void) {
 }
 
 const sortInbox = (entries: InboxEntry[]) => entries.toSorted((a, b) => b.last.at.localeCompare(a.last.at));
+const isVisible = () => typeof document === "undefined" || document.visibilityState === "visible";
+const seeing = (conversationId: string) => conversationId === onScreen && isVisible();
+const unreadIn = (inbox: InboxEntry[]) => inbox.filter((e) => e.unread && !e.archived).length;
+const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? b : !b ? a : a > b ? a : b);
+const broadcast = (event: LiveEvent) => {
+  for (const listener of live) listener(event);
+};
 
-export function reloadInbox() {
+/** Loads the inbox (one request at a time) and returns it. */
+export function reloadInbox(): Promise<InboxEntry[] | null> {
   const viewer = state.viewer;
-  if (!viewer) return;
-  loadInbox()
+  if (!viewer) return Promise.resolve(null);
+  inboxLoad ??= loadInbox()
     .then((inbox) => {
-      if (state.viewer?.id !== viewer.id || !inbox) return;
-      update({
-        inbox: inbox.map((entry) => (entry.id === onScreen && isVisible() ? { ...entry, unread: false } : entry)),
-        inboxFailed: false,
-      });
+      if (state.viewer?.id !== viewer.id || !inbox) return null;
+      const fresh = inbox.map((entry) => (seeing(entry.id) ? { ...entry, unread: false } : entry));
+      update({ inbox: fresh, inboxFailed: false, unreadHint: unreadIn(fresh) });
+      return fresh;
     })
     .catch(() => {
       if (state.viewer?.id === viewer.id && !state.inbox) update({ inboxFailed: true });
+      return null;
+    })
+    .finally(() => {
+      inboxLoad = null;
     });
+  return inboxLoad;
 }
 
-const isVisible = () => typeof document === "undefined" || document.visibilityState === "visible";
+/** The inbox is needed now (menu or chat opened): load it if it isn't yet. */
+export function ensureInbox() {
+  if (state.viewer && !state.inbox && !inboxLoad) void reloadInbox();
+}
+
+// Announcing ------------------------------------------------------------------
+
+/**
+ * Only one tab speaks for a message: the visible one answers at once, hidden
+ * ones wait a moment and stand back if another tab already did.
+ */
+async function claim(key: string) {
+  await new Promise((resolve) => setTimeout(resolve, isVisible() ? Math.random() * 40 : 250 + Math.random() * 250));
+  try {
+    const slot = `artiflow-letter:${key}`;
+    if (localStorage.getItem(slot)) return false;
+    localStorage.setItem(slot, "1");
+    setTimeout(() => localStorage.removeItem(slot), 60_000);
+  } catch {
+    // No storage: every tab speaks for itself.
+  }
+  return true;
+}
+
+function desktopAlert(entry: InboxEntry) {
+  if (isVisible() || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const icon = new URL(entry.person.avatar.src, window.location.origin).href;
+  const alert = new Notification(entry.person.displayName, {
+    body: entry.last.body,
+    icon,
+    tag: `artiflow-message-${entry.id}`,
+    // The chime is the sound.
+    silent: true,
+  });
+  alert.onclick = () => {
+    window.focus();
+    openChat(entry.person.handle);
+    alert.close();
+  };
+}
+
+function announceArrival(entry: InboxEntry) {
+  // Keyed by conversation and time, so tabs that heard it live and tabs that pulsed agree.
+  const key = `${entry.id}:${entry.last.at}`;
+  update({
+    arrivals: state.arrivals + 1,
+    letter: { key, conversationId: entry.id, person: entry.person, preview: entry.last.body },
+  });
+  void claim(key).then((mine) => {
+    if (!mine) return;
+    const prefs = getAlertPrefs();
+    if (prefs.sound) ringChime(entry.person.handle);
+    if (prefs.desktop) desktopAlert(entry);
+  });
+}
+
+// Pulse -------------------------------------------------------------------------
+
+function schedulePulse(delay?: number) {
+  clearTimeout(pulseTimer);
+  if (!state.viewer || state.connection === "live") return;
+  const wait = delay ?? (state.open ? PULSE_CHATTING_MS : isVisible() ? PULSE_VISIBLE_MS : PULSE_HIDDEN_MS);
+  pulseTimer = setTimeout(() => void pulse(), wait);
+}
+
+/** Asks Supabase whether anything changed; loads the inbox and announces arrivals only if so. */
+async function pulse() {
+  const viewer = state.viewer;
+  if (!viewer) return;
+  try {
+    const { data: row } = await supabaseBrowser().rpc("message_pulse").single();
+    const data = row as { unread: number; latest: string | null } | null;
+    if (!data || state.viewer?.id !== viewer.id) return;
+    const since = newestSeen;
+    newestSeen = later(newestSeen, data.latest);
+    // First pulse: just the baseline (and the badge).
+    if (since === undefined) {
+      if (!state.inbox) update({ unreadHint: data.unread });
+      return;
+    }
+    if (data.latest && (!since || data.latest > since)) {
+      const inbox = await reloadInbox();
+      for (const entry of inbox ?? []) {
+        if (entry.unread && !entry.last.fromMe && (!since || entry.last.at > since)) announceArrival(entry);
+      }
+      broadcast({ type: "resync" });
+    } else if (state.inbox ? data.unread !== unreadIn(state.inbox) : data.unread !== state.unreadHint) {
+      // Read (or archived) on another device.
+      if (state.inbox) void reloadInbox();
+      else update({ unreadHint: data.unread });
+    }
+  } catch {
+    // Offline for a moment: the next pulse tries again.
+  } finally {
+    schedulePulse();
+  }
+}
+
+// Live socket ---------------------------------------------------------------------
 
 function onMessage(message: MessageBroadcast) {
   const viewer = state.viewer;
   if (!viewer) return;
+  const fromMe = message.sender_id === viewer.id;
+  if (!fromMe) newestSeen = later(newestSeen, message.created_at);
   const entry = state.inbox?.find((e) => e.id === message.conversation_id);
   if (!entry) {
-    // A new conversation: the inbox needs the other person's details.
-    reloadInbox();
-  } else {
-    const fromMe = message.sender_id === viewer.id;
-    const seeing = message.conversation_id === onScreen && isVisible();
-    update({
-      inbox: sortInbox(
-        state.inbox!.map((e) =>
-          e.id === entry.id
-            ? {
-                ...e,
-                last: { body: previewOf(message.body, message.images.length), fromMe, at: message.created_at },
-                unread: fromMe || seeing ? false : true,
-                archived: false,
-              }
-            : e,
-        ),
-      ),
+    // A new conversation (or an inbox not loaded yet): it needs the other person's details.
+    void reloadInbox().then((inbox) => {
+      const fresh = inbox?.find((e) => e.id === message.conversation_id);
+      if (fresh && !fromMe && !seeing(fresh.id) && fresh.last.at === message.created_at) announceArrival(fresh);
     });
+  } else {
+    const updated: InboxEntry = {
+      ...entry,
+      last: { body: previewOf(message.body, message.images.length), fromMe, at: message.created_at },
+      unread: !fromMe && !seeing(entry.id),
+      archived: false,
+    };
+    const inbox = sortInbox(state.inbox!.map((e) => (e.id === entry.id ? updated : e)));
+    update({ inbox, unreadHint: unreadIn(inbox) });
+    if (!fromMe && !seeing(entry.id)) announceArrival(updated);
   }
-  for (const listener of live) listener({ type: "message", message });
+  broadcast({ type: "message", message });
 }
 
 function onRead(read: ReadBroadcast) {
   // Read on another device of mine: it's not unread here either.
-  if (read.user_id === state.viewer?.id) patchEntry(read.conversation_id, { unread: false });
-  for (const listener of live) listener({ type: "read", read });
+  if (read.user_id === state.viewer?.id) {
+    patchEntry(read.conversation_id, { unread: false });
+    if (state.letter?.conversationId === read.conversation_id) update({ letter: null });
+  }
+  broadcast({ type: "read", read });
 }
 
 async function connect(viewer: ChatViewer) {
   const supabase = supabaseBrowser();
+  update({ connection: "connecting" });
   await supabase.realtime.setAuth();
-  if (state.viewer?.id !== viewer.id) return;
+  if (state.viewer?.id !== viewer.id || channel) return;
   let connectedBefore = false;
   channel = supabase
     .channel(inboxTopic(viewer.id), { config: { private: true } })
     .on("broadcast", { event: "message" }, ({ payload }: { payload: MessageBroadcast }) => onMessage(payload))
     .on("broadcast", { event: "read" }, ({ payload }: { payload: ReadBroadcast }) => onRead(payload))
     .subscribe((status: string) => {
-      if (status !== "SUBSCRIBED") return;
-      if (connectedBefore) {
-        reloadInbox();
-        for (const listener of live) listener({ type: "resync" });
+      if (state.viewer?.id !== viewer.id || !channel) return;
+      if (status !== "SUBSCRIBED") {
+        // Supabase keeps retrying; meanwhile, pulse often so nothing is missed.
+        update({ connection: "connecting" });
+        schedulePulse(PULSE_CHATTING_MS);
+        return;
       }
+      update({ connection: "live" });
+      clearTimeout(pulseTimer);
+      // One last check for anything that arrived between the last pulse and now (no more are scheduled while live).
+      void pulse();
+      if (connectedBefore) broadcast({ type: "resync" });
       connectedBefore = true;
     });
 }
 
 function disconnect() {
-  if (channel) void supabaseBrowser().removeChannel(channel);
+  clearTimeout(graceTimer);
+  graceTimer = undefined;
+  const closing = channel;
   channel = null;
+  if (closing) {
+    const supabase = supabaseBrowser();
+    // The grace period already passed: close the WebSocket now rather than when Supabase gets to it (~50s).
+    void supabase.removeChannel(closing).then(() => {
+      if (!channel && supabase.getChannels().length === 0) void supabase.realtime.disconnect();
+    });
+  }
+  if (state.connection !== "pulse") update({ connection: "pulse" });
+}
+
+/** A socket while the chat window is open (or minimized); back to pulses a little after it closes. */
+function syncSocket() {
+  const viewer = state.viewer;
+  if (viewer && state.open) {
+    clearTimeout(graceTimer);
+    graceTimer = undefined;
+    if (!channel && state.connection !== "connecting") {
+      void connect(viewer).catch(() => {
+        update({ connection: "pulse" });
+        schedulePulse(PULSE_CHATTING_MS);
+      });
+    }
+    return;
+  }
+  if (channel && !graceTimer) {
+    graceTimer = setTimeout(() => {
+      disconnect();
+      schedulePulse(0);
+    }, SOCKET_GRACE_MS);
+  }
+}
+
+/** Coming back to the tab, or back online: check right away. */
+function watchPage() {
+  if (watching || typeof window === "undefined") return;
+  watching = true;
+  const check = () => {
+    if (!state.viewer || state.connection === "live") return;
+    schedulePulse(isVisible() ? 0 : undefined);
+  };
+  document.addEventListener("visibilitychange", check);
+  window.addEventListener("online", check);
 }
 
 /** Called by the header with the signed-in viewer: a new viewer starts from their own inbox. */
 export function syncViewer(viewer: ChatViewer | null) {
   if (viewer?.id === state.viewer?.id && state.viewer !== undefined) return;
   disconnect();
-  update({ viewer, inbox: null, inboxFailed: false, open: viewer ? state.open : null, minimized: false });
+  clearTimeout(pulseTimer);
+  newestSeen = undefined;
+  update({
+    viewer,
+    inbox: null,
+    inboxFailed: false,
+    unreadHint: 0,
+    open: viewer ? state.open : null,
+    minimized: false,
+    letter: null,
+    connection: "pulse",
+  });
   if (!viewer) return;
-  reloadInbox();
-  void connect(viewer).catch(() => {});
+  armChime();
+  watchPage();
+  schedulePulse(0);
+  if (state.open) {
+    ensureInbox();
+    syncSocket();
+  }
 }
+
+// Inbox edits from the window ------------------------------------------------------
 
 export function patchEntry(id: string, patch: Partial<InboxEntry>) {
   if (!state.inbox?.some((e) => e.id === id)) return;
-  update({ inbox: state.inbox.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
+  const inbox = state.inbox.map((e) => (e.id === id ? { ...e, ...patch } : e));
+  update({ inbox, unreadHint: unreadIn(inbox) });
 }
 
 /** A message I just sent shows in the inbox right away (the live echo confirms it). */
 export function noteSent(entry: InboxEntry) {
-  const rest = (state.inbox ?? []).filter((e) => e.id !== entry.id);
-  update({ inbox: sortInbox([entry, ...rest]) });
+  if (!state.inbox) return;
+  update({ inbox: sortInbox([entry, ...state.inbox.filter((e) => e.id !== entry.id)]) });
 }
 
 export function setOnScreen(conversationId: string | null) {
   onScreen = conversationId;
-  if (conversationId) patchEntry(conversationId, { unread: false });
+  if (!conversationId) return;
+  patchEntry(conversationId, { unread: false });
+  if (state.letter?.conversationId === conversationId) update({ letter: null });
+}
+
+export function dismissLetter(key: string) {
+  if (state.letter?.key === key) update({ letter: null });
 }
 
 export function onLive(listener: (event: LiveEvent) => void) {
@@ -169,10 +409,18 @@ export function onLive(listener: (event: LiveEvent) => void) {
   };
 }
 
+// Opening and closing ----------------------------------------------------------------
+
 /** Open the chat with someone. False for visitors (send them to sign in). */
 export function openChat(handle: string) {
   if (state.viewer === null) return false;
-  update({ open: { view: "chat", handle }, minimized: false });
+  update({
+    open: { view: "chat", handle },
+    minimized: false,
+    letter: state.letter?.person.handle === handle ? null : state.letter,
+  });
+  ensureInbox();
+  syncSocket();
   return true;
 }
 
@@ -180,10 +428,13 @@ export function openChat(handle: string) {
 export function openInbox() {
   if (!state.viewer) return;
   update({ open: { view: "inbox" }, minimized: false });
+  ensureInbox();
+  syncSocket();
 }
 
 export function closeChat() {
   update({ open: null, minimized: false });
+  syncSocket();
 }
 
 export function setMinimized(minimized: boolean) {
@@ -201,7 +452,7 @@ export function useChatState() {
 export function useUnreadCount() {
   return useSyncExternalStore(
     subscribe,
-    () => state.inbox?.filter((e) => e.unread && !e.archived).length ?? 0,
+    () => (state.inbox ? unreadIn(state.inbox) : state.unreadHint),
     () => 0,
   );
 }

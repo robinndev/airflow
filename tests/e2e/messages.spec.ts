@@ -1,12 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { localSupabase } from "./support/local-supabase";
 
 /*
  * Direct messages, end to end, between two real accounts in two browsers:
- * visitors are sent to sign in; Ana writes to Bo from his profile; Bo's
- * header shows it unread live, he opens it, Ana sees "Seen" and Bo
- * "sketching", Bo's reply reaches Ana live; archiving moves the conversation
+ * visitors are sent to sign in; nobody holds a WebSocket until their chat
+ * opens; Ana writes to Bo from his profile; Bo's header shows it unread (by
+ * pulse, his chat is closed), he opens it, Ana sees "Seen" and Bo
+ * "sketching", Bo's reply reaches Ana live; with his chat closed, a letter
+ * drops in with the chime and "(1)" in the tab title, and Reply opens it
+ * (Ana sees "Here now"); archiving moves the conversation
  * to Archived until a new message brings it back; a third account can't read
  * any of it. Demo artists say they won't write back.
  */
@@ -48,8 +51,29 @@ test.afterAll(async () => {
   for (const person of [ana, bo, cy]) if (person.id) await admin().auth.admin.deleteUser(person.id);
 });
 
+/** Counts the studio chime's oscillators (it's synthesized, so there's no file to wait for). */
+function countChimes() {
+  const counted = window as unknown as { __oscillators: number };
+  counted.__oscillators = 0;
+  const create = AudioContext.prototype.createOscillator;
+  AudioContext.prototype.createOscillator = function (this: AudioContext) {
+    counted.__oscillators++;
+    return create.call(this);
+  };
+}
+const chimes = (page: Page) => page.evaluate(() => (window as unknown as { __oscillators: number }).__oscillators);
+
+/** Each test's browsers close when it ends: a tab left open on a conversation would read along in the next test. */
+const contexts: BrowserContext[] = [];
+test.afterEach(async () => {
+  for (const context of contexts.splice(0)) await context.close();
+});
+
 async function signedIn(browser: Browser, person: Account) {
-  const page = await (await browser.newContext()).newPage();
+  const context = await browser.newContext();
+  contexts.push(context);
+  await context.addInitScript(countChimes);
+  const page = await context.newPage();
   await page.goto("/sign-in");
   await page.waitForFunction(() => {
     const form = document.querySelector("main form");
@@ -61,6 +85,9 @@ async function signedIn(browser: Browser, person: Account) {
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
   return page;
 }
+
+/** With the chat closed there's no socket: news comes with the next pulse (every 15s). */
+const PULSE = 25_000;
 
 const chat = (page: Page) => page.locator("dialog[open]");
 const headerMessages = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Messages/ }).last();
@@ -80,6 +107,20 @@ test("visitors are sent to sign in to message an artist", async ({ page }) => {
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fmira/);
 });
 
+test("no WebSocket while browsing, one while chatting", async ({ browser }) => {
+  const a = await signedIn(browser, ana);
+  const sockets: string[] = [];
+  a.on("websocket", (ws) => {
+    if (ws.url().includes("/realtime/")) sockets.push(ws.url());
+  });
+  await a.goto("/explore");
+  await a.waitForTimeout(3000);
+  expect(sockets).toHaveLength(0);
+
+  await openChatFrom(a, "mira");
+  await expect.poll(() => sockets.length).toBe(1);
+});
+
 test("two artists talk live: unread, seen, sketching, reply", async ({ browser }) => {
   const a = await signedIn(browser, ana);
   const b = await signedIn(browser, bo);
@@ -93,10 +134,11 @@ test("two artists talk live: unread, seen, sketching, reply", async ({ browser }
   await box.press("Enter");
   await expect(chat(a).getByText("Hi Bo! Would you take a half-body of my OC?")).toBeVisible();
 
-  // Bo's header hears about it without reloading.
-  await expect(headerMessages(b)).toHaveAccessibleName("Messages, 1 unread");
+  // Bo's header hears about it without reloading (his chat is closed, so by the next pulse).
+  await expect(headerMessages(b)).toHaveAccessibleName("Messages, 1 unread", { timeout: PULSE });
   await headerMessages(b).click();
-  await b.getByRole("button", { name: /Ana Lua/ }).click();
+  // The inbox row (a letter with the same name may have dropped in too).
+  await b.getByRole("listitem").getByRole("button", { name: /Ana Lua/ }).click();
   await expect(chat(b).getByText("Hi Bo! Would you take a half-body of my OC?")).toBeVisible();
   await expect(headerMessages(b)).toHaveAccessibleName("Messages");
 
@@ -114,6 +156,40 @@ test("two artists talk live: unread, seen, sketching, reply", async ({ browser }
   const { data: rows } = await admin().from("messages").select("body, conversation_id").in("sender_id", [ana.id!, bo.id!]);
   expect(rows?.map((r) => r.body).sort()).toEqual(["Hi Bo! Would you take a half-body of my OC?", "Yes! I have two slots this month."]);
   expect(new Set(rows?.map((r) => r.conversation_id)).size).toBe(1);
+});
+
+test("a letter arrives while the chat is closed: chime, title, Reply", async ({ browser }) => {
+  const a = await signedIn(browser, ana);
+  const b = await signedIn(browser, bo);
+  await b.goto("/explore");
+  // Browsers only allow sound after the first click on the page.
+  await b.mouse.click(4, 300);
+
+  await openChatFrom(a, bo.handle);
+  const box = chat(a).getByRole("textbox", { name: "Message to Bo" });
+  await box.fill("Are you around this weekend?");
+  await box.press("Enter");
+
+  const letter = b.getByRole("status").filter({ hasText: "New letter" });
+  await expect(letter).toContainText("Ana Lua", { timeout: PULSE });
+  await expect(letter).toContainText("Are you around this weekend?");
+  await expect.poll(() => chimes(b)).toBeGreaterThan(0);
+  await expect(b).toHaveTitle(/^\(1\) /);
+
+  await letter.getByRole("button", { name: "Reply to Ana" }).click();
+  await expect(chat(b).getByText("Are you around this weekend?")).toBeVisible();
+  await expect(letter).toBeHidden();
+  await expect(b).not.toHaveTitle(/^\(\d+\) /);
+  // Both have it open: Ana sees Bo is here.
+  await expect(chat(a).getByText("Here now")).toBeVisible();
+
+  // While Bo is looking at the conversation, new messages there don't ring.
+  const rung = await chimes(b);
+  await box.fill("Great, talk soon!");
+  await box.press("Enter");
+  await expect(chat(b).getByText("Great, talk soon!")).toBeVisible();
+  await b.waitForTimeout(1000);
+  expect(await chimes(b)).toBe(rung);
 });
 
 test("archiving tucks a conversation away until someone writes again", async ({ browser }) => {
@@ -135,7 +211,7 @@ test("archiving tucks a conversation away until someone writes again", async ({ 
   await box.fill("Sending you the sketch tomorrow!");
   await box.press("Enter");
   await menu.getByRole("tab", { name: "All" }).click();
-  await expect(menu.getByRole("button", { name: /Bo Rivera/ })).toBeVisible();
+  await expect(menu.getByRole("button", { name: /Bo Rivera/ })).toBeVisible({ timeout: PULSE });
 });
 
 test("nobody else can read the conversation", async () => {

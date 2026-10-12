@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ChevronDown,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { SaveButton } from "@/components/commissions/save-button";
+import { openChat } from "@/components/messages/store";
 import { FollowButton } from "@/components/profile/follow-button";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
@@ -54,6 +56,7 @@ type View = "details" | "request";
  */
 export function CommissionDialog(props: CommissionDialogProps) {
   const { artist, services } = props;
+  const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<View>("details");
@@ -234,6 +237,11 @@ export function CommissionDialog(props: CommissionDialogProps) {
                   <button
                     type="button"
                     aria-label={`Message ${firstName}`}
+                    title={`Questions first? Message ${firstName}`}
+                    onClick={() => {
+                      close();
+                      if (!openChat(artist.handle)) router.push(`/sign-in?next=${encodeURIComponent(window.location.pathname)}`);
+                    }}
                     className="grid size-12 shrink-0 place-items-center rounded-full border border-border transition-colors hover:bg-ice"
                   >
                     <MessageCircle aria-hidden className="size-5" />
