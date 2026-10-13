@@ -139,8 +139,8 @@ function toNotification(row: Row): AppNotification | null {
       if (!actor) return null;
       const status = (text(row.data?.status) || "pending") as RequestStatus;
       const estimate = Number(row.data?.estimate_usd);
-      // The artist hears about new and cancelled requests; the buyer about the artist's answer.
-      const toArtist = row.kind === "commission_request" || status === "cancelled";
+      // The artist hears about new, cancelled and paid requests; the buyer about everything the artist does.
+      const toArtist = row.kind === "commission_request" || status === "cancelled" || status === "paid";
       return {
         ...base,
         commission: {

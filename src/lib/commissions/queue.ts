@@ -55,7 +55,25 @@ export type QueueOrder = {
   referenceLinks?: string;
   /** A request really sent on Artiflow: it moves only when the order is processed (no dragging). */
   real?: boolean;
+  /** Real orders: where the order stands on the server (src/lib/commissions/real.ts). */
+  orderStatus?: OrderStatus;
+  /** The artist's note on the quote they sent. */
+  quoteNote?: string;
+  /** What the artist delivered. */
+  delivery?: { images: ImageAsset[]; note?: string };
 };
+
+/** A real order's state (`commission_requests.status`). */
+export type OrderStatus =
+  | "pending"
+  | "waitlisted"
+  | "quoted"
+  | "paid"
+  | "in_progress"
+  | "delivered"
+  | "declined"
+  | "cancelled"
+  | "expired";
 
 export const LANES: Lane[] = ["request", "proposal", "queued", "wip", "delivered"];
 

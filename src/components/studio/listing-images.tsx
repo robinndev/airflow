@@ -1,15 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import { ImagePlus, LoaderCircle, Star, X } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
+import { ListingArt } from "@/components/listings/listing-art";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
-import { artUrl } from "@/lib/art-storage";
+import { artUrl, type ArtFolder } from "@/lib/art-storage";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
 import type { EditableImage } from "@/lib/listings/editable";
 
-/** Listing art keeps its detail: long side up to 2400px, never cropped. */
+/** Listing art keeps its detail: long side up to 2400px, never cropped; GIFs go up as they are. */
 const MAX_DIMENSION = 2400;
 
 /**
@@ -23,12 +23,15 @@ export function ListingImages({
   max,
   label,
   coverLabel = "Cover",
+  folder = "listings",
 }: {
   value: EditableImage[];
   onChange: (images: EditableImage[]) => void;
   max: number;
   label: string;
   coverLabel?: string;
+  /** Where in your art folder it goes (finished commissions go to `deliveries`). */
+  folder?: ArtFolder;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(0);
@@ -45,8 +48,8 @@ export function ListingImages({
     const added: EditableImage[] = [];
     for (const file of files) {
       try {
-        const image = await prepareImage(file, MAX_DIMENSION, { allowPng: true });
-        const path = await uploadArt(image, "listings");
+        const image = await prepareImage(file, MAX_DIMENSION, { allowGif: true, allowPng: true });
+        const path = await uploadArt(image, folder);
         URL.revokeObjectURL(image.previewUrl);
         added.push({ src: artUrl(path), path, width: image.width, height: image.height, palette: image.palette });
       } catch (err) {
@@ -63,12 +66,8 @@ export function ListingImages({
     <div>
       <ul aria-label={label} className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {value.map((image, i) => (
-          <li
-            key={image.path}
-            className="group relative aspect-square overflow-hidden rounded-[12px] bg-ice"
-            style={{ backgroundColor: image.palette?.[0] }}
-          >
-            <Image src={image.src} alt="" fill sizes="140px" className="object-cover" />
+          <li key={image.path} className="group relative aspect-square overflow-hidden rounded-[12px] bg-ice">
+            <ListingArt image={image} alt="" sizes="140px" />
             {i === 0 ? (
               <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-paper/95 px-2 py-0.5 text-[0.6875rem] font-bold text-on-paper shadow-soft">
                 <Star aria-hidden className="size-3 fill-star text-star" />
@@ -116,7 +115,7 @@ export function ListingImages({
         ref={inputRef}
         type="file"
         multiple
-        accept="image/png,image/jpeg,image/webp,image/avif"
+        accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
         className="sr-only"
         tabIndex={-1}
         aria-hidden

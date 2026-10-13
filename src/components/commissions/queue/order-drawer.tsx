@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import { Archive, ArchiveRestore, Check, Lock, Pause, Play, X } from "lucide-react";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { respondToRequest } from "@/app/(site)/request-actions";
-import { showToast } from "@/components/favorites/toast-events";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { saveOrderNote } from "@/app/(site)/request-actions";
 import { Tape } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import {
 } from "@/lib/commissions/queue";
 import { formatLongDate, formatUsdExact } from "@/lib/format";
 import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { LiveNextStep } from "./live-order";
 import { DueLabel, LANE_TONE, tapeOf } from "./parts";
 import { StepTrack } from "./step-track";
 import { updateOrder } from "./store";
@@ -147,10 +147,15 @@ function Folder({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-8">
         {/* What to do next comes first. */}
-        <NextStep order={order} action={action} onAction={onAction} onPatch={onPatch} />
+        {order.real ? (
+          <LiveNextStep order={order} today={today} />
+        ) : (
+          <NextStep order={order} action={action} onAction={onAction} onPatch={onPatch} />
+        )}
 
         <Section title="Where it is">
-          <div role="group" aria-label="Move to" className="grid grid-cols-5 gap-1 rounded-[14px] bg-ice p-1">
+          {/* Real orders move only as they're processed (decided 2026-10-11): the track is read-only. */}
+          <div role="group" aria-label={order.real ? "Where the order stands" : "Move to"} className="grid grid-cols-5 gap-1 rounded-[14px] bg-ice p-1">
             {LANES.map((lane) => {
               const current = lane === order.lane;
               return (
@@ -158,9 +163,10 @@ function Folder({
                   key={lane}
                   type="button"
                   aria-pressed={current}
+                  disabled={order.real}
                   onClick={() => onMove(order.id, lane)}
-                  className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-1.5 text-center text-[0.6875rem] leading-tight font-semibold transition-colors ${
-                    current ? "bg-surface text-ink shadow-soft" : "text-muted hover:bg-surface/60 hover:text-ink"
+                  className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-1.5 text-center text-[0.6875rem] leading-tight font-semibold transition-colors disabled:cursor-default ${
+                    current ? "bg-surface text-ink shadow-soft" : "text-muted enabled:hover:bg-surface/60 enabled:hover:text-ink"
                   }`}
                 >
                   <span aria-hidden className={`size-2 rounded-full ${LANE_TONE[lane].dot} ${current ? "" : "opacity-50"}`} />
@@ -330,41 +336,24 @@ function NextStep({
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
 }) {
   const name = `${order.client.name}'s ${order.service.toLowerCase()}`;
-  const [answering, startAnswer] = useTransition();
-
-  /** A real request is answered on the server first (the buyer hears, a declined one frees its slot). */
-  function answer(kind: "accept" | "waitlist" | "decline", patch: OrderPatch, label: string) {
-    if (!order.real) return onPatch(order, patch, label);
-    startAnswer(async () => {
-      const result = await respondToRequest(order.id, kind);
-      if (result.ok) onPatch(order, patch, label);
-      else showToast({ message: result.error });
-    });
-  }
 
   if (order.lane === "request" && !order.archived && !order.paused) {
     return (
       <div className="rounded-[18px] bg-ice p-4">
         <p className="text-sm font-semibold">Take this one on?</p>
-        <p className="mt-0.5 text-sm text-muted">
-          {order.real
-            ? `Accepting tells ${order.client.name} you're in; quotes and checkout open soon. Declining gives the slot back.`
-            : `Accepting sends ${order.client.name} a proposal to pay. Declining lets them know kindly.`}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2" aria-busy={answering}>
+        <p className="mt-0.5 text-sm text-muted">Accepting sends {order.client.name} a proposal to pay. Declining lets them know kindly.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={answering}
-            onClick={() => answer("accept", moveTo(order, "proposal", new Date()), order.real ? `Accepted ${name}` : `Sent a proposal for ${name}`)}
+            onClick={() => onPatch(order, moveTo(order, "proposal", new Date()), `Sent a proposal for ${name}`)}
             className={buttonClasses({ size: "sm" })}
           >
-            {order.real ? "Accept" : "Accept & send proposal"}
+            Accept & send proposal
           </button>
           {!order.waitlist && (
             <button
               type="button"
-              disabled={answering}
-              onClick={() => answer("waitlist", { waitlist: true }, `Moved ${name} to the waitlist`)}
+              onClick={() => onPatch(order, { waitlist: true }, `Moved ${name} to the waitlist`)}
               className={buttonClasses({ variant: "secondary", size: "sm" })}
             >
               Waitlist
@@ -372,8 +361,7 @@ function NextStep({
           )}
           <button
             type="button"
-            disabled={answering}
-            onClick={() => answer("decline", { archived: true, declined: true }, `Declined ${name}`)}
+            onClick={() => onPatch(order, { archived: true, declined: true }, `Declined ${name}`)}
             className={buttonClasses({ variant: "ghost", size: "sm" })}
           >
             Decline
@@ -388,9 +376,7 @@ function NextStep({
       <div className="rounded-[18px] bg-ice p-4 text-sm">
         <p className="font-semibold">Waiting on {order.client.name}</p>
         <p className="mt-0.5 text-muted">
-          {order.real
-            ? "You accepted. Quotes and checkout open soon; until then, agree the details in Messages."
-            : "They have the proposal and the pay link. It moves to Up next by itself once they pay; if it expires, the slot comes back."}
+          They have the proposal and the pay link. It moves to Up next by itself once they pay; if it expires, the slot comes back.
         </p>
       </div>
     );
@@ -412,14 +398,20 @@ function NoteToSelf({ order }: { order: QueueOrder }) {
   const [draft, setDraft] = useState(order.note ?? "");
   const [status, setStatus] = useState<"idle" | "typing" | "saved">("idle");
 
-  // Saves quietly a moment after typing stops (and on blur).
+  // Saves quietly a moment after typing stops (and on blur): on the server for
+  // real orders (only the artist can read it), on this device for the sample.
+  const keep = (note: string) => {
+    updateOrder(order.id, { note });
+    if (order.real) void saveOrderNote(order.id, note);
+  };
   useEffect(() => {
     if (status !== "typing") return;
     const timer = setTimeout(() => {
-      updateOrder(order.id, { note: draft });
+      keep(draft);
       setStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keep() is rebuilt each render; the draft is what matters.
   }, [draft, status, order.id]);
 
   return (
@@ -432,7 +424,7 @@ function NoteToSelf({ order }: { order: QueueOrder }) {
         }}
         onBlur={() => {
           if (status !== "typing") return;
-          updateOrder(order.id, { note: draft });
+          keep(draft);
           setStatus("saved");
         }}
         rows={3}
@@ -442,7 +434,7 @@ function NoteToSelf({ order }: { order: QueueOrder }) {
         className="dot-paper w-full resize-y rounded-input border border-border px-3.5 py-2.5 text-sm text-on-paper placeholder:text-paper-muted focus:border-ocean focus:outline-none"
       />
       <p aria-live="polite" className="mt-1 h-4 text-xs text-muted">
-        {status === "typing" ? "Saving…" : status === "saved" ? "Saved on this device" : ""}
+        {status === "typing" ? "Saving…" : status === "saved" ? (order.real ? "Saved, only you see it" : "Saved on this device") : ""}
       </p>
     </div>
   );

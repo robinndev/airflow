@@ -5,12 +5,13 @@ import type { ImageAsset } from "@/lib/profile/types";
  * Uploaded art lives in the public `art` bucket, one folder per account:
  * art/<user id>/{posts,avatar,banner,about,listings,gallery}/<uuid>.<ext> (about =
  * About board and profile background images; listings = service examples and
- * adoptables; gallery = gallery artworks). Storage policies only let
+ * adoptables; gallery = gallery artworks; deliveries = finished commissions).
+ * Storage policies only let
  * people write inside their own folder.
  */
 
 export const ART_BUCKET = "art";
-export type ArtFolder = "posts" | "avatar" | "banner" | "about" | "listings" | "gallery";
+export type ArtFolder = "posts" | "avatar" | "banner" | "about" | "listings" | "gallery" | "deliveries";
 
 /** What we store about an uploaded image (`profiles.avatar`, post image columns). */
 export type StoredImage = { path: string; width: number; height: number; palette?: string[] | null };

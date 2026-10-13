@@ -4,10 +4,12 @@ import { useEffect, useSyncExternalStore } from "react";
 import { applyPatches, type OrderPatch, type QueueOrder } from "@/lib/commissions/queue";
 
 /*
- * The queue on this device. Orders come from the server (a sample until the
- * commission flow lands); what the artist changes (moves, steps, pauses,
- * notes) is kept as patches in localStorage, per account, and applied on
- * top. The planner and the workspace are separate islands sharing this store.
+ * The queue on this device. Real orders come from the server, and every change
+ * to them goes through a Server Action: patches only show it right away and
+ * are dropped when the server's new copy arrives (`version`). The sample
+ * (artists with no real orders yet) keeps the artist's changes as patches in
+ * localStorage, per account. The planner and the workspace are separate
+ * islands sharing this store.
  */
 
 type Change = { id: string; before: OrderPatch | undefined; label: string; at: number };
@@ -20,6 +22,8 @@ type State = {
   patches: Record<string, OrderPatch>;
   orders: QueueOrder[];
   last: Change | null;
+  /** Real orders: nothing is saved on the device. */
+  live: boolean;
 };
 
 const VERSION = 1;
@@ -40,6 +44,7 @@ function subscribe(listener: () => void) {
 }
 
 function save(next: State) {
+  if (next.live) return;
   try {
     // Cleared fields are undefined in memory; store them as null so they stay cleared.
     const json = JSON.stringify({ v: VERSION, patches: next.patches }, (_, value) => (value === undefined ? null : value));
@@ -49,18 +54,32 @@ function save(next: State) {
   }
 }
 
-function seed(handle: string, today: string, base: QueueOrder[]) {
-  const key = `${handle}|${today}`;
+function seed(handle: string, today: string, base: QueueOrder[], version: string, live: boolean) {
+  const key = `${handle}|${today}|${version}`;
   if (state?.key === key) return;
-  const patches = state?.handle === handle ? state.patches : {};
-  state = { handle, key, base, patches, orders: applyPatches(base, patches), last: null };
+  // The sample keeps the artist's changes; real orders take the server's copy as it is.
+  const patches = state?.handle === handle && !live && !state.live ? state.patches : {};
+  state = { handle, key, base, patches, orders: applyPatches(base, patches), last: null, live };
 }
 
 /** The viewer's orders with their changes applied. Every island passes the same server data. */
-export function useQueue({ handle, today, orders: base }: { handle: string; today: string; orders: QueueOrder[] }) {
-  seed(handle, today, base);
+export function useQueue({
+  handle,
+  today,
+  orders: base,
+  version,
+  sample,
+}: {
+  handle: string;
+  today: string;
+  orders: QueueOrder[];
+  version: string;
+  sample: boolean;
+}) {
+  seed(handle, today, base, version, !sample);
 
   useEffect(() => {
+    if (!sample) return;
     if (loaded.has(handle)) return;
     loaded.add(handle);
     try {
@@ -71,7 +90,7 @@ export function useQueue({ handle, today, orders: base }: { handle: string; toda
     } catch {
       // Unreadable: start from the server's copy.
     }
-  }, [handle]);
+  }, [handle, sample]);
 
   const orders = useSyncExternalStore(
     subscribe,

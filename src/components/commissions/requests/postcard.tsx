@@ -160,6 +160,12 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
           <span className="inline-flex h-9 items-center rounded-full border-2 border-dashed border-on-paper/20 px-3.5 text-[0.8125rem] font-semibold text-paper-muted">
             Pay {formatUsdExact(request.priceUsd)} · checkout opens soon
           </span>
+          {request.real && request.artistNote && (
+            <p className="w-full text-paper-muted">
+              <span className="font-semibold text-on-paper">{first}:</span> &ldquo;{request.artistNote}&rdquo;
+            </p>
+          )}
+          {request.cancellable && <CancelRequestButton id={request.id} artist={first} quote />}
         </div>
       );
     }
@@ -188,10 +194,8 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
       return (
         <div className="grid gap-2">
           <p>
-            <span className="font-semibold">{request.artistNote ? `${first} accepted!` : `Waiting for ${first} to reply.`}</span>{" "}
-            <span className="text-paper-muted">
-              {request.artistNote ?? `Asked ${relativeDay(daysUntil(request.sentAt, today))}. Nothing to pay until you get a quote.`}
-            </span>
+            <span className="font-semibold">Waiting for {first} to reply.</span>{" "}
+            <span className="text-paper-muted">Asked {relativeDay(daysUntil(request.sentAt, today))}. Nothing to pay until you get a quote.</span>
           </p>
           {request.cancellable && <CancelRequestButton id={request.id} artist={first} />}
         </div>

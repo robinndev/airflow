@@ -81,12 +81,14 @@ export async function prepareImage(
 
   const rgba = sampleContext?.getImageData(0, 0, sample.width, sample.height).data ?? new Uint8ClampedArray();
   const rgb = new Uint8Array((rgba.length / 4) * 3);
+  const alpha = new Uint8Array(rgba.length / 4);
   let transparent = false;
-  for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
+  for (let i = 0, j = 0, k = 0; i < rgba.length; i += 4, j += 3, k++) {
     [rgb[j], rgb[j + 1], rgb[j + 2]] = [rgba[i], rgba[i + 1], rgba[i + 2]];
+    alpha[k] = rgba[i + 3];
     if (rgba[i + 3] < 250) transparent = true;
   }
-  const palette = rgb.length ? extractPalette(rgb, sample.width, sample.height) : [];
+  const palette = rgb.length ? extractPalette(rgb, sample.width, sample.height, transparent ? alpha : undefined) : [];
 
   if (gif) {
     const { width: w, height: h } = original;

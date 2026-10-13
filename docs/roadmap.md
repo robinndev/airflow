@@ -35,8 +35,8 @@ The roadmap owner's order of work. The goal is the blueprint's closed beta (§13
 
 **Then, the commission loop (payment step stubbed until the provider is chosen):**
 
-5. [Per-service status in one click](#brief-per-service-status-set-in-one-click), the data model the rest builds on.
-6. [Commission flow](#brief-commission-flow-request--proposal--payment--delivery): inbox (accept / decline / waitlist), proposals, orders, delivery.
+5. ~~[Per-service status in one click](#brief-per-service-status-set-in-one-click)~~ **Built 2026-10-12** with [listings and discovery](#brief-listings-and-discovery): services and adoptables are real, with packages, slots and their own status. Left from that brief: "Reopen on <date>" and the "Still taking…?" nudge.
+6. [Commission flow](#brief-commission-flow-request--proposal--payment--delivery): inbox (accept / decline / waitlist), proposals, orders, delivery. **Started 2026-10-12:** requests to real services are stored (`commission_requests`), take a slot, and the artist accepts, waitlists or declines them from the queue. Next: proposals, expiry, payment.
 7. ["Notify me"](#brief-notify-me-when-a-service-reopens), on the in-app notifications (built 2026-10-12; a new `service_reopened` kind) plus email.
 8. ~~Character (OC) pages, the blueprint's other pillar~~ **Built 2026-10-12** as part of the [gallery](#brief-the-gallery-characters-and-collections). Next for characters: art other artists made of your OC (delivered commissions, credited), then ownership transfer.
 
@@ -56,16 +56,16 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | ↳ **What you draw: artist categories** | Sign-up asks "What do you draw?" (Humans, Anthro / furry, Humanoids, Ferals, Ponies; several or all); Edit profile adds what you make (OC design, concept art, backgrounds, chibi, pixel art, emotes, ref sheets, animation). The profile shows them as labels ("Furry artist", "OC designer", "Draws it all"); Explore's open studios filter by them, and each label opens that filter | **Built** | Request (Sabrina), 2026-10-11. `profiles.draws` (enum `draw_tag`), list in `src/lib/profile/draws.ts`. Explore's studios are demo data, so the filter runs over them until real services exist. See the [brief](#brief-what-you-draw-artist-categories). |
 | Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | **Built (real)**, partly | Request, 2026-10-12. `/{handle}/gallery` with characters, collections and every piece (Supabase `artworks`, `characters`, `collections`). Upload up to 12 at once (AI check), titles, personal / commission for @client, tags. **Not yet:** content tags (their own [brief](#brief-content-rating-mature-art-hidden-until-you-click)), visibility, reordering, "add from your posts". See the [brief](#brief-the-gallery-characters-and-collections). |
 | Characters (OCs) | Character page: lore, refs, gallery, creator, credits | **Built (first pass)** | 2026-10-12. `/{handle}/characters/{slug}`: a reference sheet (cover, colors, species, pronouns, designed by / kept by, personality, tags), story, art in sections; saved on their own to favorites; linked to their adoption listing. **Not yet:** art by other artists on your OC, ownership transfer and history (needs the license decision), characters in Explore and search. See the [brief](#brief-the-gallery-characters-and-collections). |
-| Adoptable listings | Create/edit listing; flatsale, auction, offer; available / reserved / adopted | Prototype | Display only (Explore hang tags). No creation flow. |
-| Commission services | Services with examples, price, turnaround, ToS; request form | Prototype | `/[handle]/commissions`, request dialog. ToS acceptance is already required. |
-| ↳ **Licenses and add-ons, ticked under the price** | Each service lists its licenses (Personal, Commercial: Content, Commercial: Merchandising) and optional add-ons right under the price. Each one is **included** (comes ticked and locked), sold on top for a fixed amount (+$10) or a share of the price (+200%), or, for licenses, not offered. Ticking updates the price; the ticks carry into the request | **Prototype** | Request, 2026-10-11 (sketch: "$50 · +10 shading · +10 animation"; "when it's included it comes ticked"). Only some services have add-ons. Rules in `src/lib/commissions/addons.ts`; the request stores what was ticked, priced in USD, as a snapshot. Percentages apply to the "from" price. Editing them waits on service editing. |
-| ↳ **Per-service status, set in one click** | Each commission type is Open, Waitlist or Closed on its own; one click changes it; closed ones leave discovery right away | **Planned (P1)** | Stakeholder request, 2026-10-10. See the [brief](#brief-per-service-status-set-in-one-click). |
+| Adoptable listings | Create/edit listing; flatsale, auction, offer; available / reserved / adopted | **Built (real)**; checkout waits | Request, 2026-10-12. Artists list ready-made characters from `/studio` (pictures, name, species, fixed price, what comes with it) and set Available / On hold / Adopted in one click. Buyers see them on `/{handle}/adoptables` with a ready-made sheet ("pay and it's yours", no request) whose buy button says checkout opens soon. Fixed price only; auctions and offers stay in Phase 3. See the [brief](#brief-listings-and-discovery). |
+| Commission services | Services with examples, price, turnaround, ToS; request form | **Built (real)**; payment waits | Request, 2026-10-12. Artists create and edit services from `/studio` with a live preview of the sheet buyers see: examples (up to 6, AI check), category, styles, description, **packages** (e.g. Sketch / Lineart / Full color, each with a price and what it adds), turnaround in days, **slots**, licenses and add-ons. Buyers pick a package in the request dialog; the request stores it. Per-artist terms of service for real accounts aren't editable yet. See the [brief](#brief-listings-and-discovery). |
+| ↳ **Licenses and add-ons, ticked under the price** | Each service lists its licenses (Personal, Commercial: Content, Commercial: Merchandising) and optional add-ons right under the price. Each one is **included** (comes ticked and locked), sold on top for a fixed amount (+$10) or a share of the price (+200%), or, for licenses, not offered. Ticking updates the price; the ticks carry into the request | **Built** | Request, 2026-10-11 (sketch: "$50 · +10 shading · +10 animation"; "when it's included it comes ticked"). Only some services have add-ons. Rules in `src/lib/commissions/addons.ts`; the request stores what was ticked, priced in USD, as a snapshot. Percentages apply to the chosen package's price. **2026-10-12:** artists edit them in the service editor. |
+| ↳ **Per-service status, set in one click** | Each commission type is Open, Waitlist or Closed on its own; one click changes it; closed ones leave discovery right away | **Built** (most of it) | Stakeholder request, 2026-10-10. **Built 2026-10-12:** a three-way control on each service in `/studio` with Undo, Pause all / Resume (restores each service exactly), closed services greyed at the end of the profile and out of default search, a slot taken by each request and given back on decline or cancel, the "when full" status (Waitlist or Closed) and reopening when a slot comes back. **Not yet:** "Reopen on <date>" and the 30-day nudge. See the [brief](#brief-per-service-status-set-in-one-click). |
 | ↳ **"Notify me" when a service reopens** | One click on a closed service; everyone who asked is notified when it opens again | **Planned (P1)** | Stakeholder request, 2026-10-10. Pulls a minimal slice of notifications into Phase 1. See the [brief](#brief-notify-me-when-a-service-reopens). |
 | ↳ **Commission flow: request → proposal → payment → delivery** | Slots, artist review (accept / decline / waitlist), proposal + payment link by email, order tracking, delivery, credit on both sides | **Planned (P1)** | Stakeholder request, 2026-10-10, checked against VGen's docs. The payment step depends on the payments provider. See the [brief](#brief-commission-flow-request--proposal--payment--delivery). |
-| ↳ **My commissions: the artist's queue** | Every order from request to delivery, as a board (tickets dragged between columns) or a ledger; filter tabs, search, next-step buttons, an order drawer (accept / waitlist / decline, steps, pause, archive, note to self) and a planner of the week's deadlines | **Prototype (UI)** | Request, 2026-10-11. `/commissions`, linked from the account menu. Runs on **sample orders** (`src/lib/commissions/sample.ts`); changes stay in the browser (localStorage) until the commission flow brings real requests, orders and payments. It's the flow's artist inbox: wire it to the real tables when they land. **Decided 2026-10-11: tickets move only as the order is processed.** With real orders, a ticket's column is derived from its order's state; nobody drags a card into a column its order hasn't reached. The free drag-and-drop is prototype-only. See the flow's acceptance criteria. |
-| ↳ **My requests: the buyer's side** | Every commission you asked another artist for, as postcards on their way to you: the art on a postage stamp worth the price, a postmark for where it stands, the route (Sent → Quote → Paid → In the works → Delivered) stamped with dates, the next step (pay the quote, wait, see progress, the delivered piece); a shipping label with the next arrival; filters (All, Your move, Waiting on the artist, In the works, Delivered, Closed) | **Prototype** | Request, 2026-10-11. `/requests`, linked from the account menu. Requests you really send from a commission dialog show on top ("Sent from Artiflow", with the add-ons you ticked); the rest is a sample (`src/lib/commissions/sample-requests.ts`) until the commission flow brings quotes, payments and deliveries. Paying a quote says "checkout opens soon". |
+| ↳ **My commissions: the artist's queue** | Every order from request to delivery, as a board (tickets dragged between columns) or a ledger; filter tabs, search, next-step buttons, an order drawer (accept / waitlist / decline, steps, pause, archive, note to self) and a planner of the week's deadlines | **Prototype (UI)** | Request, 2026-10-11. `/commissions`, linked from the account menu. Runs on **sample orders** (`src/lib/commissions/sample.ts`); changes stay in the browser (localStorage) until the commission flow brings real orders and payments. **2026-10-12:** requests buyers really send to your services come first, as real tickets: they can't be dragged, and Accept / Waitlist / Decline in the drawer answer them on the server (declining gives the slot back). It's the flow's artist inbox: wire it to the real tables when they land. **Decided 2026-10-11: tickets move only as the order is processed.** With real orders, a ticket's column is derived from its order's state; nobody drags a card into a column its order hasn't reached. The free drag-and-drop is prototype-only. See the flow's acceptance criteria. |
+| ↳ **My requests: the buyer's side** | Every commission you asked another artist for, as postcards on their way to you: the art on a postage stamp worth the price, a postmark for where it stands, the route (Sent → Quote → Paid → In the works → Delivered) stamped with dates, the next step (pay the quote, wait, see progress, the delivered piece); a shipping label with the next arrival; filters (All, Your move, Waiting on the artist, In the works, Delivered, Closed) | **Prototype** | Request, 2026-10-11. `/requests`, linked from the account menu. Requests you really send from a commission dialog show on top ("Sent from Artiflow", with the package and add-ons you ticked; since 2026-10-12 stored in Supabase, and you can take one back while it waits); the rest is a sample (`src/lib/commissions/sample-requests.ts`) until the commission flow brings quotes, payments and deliveries. Paying a quote says "checkout opens soon". |
 | ↳ **Artist track record** | Does this artist deliver? Delivered, on time, cancellations, disputes, reply time and reviews, shown as facts plus a "Reliable" badge; an internal trust score for moderation | **Planned** | Request, 2026-10-11. Recorded from the commission flow's first order; shown once an artist has enough orders. See the [brief](#brief-artist-track-record). |
-| Discovery & search | Explore, search, filters, tags | Prototype | `/explore` built (studios, adoptables, palette wall). Search input isn't wired; `/explore/[section]` pages are placeholders. |
+| Discovery & search | Explore, search, filters, tags | **Built (first pass)** | Request, 2026-10-12. `/explore/search`: commissions, adoptables and artists by name, category, style, who they draw, price range, availability and turnaround; sorted by relevance, recent or popular; the URL is the state. `/explore/popular`: the week's most-liked pieces, featured artists, popular commissions, new studios, adoptables. Explore's open studios and adoptables include real listings; its categories, the header's Explore menu and the autocomplete lead to search. Simple rules over a cached list (no model). **Later:** move matching into Postgres (full-text + trigram) past a few thousand listings; personalized ranking (Phase 2). See the [brief](#brief-listings-and-discovery). |
 | Checkout & orders | 10% fee, order history, minimal refund/dispute flow | Needs decision | Payments provider. Commissions pay through the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
 | Media upload & delivery | Limits, validation, thumbnails, CDN, metadata stripping | **Built (first pass)** | Supabase Storage, public `art` bucket, one folder per account (policies: write/delete only your own). The browser resizes (posts 2400px, cover 2400px, picture 512px; never enlarges), re-encodes to WebP (strips EXIF) and **extracts the palette** before uploading straight to storage (no server hop, 10 MB cap). Next/Image serves them. **2026-10-11:** small images (≤ 640px) stay lossless PNG, and transparent ones stay PNG in browsers that can't encode WebP (Safari), instead of a JPEG that blackens transparency (messages excepted: their bucket takes no PNG). A new picture or cover is **framed first** (zoom + position, `<ImageCropDialog>`). Open: delete an account's files when the account is deleted; moderation/scanning; cropping animated GIFs (they go up whole for now). |
 | Admin & moderation | Reports, takedowns, essential analytics | Needs decision | Moderation policy. |
@@ -753,6 +753,141 @@ Sources:
 
 ---
 
+## Brief: listings and discovery
+
+- **Requested by:** stakeholders, 2026-10-12 (two blocks: "listings of commissions and characters for sale" and "discovery and search").
+- **Phase / priority:** Phase 1, the MVP's discovery → transaction loop.
+- **Status:** **Built 2026-10-12** on real data (Supabase), except paying: checkout waits on the [payments provider](#brief-payments-how-the-money-moves).
+
+### What was asked, and where it landed
+
+| Ask | Built |
+| --- | ----- |
+| Artists create services with price, description, turnaround and examples | `/studio` ("Open your doors."): a service editor with a live preview of the sheet buyers see. Examples (up to 6, AI-checked), category, up to 4 styles, description, turnaround in days ("5–7 days", "1–2 weeks"), what every package includes. |
+| Package options: sketch, lineart, final art | Up to 4 packages per service, each with its own price and what it adds. One click fills the classic ladder (Sketch · Lineart · Full color). Buyers circle one in the request dialog; add-on percentages apply to it; the request keeps it. |
+| Slot limits for open commissions | Optional slots per service. A request takes one when it arrives (counted in the database, so two buyers can't take the last one); declining or cancelling gives it back. When the last goes, the service switches to the artist's choice (Waitlist or Closed) and reopens when a slot comes back. One open request per buyer per service, 20 requests a day. |
+| Characters / adoptables, fixed price, available or sold | Adoptables listed from `/studio`: pictures, name, species, price, what comes with it; Available / On hold / Adopted in one click. |
+| **Custom commission ≠ ready-made art: different purchase flows** | Said everywhere a buyer decides. **Made to order** (commissions): request → the artist quotes → pay → it's drawn; the button is "Request". **Ready-made** (adoptables): pay → it's yours, no request, no quote; its own sheet explains the handover and credit. The studio shows both flows side by side; search's tabs say it too. |
+| Home feed of works and artists | Already built (`/`, the exhibition feed). Trending and search add the artist side. |
+| Search by name, category, style and price range | `/explore/search`: one box (with autocomplete) over commissions, adoptables and artists; filters for category, style, who they draw, price range (tags or a typed range). |
+| Availability and turnaround filters | Commissions: Open now (default), Open or waitlist, Everything. Adoptables: Available (default) or adopted too. Turnaround: within a week, 2 weeks, a month. |
+| Trending page or featured artists | `/explore/popular`, "The ribbon board": the week's most-liked pieces with prize rosettes, featured artists, popular commissions, new studios ("be their first client"), adoptables. |
+| Sort by relevance, recent, popular; no sophisticated algorithm | Relevance: every word must match; the listing's name counts most, then the artist, tags, description; with no words, what you can buy now comes first. Recent: newest listing. Popular: followers and reviews (pieces: likes, newest weighed up). Rules in `src/lib/search/query.ts`, unit-tested. |
+
+### How it fits together
+
+- **Data:** `services`, `adoptables`, `commission_requests` (migration `*_listings.sql`). Artists write their own listings under row level security; the triggers check prices, images (their own folder) and limits (20 services, 100 adoptables). Requests are written only by the Server Action, with the secret key, after it checks the session.
+- **Profile:** a real account's commission card is derived from its services (most open status, slots, cheapest price, quickest turnaround), so it can't drift. Each service shows its own status stamp and slot lights; closed ones stay, greyed, at the end. `/{handle}/adoptables` is new, with a sidebar card.
+- **Requests:** the artist's queue shows real requests first (answered from the drawer, not dragged); the buyer's `/requests` shows them, with "Take it back" while they wait. Notifications for new requests and answers come from the notifications work.
+- **Discovery:** Explore's open studios and adoptables include real listings; its categories, the header's Explore menu and the autocomplete lead to search; `/explore/commissions`, `/explore/adoptables` and `/explore/recent` are search presets.
+
+### Open questions
+
+| Question | Recommendation |
+| -------- | -------------- |
+| Ready-made art that isn't a character (premade icons, emote packs, YCH bases)? | Same flow as adoptables (pay → yours). Add a "kind" when an artist asks; nothing else changes. |
+| Terms of service for real accounts | Per artist, edited in `/studio`, snapshotted on each request (the commission flow brief). Today real requests accept Artiflow's rules. |
+| When does search need Postgres? | Past a few thousand listings: move text matching and filters into Postgres (full-text + trigram) and keep `query.ts` as the rules. |
+| Should "popular" use real request and save counts? | Yes once there's volume; today followers and reviews (demo) stand in. |
+| Auctions and offers on adoptables | Phase 3, with auctions. |
+
+---
+
+## Brief: original images, cheap and safe
+
+- **Requested by:** stakeholders, 2026-10-12. Sabrina asked for commission covers in PNG (transparent, with the card's color behind) and GIF, "at the original size so they don't blur". Robin and Amanda asked for Explore as a loose wall of many pieces, each at its own size, with GIFs playing. Then the project lead asked: "could we keep everyone's images, very cheaply and safely?"
+- **Status:** **Proposed** by the roadmap owner, 2026-10-12. Prices checked the same day (sources at the end).
+
+### The answer: keep the originals, serve copies
+
+Storing every original is cheap. What costs money, and makes pages slow, is **sending** originals to everyone who scrolls past. So each upload is kept three ways, all made in the browser at upload time, as `prepareImage()` already does (no server compute):
+
+| Copy | What it is | Typical size | Where it shows |
+| ---- | ---------- | ------------ | -------------- |
+| Original | The file as uploaded (PNG, JPEG, WebP, GIF), metadata stripped, pixels untouched | 2–20 MB | Opening the piece ("full size"), commission deliveries |
+| Display | Long side 2400px; lossless PNG when small (pixel art), otherwise WebP q90 | 300–800 KB | Piece page, lightbox, covers |
+| Thumb | Long side ~800px, WebP | 50–150 KB | Walls, cards, Explore, search |
+
+Why keep originals at all, if the display copy already looks sharp: commission deliveries must be the exact file; Glaze/Nightshade survive (see [What else](#what-else-confirmed-2026-10-11)); and new formats or sizes can be made later without asking artists to upload again.
+
+**Art should come straight from storage's CDN, not through Vercel's image optimizer.** Today every piece goes through `/_next/image`, which re-encodes it a second time (AVIF at quality 75, on top of the browser's WebP). That's likely part of the blur Sabrina saw. It is also Vercel's most expensive bandwidth, and Vercel's Flat Rate CDN excludes sites whose bandwidth is mostly media.
+
+### What it costs
+
+Today's traffic fits in what the plans already include (Supabase Pro: 100 GB stored, 250 GB + 250 GB egress; Vercel Pro: 1 TB). Illustrative year-one scenario: 300k pieces (originals averaging 4 MB → ~1.4 TB with copies), 3M wall pages a month showing 40 thumbs each (~12–13 TB a month delivered).
+
+| Path | Storage | Delivery | About / month |
+| ---- | ------- | -------- | ------------- |
+| Today: Supabase → Vercel's optimizer | ~$28 | $0.15/GB on demand → ~$1,750, plus $0.05 per 1,000 transformations | ~$1,800 |
+| Supabase Storage straight from its CDN | ~$28 | $0.03/GB cached → ~$375 | ~$400 |
+| **Cloudflare R2 + Cloudflare's CDN** | ~$21 | **egress free**; ~$4 in reads on cache misses | **~$25** |
+| Originals in the wall instead of thumbs | | ~480 TB a month; 160 MB per page | not viable |
+
+Supabase's spend cap is on: past the included egress, storage is **blocked** until the next cycle rather than billed. A busy Explore could switch off every image on the site. Watch egress on the usage page, or move art to R2 before that happens.
+
+### Safe
+
+1. **Strip metadata without re-encoding** (GPS location, camera, names): drop the metadata chunks of PNG, JPEG, WebP and GIF, keeping the color profile. Reuse the parsers in `src/lib/ai-check/signature.ts`. The AI check keeps running first, on the untouched file.
+2. **Raster only:** PNG, JPEG, WebP, GIF (the bucket's `allowed_mime_types`). Never SVG or HTML.
+3. **A server check after each upload**, because a hostile client can skip the browser's checks. Read the file's first bytes (a ranged read) and refuse it if the format doesn't match its type, if it's too big (e.g. over 10,000px a side or 50 megapixels: "decompression bombs" that crash viewers' tabs), or if it's a GIF with too many frames.
+4. **Serve from a separate domain** (`*.supabase.co` today; a dedicated user-content domain with R2) with `X-Content-Type-Options: nosniff`. A disguised file can never run as a page on our site.
+5. **Against free hosting:** storage per account (free vs Flow+), uploads per day, hotlink protection on Cloudflare, spend alerts.
+6. A deleted piece or account takes its originals and copies with it (the account deletion item).
+
+### Not losing them (backups)
+
+Asked by the project lead, 2026-10-12. **Today no image has a backup.** Supabase's daily backups cover the database only: Storage files are left out, and restoring a backup doesn't bring back a deleted file ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). Disks failing isn't the risk (both Supabase and R2 keep several copies of every file). The risks are a bug or a leaked secret key deleting files, and the account itself (unpaid bill, project paused or suspended, account taken over).
+
+Rule: **two copies, at two companies, and the backup locked.**
+
+- **Main copy:** where the site reads from (Supabase now, R2 later).
+- **Backup copy:** a bucket at a *different* company with different keys: R2 while art lives on Supabase, Backblaze B2 (~$7/TB a month) once it lives on R2. A daily job copies new originals (a Vercel Cron with the S3 APIs, or `rclone`). Only originals: display copies and thumbs can be made again from them by a script.
+- **Locked:** a retention rule ([R2 bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/), B2 object lock) so that nothing can delete or overwrite a file for 30 days, not even us with the key. After 30 days, deletions reach the backup, so a deleted account is gone from it too (say so in the privacy policy).
+- **Database too:** the `storage.objects` rows and our tables say whose file is which. Keep Supabase's daily backups, plus a weekly `pg_dump` to the same backup bucket.
+- **Test the restore** once a quarter: bring back a handful of files and check they open.
+
+Cost at the year-one scale (~1.2 TB of originals): ~$10–18 a month. At today's size, cents.
+
+### GIFs
+
+GIF is the heaviest format (5 MB for a few seconds). Keep the original. In walls, show its first frame as a still thumb and play the GIF when the tile is on screen (or hovered on desktop), a few at a time. Later, convert in the browser to animated WebP or a short video (5–10× smaller), once browser support has been tested.
+
+### Commission covers (Sabrina's ask): done 2026-10-12
+
+She meant the `/studio` editor and its "How buyers see it" preview: transparent art sat on black, cropped and zoomed.
+
+- **The black was a bug:** palette extraction counted see-through pixels (stored as black), so a transparent PNG's "dominant color" was black, and the box was painted with it. Palettes now skip see-through pixels (`extract-palette.ts`, tested). Listing boxes no longer paint the palette behind the art, so pictures uploaded before the fix look right too.
+- **Whole and at its own size:** `ListingArt` (`src/components/listings/listing-art.tsx`) shows the picture whole (no crop), never enlarged past its real size, on the box's own color. Used by the service sheet, the studio editor and the commission carousel. Small images (≤ 640px) and GIFs skip the optimizer.
+- **GIF:** service examples and adoptable pictures take GIFs (up to 9 MB), on every plan for now (see Decisions).
+- **PNG:** transparency already survived the upload. Small images stay PNG; larger ones become WebP q90, which keeps transparency too. Keeping the exact original file is step 1 of the plan below.
+- **Not changed:** Explore's studio tiles still crop (Explore is being redesigned), but no longer paint the palette behind the art. Adoptable cards elsewhere still use their own layout.
+
+### Plan
+
+1. **Now, on Supabase (~3–4 days):**
+   - Serve art straight from Supabase's CDN, with our own sizes (a custom `next/image` loader).
+   - Keep originals and make thumbs.
+   - Strip metadata, and add the server check.
+   - Covers: PNG, GIF, transparency.
+   - Backups: daily copy of originals to a locked bucket at another company (see [Not losing them](#not-losing-them-backups)).
+2. **When traffic grows (~2–3 days, plus copying files):**
+   - Move the `art` bucket to R2 on a user-content domain, with signed uploads from a Server Action.
+   - Paths stay the same; only `artUrl()` changes.
+   - Needs a domain on Cloudflare. It doesn't have to wait for the brand name: a neutral user-content domain (~$10/yr) is also the safer setup.
+
+### Decisions this needs
+
+| Decision | Recommendation |
+| -------- | -------------- |
+| Are full-size originals public? | Public pages show up to 2400px (sharp on any screen). Each piece has an artist toggle for "show full size". Full size is easier to scrape for AI training. |
+| GIF covers on commissions: everyone, or Flow+? | Everyone. Covers sell commissions, and we earn 10% on those. Cost stays controlled with "still until on screen". **Built that way 2026-10-12**; making it Flow+ only is a one-line change in `listing-images.tsx` (`allowGif`). |
+| Size limits | Originals up to 25 MB (the bucket allows 10 MB today); GIFs up to 15 MB. |
+| Storage per account | Generous at first (e.g. 5 GB free, 50 GB Flow+). Revisit with real data. |
+
+Sources: [Vercel image optimization pricing](https://vercel.com/docs/image-optimization/limits-and-pricing), [Vercel iad1 rates](https://vercel.com/docs/pricing/regional-pricing/iad1), [Flat Rate CDN scope](https://vercel.com/docs/pricing/flat-rate-cdn), [Supabase egress](https://supabase.com/docs/guides/platform/manage-your-usage/egress), [Supabase storage size](https://supabase.com/docs/guides/platform/manage-your-usage/storage-size), [Supabase spend cap](https://supabase.com/docs/guides/platform/spend-cap), [Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/).
+
+---
+
 ## What else (confirmed 2026-10-11)
 
 Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead confirmed all five the same day. In rough priority order:
@@ -812,6 +947,14 @@ Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead c
 | 2026-10-12 | Make following and likes work: like posts, follow other artists. The stats card (Followers / Following / Artworks) looks bigger than the sidebar cards. | **Built:** real follows and likes (Supabase `follows`, `post_likes`), counts move right away and stay after a reload; the Following feed uses real follows. Likes are private (counts only). The stats card is now exactly the sidebar's width (it was 10px wider). **Needs:** the `follows_and_likes` migration applied to production. |
 | 2026-10-12 | Notifications: make them real, with likes, comments, requests and so on showing up there. "Very artistic!" | **Built:** the guest book (bell + `/notifications`), from database triggers: follows, likes (anonymous counts, per the likes-are-private default), comments, replies, mentions, reposts, invites, a welcome note, commission requests and the artist's answer. Badge on the existing pulse, no extra connections. Email and Web Push later. |
 | 2026-10-12 | Gallery as the artist's creative center, not a tab of loose images: three kinds of content (Artwork, Character, Collection); each character has a page (cover, description, variations, species, personality, tags, credits) and can be saved on its own; later, link a character to its adoption listing with a buy button. | **Built (real data):** [gallery brief](#brief-the-gallery-characters-and-collections). Characters as file folders and a reference-sheet page with five art sections; collections as stacks of prints; every piece in justified rows; Add art (up to 12, AI check, "show it on"), character and collection editors, per-piece menus; saved characters as badges on the moodboard; characters link to their adoptable. **Needs:** the `gallery` migration applied to production. |
+| 2026-10-12 | Listings: artists create services with price, description, turnaround and examples; packages (sketch, lineart, final art); slot limits; characters/adoptables with a fixed price, available or sold. "Tell custom commissions apart from ready-made art: the purchase flows differ." | **Built:** [listings and discovery](#brief-listings-and-discovery). `/studio` with service and adoptable editors (live preview), packages, slots that fill and free themselves, per-service status in one click, Pause all; real requests stored and answered from the queue. Made to order ("Request": quote first) and ready-made ("pay and it's yours", its own sheet) are told apart wherever buyers decide. **Needs:** the `listings` migration applied to production. |
+| 2026-10-12 | Discovery & search: home feed of works and artists; search by name, category, style and price range; availability and turnaround filters; a trending or featured-artists page; relevance, recent and popular sorting, no sophisticated algorithm. | **Built:** `/explore/search` (commissions, adoptables, artists; filters in the URL; three sorts) and `/explore/popular` ("The ribbon board": rosettes for the week's most-liked pieces, featured and new artists, popular commissions). Explore, the header menu and autocomplete lead to search. Rules are plain and tested (`src/lib/search/query.ts`). |
+| 2026-10-12 | Artist search: show the profile frame around each artist's picture, "a visual edge for people who pay". Project lead: only for paying accounts? | **Proposed.** Easy: `<AvatarFrame>` already wraps pictures on the profile and the chat's studio card; search's `artist-card.tsx` doesn't use it yet. Recommendation: show whatever frame the artist equipped, free or bought (paid frames are already the paid edge). Gating the display behind Flow+ would charge twice for a bought frame. **Decision:** the project lead's. |
+| 2026-10-12 | A tester has no Flow+ and "needed it to test opening commissions". Project lead agreed to give it. | Opening commissions doesn't need Flow+: `/studio` only asks for an account with a handle. To try Flow+ anyway: `npm run plans -- set @handle flow_plus` (needs the tester's handle). |
+| 2026-10-12 | Sabrina: commission covers in PNG too, with transparency (the card's color shows behind), and GIF ("people love GIF covers"), at the original size so they don't blur. (Screenshot: the `/studio` editor, transparent art on black, cropped.) | **Done:** the black was a bug (palettes counted see-through pixels as black; fixed and tested). Listing pictures now show whole, never enlarged, on the box's color (`ListingArt`), and examples and adoptables take GIFs. Details in the [original images brief](#brief-original-images-cheap-and-safe) (covers section). Keeping the exact original file is still step 1 of that brief. |
+| 2026-10-12 | Robin and Amanda: Explore should be many images side by side ("loose", each at its own size, GIFs playing) for variety; the home feed (people you follow) stays as it is. | **Proposed**, design not started. It's the main driver of image bandwidth, so it depends on the [original images brief](#brief-original-images-cheap-and-safe) (thumbs, GIFs that play only on screen). Keep the "made by hand" rule: no uniform Pinterest grid, art never cropped. |
+| 2026-10-12 | Project lead: "could we keep everyone's images (original PNG, GIF, full size)? Very cheaply and safely?" | **Answered:** [original images brief](#brief-original-images-cheap-and-safe). Yes, if we keep originals and serve copies. On Cloudflare R2 it's ~$25/month at a year-one scale, against ~$400 straight from Supabase and ~$1,800 through Vercel's optimizer (today's path). Includes the safety measures and a plan in two steps. |
+| 2026-10-12 | Project lead, follow-up: "can we keep everyone's images or not? The safest and cheapest way so we don't lose them, and still not pay a fortune." | **Answered:** yes. Added [Not losing them](#not-losing-them-backups): today no image has a backup (Supabase's backups skip Storage files). Two copies at two companies, the backup locked for 30 days; ~$10–18/month at a year-one scale. Added to step 1 of the plan. Clarified that the spend cap *blocks* images until the next cycle, it doesn't delete them. |
 
 ## Pending decisions
 

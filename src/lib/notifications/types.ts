@@ -19,7 +19,18 @@ export type NotificationKind =
   | "commission_request"
   | "request_update";
 
-export type RequestStatus = "pending" | "waitlisted" | "declined" | "cancelled" | "accepted";
+/** A commission request's state when the notice was written ("accepted" is from before quotes existed). */
+export type RequestStatus =
+  | "pending"
+  | "waitlisted"
+  | "declined"
+  | "cancelled"
+  | "accepted"
+  | "quoted"
+  | "paid"
+  | "in_progress"
+  | "delivered"
+  | "expired";
 
 export type NoteActor = { handle: string; name: string; avatar: ImageAsset };
 

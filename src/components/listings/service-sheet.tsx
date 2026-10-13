@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/avatar";
+import { ListingArt } from "@/components/listings/listing-art";
 import { SlotMeter } from "@/components/explore/slot-meter";
 import { Stamp } from "@/components/explore/stamp";
 import { categoryLabel, styleLabel } from "@/lib/listings/catalog";
@@ -81,20 +81,14 @@ export function ServiceSheet({
       className={`group/sheet relative flex h-full flex-col rounded-[24px] border border-border bg-surface p-3 shadow-soft transition-[box-shadow,translate] duration-300 hover:-translate-y-0.5 hover:shadow-lift ${closed ? "[&_[data-art]]:saturate-[0.35]" : ""}`}
     >
       <div className={`grid gap-1.5 ${side.length ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
-        <div
-          data-art
-          className="relative aspect-4/3 overflow-hidden rounded-[16px] bg-ice"
-          style={{ backgroundColor: cover?.palette?.[0] }}
-        >
+        {/* Art is shown whole on the box's own color, so transparent PNGs and GIFs sit on the sheet. */}
+        <div data-art className="relative aspect-4/3 overflow-hidden rounded-[16px] bg-ice">
           {cover && (
-            <Image
-              src={cover.src}
-              alt={cover.alt}
-              fill
+            <ListingArt
+              image={cover}
               priority={priority}
               sizes={imageSizes}
-              className="object-cover transition-transform duration-700 ease-out group-hover/sheet:scale-[1.04]"
-              style={{ objectPosition: cover.focus ?? "50% 25%" }}
+              className="transition-transform duration-700 ease-out group-hover/sheet:scale-[1.04]"
             />
           )}
         </div>
@@ -105,9 +99,8 @@ export function ServiceSheet({
                 key={`${image.src}-${i}`}
                 data-art
                 className={`relative overflow-hidden rounded-[12px] bg-ice ${side.length === 1 ? "h-full" : ""}`}
-                style={{ backgroundColor: image.palette?.[0] }}
               >
-                <Image src={image.src} alt="" fill sizes="140px" className="object-cover" style={{ objectPosition: image.focus ?? "50% 25%" }} />
+                <ListingArt image={image} alt="" sizes="140px" />
               </div>
             ))}
           </div>

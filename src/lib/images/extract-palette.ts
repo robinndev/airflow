@@ -24,6 +24,8 @@ const BACKDROP_SHARE = 0.7;
  * fills the border, but it's part of the art (snow-village is the test case).
  */
 const MIN_BACKDROP_LIGHTNESS = 70;
+/** Pixels less opaque than this (0–255) aren't part of the art. */
+const MIN_ALPHA = 128;
 
 function toLab([r, g, b]: number[]): Lab {
   const linear = (c: number) => {
@@ -45,13 +47,27 @@ const toHex = (rgb: number[]) => `#${rgb.map((v) => Math.round(v).toString(16).p
  * Dominant colors, most prominent first: k-means in CIELAB (so clusters
  * follow what the eye sees), near-duplicates merged, and flat backdrops —
  * white paper, cream — dropped so a sketch on paper isn't "mostly white".
+ * See-through pixels are left out: their color is usually black, which made
+ * every transparent PNG "mostly black".
  *
  * @param pixels RGB triplets, row by row (no alpha), ideally ~72px on the long side.
+ * @param alpha One opacity (0–255) per pixel, when the image has transparency.
  */
-export function extractPalette(pixels: Uint8Array | number[], width: number, height: number): string[] {
+export function extractPalette(pixels: Uint8Array | number[], width: number, height: number, alpha?: ArrayLike<number>): string[] {
+  // Every pixel in reading order, null where it's see-through; rgb and lab hold only the visible ones.
+  const grid: (Lab | null)[] = [];
   const rgb: number[][] = [];
-  for (let i = 0; i < pixels.length; i += 3) rgb.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
-  const lab = rgb.map(toLab);
+  for (let i = 0, p = 0; i < pixels.length; i += 3, p++) {
+    if (alpha && alpha[p] < MIN_ALPHA) {
+      grid.push(null);
+      continue;
+    }
+    const color = [pixels[i], pixels[i + 1], pixels[i + 2]];
+    rgb.push(color);
+    grid.push(toLab(color));
+  }
+  const lab = grid.filter((p): p is Lab => p !== null);
+  if (lab.length === 0) return [];
 
   // k-means++ seeding with a fixed seed, so the same image always gives the same palette.
   let seed = 42;
@@ -95,13 +111,16 @@ export function extractPalette(pixels: Uint8Array | number[], width: number, hei
   for (const c of clusters) if (!distinct.some((d) => deltaE(d.lab, c.lab) < MERGE_DISTANCE)) distinct.push(c);
 
   // The backdrop is the median color of the border, if it's light and most of the border is that color.
-  const border: Lab[] = [];
-  for (let x = 0; x < width; x++) border.push(lab[x], lab[(height - 1) * width + x]);
-  for (let y = 0; y < height; y++) border.push(lab[y * width], lab[y * width + width - 1]);
+  // A see-through border counts against it: transparency is already the backdrop.
+  const edge: (Lab | null)[] = [];
+  for (let x = 0; x < width; x++) edge.push(grid[x], grid[(height - 1) * width + x]);
+  for (let y = 0; y < height; y++) edge.push(grid[y * width], grid[y * width + width - 1]);
+  const border = edge.filter((p): p is Lab => p !== null);
   const backdrop = [0, 1, 2].map((j) => border.map((p) => p[j]).sort((a, b) => a - b)[Math.floor(border.length / 2)]) as Lab;
   const flat =
+    border.length > 0 &&
     backdrop[0] > MIN_BACKDROP_LIGHTNESS &&
-    border.filter((p) => deltaE(p, backdrop) < BACKDROP_DISTANCE).length / border.length > BACKDROP_SHARE;
+    border.filter((p) => deltaE(p, backdrop) < BACKDROP_DISTANCE).length / edge.length > BACKDROP_SHARE;
   const art = flat ? distinct.filter((c) => deltaE(c.lab, backdrop) >= MERGE_DISTANCE) : distinct;
 
   return art.slice(0, MAX_COLORS).map((c) => toHex(c.rgb));

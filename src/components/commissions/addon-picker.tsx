@@ -174,7 +174,8 @@ export function OptionsTotal({ base, options, selected }: { base: number; option
  */
 function HandTick({ state }: { state: "on" | "off" | "locked" | "none" }) {
   const crossed = state === "on" || state === "locked";
-  const draw = `transition-[stroke-dashoffset] duration-300 ease-out [stroke-dasharray:1] ${crossed ? "[stroke-dashoffset:0]" : "[stroke-dashoffset:1]"}`;
+  // Hidden strokes are also transparent: a round cap would otherwise leave a dot where the line starts.
+  const draw = `transition-[stroke-dashoffset,opacity] duration-150 ease-out [stroke-dasharray:1] ${crossed ? "[stroke-dashoffset:0] opacity-100" : "[stroke-dashoffset:1] opacity-0"}`;
   const cross = state === "locked" ? "stroke-muted/70" : "stroke-like";
   return (
     <svg aria-hidden viewBox="0 0 28 28" fill="none" className="size-7 shrink-0">
@@ -189,7 +190,7 @@ function HandTick({ state }: { state: "on" | "off" | "locked" | "none" }) {
       <path
         d="M18.6 9.2c-3 2.9-5.9 6-9 9.4"
         pathLength={1}
-        className={`${cross} ${draw} ${state === "on" ? "delay-150" : ""}`}
+        className={`${cross} ${draw} ${state === "on" ? "delay-75" : ""}`}
         strokeWidth="2.6"
         strokeLinecap="round"
       />

@@ -2,16 +2,18 @@ import "server-only";
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { ACCOUNT_COLUMNS, toArtistProfile, type AccountRow } from "@/lib/profile/accounts";
 import type { Viewer } from "@/lib/session";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { QueueOrder } from "./queue";
+import type { Lane, OrderStatus, QueueOrder, Step } from "./queue";
 import type { MyRequest, RequestStatus } from "./requests";
 
 /*
- * Requests really sent to real artists (Supabase `commission_requests`), as
- * the queue's tickets (/commissions, the artist) and the buyer's postcards
- * (/requests). Read as the signed-in user: row level security shows each side
- * only its own. Proposals, payment and delivery come with the commission
- * flow; until then a request is new, waitlisted, accepted or closed.
+ * Real commission orders (Supabase `commission_requests`, see the
+ * *_commission_orders.sql migration), as the artist's tickets (/commissions)
+ * and the buyer's postcards (/requests). The order runs
+ * pending | waitlisted → quoted → paid → in_progress → delivered, or ends
+ * declined / cancelled / expired. Paying is stubbed until checkout exists:
+ * only the team marks an order paid (`npm run orders`).
  */
 
 type Row = {
@@ -24,85 +26,162 @@ type Row = {
   reference_links: string | null;
   deadline: string | null;
   usage: "personal" | "commercial";
-  status: "pending" | "waitlisted" | "declined" | "cancelled" | "accepted";
+  status: OrderStatus;
   created_at: string;
   updated_at: string;
+  quote_usd: number | string | null;
+  quote_note: string | null;
+  due_date: string | null;
+  quoted_at: string | null;
+  quote_expires_at: string | null;
+  paid_at: string | null;
+  started_at: string | null;
+  step: Step | null;
+  delivered_at: string | null;
+  delivery: { images?: StoredImage[]; note?: string } | null;
+  answer_note: string | null;
+  paused: boolean;
+  archived_by_artist: boolean;
+  /** Only on the artist's own read. */
+  artist_note?: string | null;
   buyer: AccountRow;
   artist: AccountRow;
   service: { examples: StoredImage[] } | null;
 };
 
-const COLUMNS = `id, service_title, package, addons, estimate_usd, description, reference_links, deadline, usage, status, created_at, updated_at,
-  buyer:profiles!commission_requests_buyer_id_fkey(${ACCOUNT_COLUMNS}),
+const BASE = `id, service_title, package, addons, estimate_usd, description, reference_links, deadline, usage, status, created_at, updated_at,
+  quote_usd, quote_note, due_date, quoted_at, quote_expires_at, paid_at, started_at, step, delivered_at, delivery, answer_note, paused, archived_by_artist`;
+const PEOPLE = `buyer:profiles!commission_requests_buyer_id_fkey(${ACCOUNT_COLUMNS}),
   artist:profiles!commission_requests_artist_id_fkey(${ACCOUNT_COLUMNS}),
   service:services(examples)`;
 
-const NOT_MIGRATED = new Set(["42P01", "PGRST205"]);
+const NOT_MIGRATED = new Set(["42P01", "PGRST205", "42703"]);
 
-async function select(column: "artist_id" | "buyer_id", viewer: Viewer): Promise<Row[]> {
+/** Quotes past their expiry close (and give their slots back) before anyone reads them. */
+async function expireQuotes() {
+  await createSupabaseAdmin().rpc("expire_commission_quotes").then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+/** A stable four-digit ticket number from the request's id. */
+export const ticketOf = (id: string) => (parseInt(id.replace(/-/g, "").slice(0, 6), 16) % 9000) + 1000;
+
+const serviceName = (row: Row) => (row.package ? `${row.service_title} · ${row.package.label}` : row.service_title);
+const extrasOf = (row: Row) => (row.addons ?? []).map(({ label, priceUsd }) => ({ label, priceUsd: Number(priceUsd) }));
+const priceOf = (row: Row) => Number(row.quote_usd ?? row.estimate_usd ?? 0);
+const deliveryOf = (row: Row) =>
+  row.delivery?.images?.length
+    ? {
+        images: row.delivery.images.map((image, i) => toImageAsset(image, `${row.service_title}, delivered (${i + 1})`)),
+        ...(row.delivery.note && { note: row.delivery.note }),
+      }
+    : undefined;
+
+const LANE: Record<OrderStatus, Lane> = {
+  pending: "request",
+  waitlisted: "request",
+  quoted: "proposal",
+  paid: "queued",
+  in_progress: "wip",
+  delivered: "delivered",
+  declined: "request",
+  cancelled: "request",
+  expired: "proposal",
+};
+
+const CLOSED: OrderStatus[] = ["declined", "cancelled", "expired"];
+
+/** Requests to the signed-in artist, as tickets in their queue (newest first). */
+export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[]> {
+  await expireQuotes();
+  // The artist's own private note comes along, so this read uses the secret key, scoped to the viewer.
+  const { data, error } = await createSupabaseAdmin()
+    .from("commission_requests")
+    .select(`${BASE}, artist_note, ${PEOPLE}`)
+    .eq("artist_id", viewer.id)
+    .order("created_at", { ascending: false })
+    .limit(300)
+    .returns<Row[]>();
+  if (error && NOT_MIGRATED.has(error.code)) return [];
+  if (error) throw new Error(`Couldn't load your commissions: ${error.message}`);
+
+  return data.map((row) => {
+    const client = toArtistProfile(row.buyer);
+    const closed = CLOSED.includes(row.status);
+    const delivery = deliveryOf(row);
+    const due = row.due_date ?? row.deadline;
+    return {
+      id: row.id,
+      number: ticketOf(row.id),
+      client: { handle: client.handle, name: client.displayName, avatar: { ...client.avatar, alt: "" } },
+      service: serviceName(row),
+      priceUsd: priceOf(row),
+      // The quote is one price; before it, the estimate is the service plus what was ticked.
+      ...(row.quote_usd === null && { extras: extrasOf(row) }),
+      lane: LANE[row.status],
+      ...(row.status === "in_progress" && { step: row.step ?? "sketch" }),
+      ...(row.status === "delivered" && { step: "render" as const }),
+      payment: row.status === "quoted" ? "invoiced" : ["paid", "in_progress", "delivered"].includes(row.status) ? "paid" : "unpaid",
+      usage: row.usage,
+      ...(row.status === "waitlisted" && { waitlist: true }),
+      ...(row.paused && { paused: true }),
+      ...((closed || row.archived_by_artist) && { archived: true }),
+      ...(row.status === "declined" && { declined: true }),
+      brief: row.description,
+      references: [],
+      ...(row.reference_links && { referenceLinks: row.reference_links }),
+      requestedAt: row.created_at,
+      ...(row.quote_expires_at && { proposalExpiresAt: row.quote_expires_at }),
+      ...(row.paid_at && { paidAt: row.paid_at }),
+      ...(due && { dueAt: `${due}T23:59:00Z` }),
+      ...(row.delivered_at && { deliveredAt: row.delivered_at }),
+      ...(row.artist_note && { note: row.artist_note }),
+      ...(row.quote_note && { quoteNote: row.quote_note }),
+      ...(delivery && { delivery }),
+      real: true,
+      orderStatus: row.status,
+    } satisfies QueueOrder;
+  });
+}
+
+/** Changes whenever any of the artist's orders does, so the queue takes the server's copy. */
+export const queueVersion = (orders: QueueOrder[]) =>
+  orders.map((o) => `${o.id.slice(0, 8)}.${o.orderStatus}.${o.step ?? ""}.${o.paused ? 1 : 0}${o.archived ? 1 : 0}`).join("|");
+
+const STATUS: Record<OrderStatus, RequestStatus> = {
+  pending: "sent",
+  waitlisted: "waitlisted",
+  quoted: "quoted",
+  paid: "paid",
+  in_progress: "paid",
+  delivered: "delivered",
+  declined: "declined",
+  cancelled: "cancelled",
+  expired: "expired",
+};
+
+/** Requests the signed-in buyer sent to real artists, as postcards. */
+export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
+  await expireQuotes();
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase
     .from("commission_requests")
-    .select(COLUMNS)
-    .eq(column, viewer.id)
+    .select(`${BASE}, ${PEOPLE}`)
+    .eq("buyer_id", viewer.id)
     .order("created_at", { ascending: false })
     .limit(200)
     .returns<Row[]>();
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your requests: ${error.message}`);
-  return data;
-}
 
-const extrasOf = (row: Row) => (row.addons ?? []).map(({ label, priceUsd }) => ({ label, priceUsd: Number(priceUsd) }));
-
-const serviceName = (row: Row) => (row.package ? `${row.service_title} · ${row.package.label}` : row.service_title);
-
-/** A stable four-digit ticket number from the request's id. */
-const numberOf = (id: string) => (parseInt(id.replace(/-/g, "").slice(0, 6), 16) % 9000) + 1000;
-
-/** Requests to the signed-in artist, as tickets in their queue. */
-export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[]> {
-  const rows = await select("artist_id", viewer);
-  return rows.map((row) => {
-    const client = toArtistProfile(row.buyer);
-    const closed = row.status === "declined" || row.status === "cancelled";
-    return {
-      id: row.id,
-      number: numberOf(row.id),
-      client: { handle: client.handle, name: client.displayName, avatar: { ...client.avatar, alt: "" } },
-      service: serviceName(row),
-      priceUsd: Number(row.estimate_usd ?? 0),
-      extras: extrasOf(row),
-      lane: row.status === "accepted" ? "proposal" : "request",
-      payment: row.status === "accepted" ? "invoiced" : "unpaid",
-      usage: row.usage,
-      ...(row.status === "waitlisted" && { waitlist: true }),
-      ...(closed && { archived: true, declined: row.status === "declined" }),
-      brief: row.description,
-      references: [],
-      ...(row.reference_links && { referenceLinks: row.reference_links }),
-      requestedAt: row.created_at,
-      ...(row.deadline && { dueAt: `${row.deadline}T23:59:00Z` }),
-      real: true,
-    } satisfies QueueOrder;
-  });
-}
-
-const STATUS: Record<Row["status"], RequestStatus> = {
-  pending: "sent",
-  waitlisted: "waitlisted",
-  accepted: "sent",
-  declined: "declined",
-  cancelled: "cancelled",
-};
-
-/** Requests the signed-in buyer sent to real artists, as postcards. */
-export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
-  const rows = await select("buyer_id", viewer);
-  return rows.map((row) => {
+  return data.map((row) => {
     const artist = toArtistProfile(row.artist);
     const cover = row.service?.examples?.[0];
-    const closed = row.status === "declined" || row.status === "cancelled";
+    const closed = CLOSED.includes(row.status);
+    const delivery = deliveryOf(row);
+    const note = row.answer_note ?? (row.status === "quoted" || row.status === "delivered" ? (row.quote_note && row.status === "quoted" ? row.quote_note : row.delivery?.note) : null);
     return {
       id: row.id,
       artist: { handle: artist.handle, name: artist.displayName, avatar: { ...artist.avatar, alt: "" } },
@@ -110,13 +189,20 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
       ...(cover && { cover: toImageAsset(cover, row.service_title) }),
       brief: row.description,
       status: STATUS[row.status],
-      priceUsd: Number(row.estimate_usd ?? 0),
-      extras: extrasOf(row),
+      ...(row.status === "in_progress" && { step: row.step ?? "sketch" }),
+      priceUsd: priceOf(row),
+      ...(row.quote_usd === null && { extras: extrasOf(row) }),
       sentAt: row.created_at,
+      ...(row.quoted_at && { quotedAt: row.quoted_at }),
+      ...(row.quote_expires_at && { quoteExpiresAt: row.quote_expires_at }),
+      ...(row.paid_at && { paidAt: row.paid_at }),
+      ...(row.due_date && { dueAt: `${row.due_date}T23:59:00Z` }),
+      ...(row.delivered_at && { deliveredAt: row.delivered_at }),
       ...(closed && { closedAt: row.updated_at }),
-      ...(row.status === "accepted" && { artistNote: "Their quote arrives here once checkout opens." }),
+      ...(note && { artistNote: note }),
+      ...(delivery && { delivery: delivery.images[0] }),
       real: true,
-      cancellable: row.status === "pending" || row.status === "waitlisted",
-    };
+      cancellable: row.status === "pending" || row.status === "waitlisted" || row.status === "quoted",
+    } satisfies MyRequest;
   });
 }

@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cancelRequest } from "@/app/(site)/request-actions";
 
-/** Takes back a real request the artist hasn't answered (its slot goes back to the service). */
-export function CancelRequestButton({ id, artist }: { id: string; artist: string }) {
+/** Takes back a real request the artist hasn't answered, or declines their quote (the slot goes back to the service). */
+export function CancelRequestButton({ id, artist, quote = false }: { id: string; artist: string; quote?: boolean }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,13 +18,15 @@ export function CancelRequestButton({ id, artist }: { id: string; artist: string
         onClick={() => setConfirming(true)}
         className="text-sm font-semibold text-paper-muted underline-offset-4 hover:text-on-paper hover:underline"
       >
-        Take it back
+        {quote ? "Decline the quote" : "Take it back"}
       </button>
     );
   }
   return (
     <span className="inline-flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-paper-muted">Withdraw it? {artist} won&apos;t see it anymore.</span>
+      <span className="text-paper-muted">
+        {quote ? `Say no to ${artist}'s quote? The request closes.` : `Withdraw it? ${artist} won't see it anymore.`}
+      </span>
       <button
         type="button"
         disabled={pending}
@@ -37,7 +39,7 @@ export function CancelRequestButton({ id, artist }: { id: string; artist: string
         }
         className="h-8 rounded-full bg-danger px-3 text-xs font-bold text-white disabled:opacity-60"
       >
-        {pending ? "Withdrawing…" : "Withdraw"}
+        {pending ? "One moment…" : quote ? "Decline" : "Withdraw"}
       </button>
       <button type="button" onClick={() => setConfirming(false)} className="text-xs font-semibold text-paper-muted hover:text-on-paper">
         Keep it

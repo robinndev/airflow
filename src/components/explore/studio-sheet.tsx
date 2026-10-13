@@ -84,10 +84,8 @@ export function StudioSheet({ studio }: { studio: Studio }) {
       <ol className={`mt-4 grid gap-2 sm:gap-2.5 ${["grid-cols-1", "grid-cols-2", "grid-cols-3"][Math.min(3, studio.tiers.length) - 1]}`}>
         {studio.tiers.map((tier, i) => (
           <li key={`${tier.label}-${i}`} className="min-w-0">
-            <div
-              className={`relative overflow-hidden rounded-[14px] bg-ice ${studio.tiers.length === 1 ? "aspect-16/10" : "aspect-4/5"}`}
-              style={{ backgroundColor: tier.image.palette?.[0] }}
-            >
+            {/* No palette tint behind: see-through art sits on the sheet's own color. */}
+            <div className={`relative overflow-hidden rounded-[14px] bg-ice ${studio.tiers.length === 1 ? "aspect-16/10" : "aspect-4/5"}`}>
               <Image
                 src={tier.image.src}
                 alt={tier.image.alt}

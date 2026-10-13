@@ -21,7 +21,9 @@ import {
   type Step,
   type Tab,
 } from "@/lib/commissions/queue";
+import { setOrderFlags, setOrderStep, startOrder } from "@/app/(site)/request-actions";
 import { Board } from "./board";
+import { useLiveAction } from "./live-order";
 import { Ledger } from "./ledger";
 import { OPEN_ORDER_EVENT } from "./open-order";
 import { OrderDrawer } from "./order-drawer";
@@ -73,14 +75,23 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
   const shown = orders.filter((order) => inTab(order, tab) && matches(order, query));
   const opened = orders.find((order) => order.id === openId) ?? null;
 
+  const [, live] = useLiveAction();
+
   function change(order: QueueOrder, patch: OrderPatch, message: string) {
+    // Real orders: pausing and archiving are saved on the server (no Undo: the toast just confirms).
+    if (order.real) {
+      const flags = { ...("paused" in patch && { paused: !!patch.paused }), ...("archived" in patch && { archived: !!patch.archived }) };
+      if (Object.keys(flags).length) live(order, () => setOrderFlags(order.id, flags), patch, message);
+      return;
+    }
     updateOrder(order.id, patch, message);
     showToast({ message, undo: undoLast });
   }
 
   function move(id: string, lane: Lane) {
     const order = orders.find((o) => o.id === id);
-    if (!order || order.lane === lane) return;
+    // Real orders move only when they're processed (the drawer's next step), never by hand.
+    if (!order || order.lane === lane || order.real) return;
     const message =
       lane === "delivered" ? `Delivered ${nameOf(order)} ✓` : `${nameOf(order)} → ${LANE_INFO[lane].label}`;
     change(order, moveTo(order, lane, new Date()), message);
@@ -89,7 +100,9 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
   function step(id: string, next: Step) {
     const order = orders.find((o) => o.id === id);
     if (!order || order.step === next) return;
-    change(order, { step: next }, `${nameOf(order)}: ${STEP_LABEL[next].toLowerCase()}`);
+    const message = `${nameOf(order)}: ${STEP_LABEL[next].toLowerCase()}`;
+    if (order.real) return live(order, () => setOrderStep(order.id, next), { step: next }, message);
+    change(order, { step: next }, message);
   }
 
   function act(order: QueueOrder, action: NonNullable<NextAction>) {
@@ -97,10 +110,13 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
       case "review":
         return setOpenId(order.id);
       case "start":
+        if (order.real) return live(order, () => startOrder(order.id), { lane: "wip", step: "sketch" }, `Started ${nameOf(order)}`);
         return move(order.id, "wip");
       case "step":
         return step(order.id, action.step);
       case "deliver":
+        // Delivering a real order takes the finished files: that's in the drawer.
+        if (order.real) return setOpenId(order.id);
         return move(order.id, "delivered");
       case "resume":
         return change(order, { paused: false }, `Resumed ${nameOf(order)}`);

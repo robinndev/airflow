@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
+import { ListingArt } from "@/components/listings/listing-art";
 import type { ImageAsset } from "@/lib/profile/types";
 import { openService } from "./events";
 
@@ -60,14 +60,7 @@ export function ExampleCarousel({
             aria-label={`${i + 1} of ${images.length}`}
             className="relative h-full w-full shrink-0 snap-center"
           >
-            <Image
-              src={image.src}
-              alt={image.alt}
-              fill
-              sizes="(min-width: 768px) 320px, 100vw"
-              className="object-cover"
-              style={{ objectPosition: image.focus ?? "50% 25%" }}
-            />
+            <ListingArt image={image} sizes="(min-width: 768px) 320px, 100vw" />
             {href && (
               // Mouse/touch shortcut only; the card title link covers keyboard users.
               <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0" />

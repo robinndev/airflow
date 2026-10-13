@@ -256,6 +256,11 @@ function Sentence({ note }: { note: AppNotification }) {
       if (status === "accepted") return <>{who} accepted your request for {service}</>;
       if (status === "waitlisted") return <>{who} put your request for {service} on the waitlist</>;
       if (status === "declined") return <>{who} declined your request for {service}</>;
+      if (status === "quoted") return <>{who} sent you a quote for {service}</>;
+      if (status === "paid") return <>{who} paid for {service}</>;
+      if (status === "in_progress") return <>{who} started your {service}</>;
+      if (status === "delivered") return <>{who} delivered your {service}</>;
+      if (status === "expired") return <>Your quote for {service} from {who} expired</>;
       return <>{who} cancelled their request for {service}</>;
     }
     case "welcome":

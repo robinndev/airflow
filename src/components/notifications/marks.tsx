@@ -136,6 +136,11 @@ const STATUS_STAMP: Record<RequestStatus, { label: string; tone: "mint" | "lilac
   waitlisted: { label: "Waitlist", tone: "lilac" },
   declined: { label: "Declined", tone: "like" },
   cancelled: { label: "Cancelled", tone: "muted" },
+  quoted: { label: "Quote", tone: "lilac" },
+  paid: { label: "Paid", tone: "mint" },
+  in_progress: { label: "Started", tone: "ocean" },
+  delivered: { label: "Delivered", tone: "mint" },
+  expired: { label: "Expired", tone: "muted" },
 };
 
 /** A commission request, tucked into the book as a perforated ticket stub. */
