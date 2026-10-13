@@ -9,11 +9,7 @@ import { buttonClasses } from "@/components/ui/button";
 import {
   LANE_INFO,
   LANES,
-  moveTo,
-  nextAction,
   ticketNumber,
-  type Lane,
-  type NextAction,
   type OrderPatch,
   type QueueOrder,
   type Step,
@@ -35,14 +31,12 @@ export function OrderDrawer({
   today,
   onClose,
   onStep,
-  onAction,
   onPatch,
 }: {
   order: QueueOrder | null;
   today: string;
   onClose: () => void;
   onStep: (id: string, step: Step) => void;
-  onAction: (order: QueueOrder, action: NonNullable<NextAction>) => void;
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -72,7 +66,6 @@ export function OrderDrawer({
           today={today}
           close={() => ref.current?.close()}
           onStep={onStep}
-          onAction={onAction}
           onPatch={onPatch}
         />
       )}
@@ -235,6 +228,10 @@ function Folder({
         )}
 
         <Section title="Money">
+          {order.priceUsd === 0 ? (
+            // A custom piece: no price until the artist quotes one.
+            <p className="text-sm text-muted">No price yet: you set it in your quote.</p>
+          ) : (
           <dl className="grid gap-1.5 text-sm">
             {order.extras && order.extras.length > 0 && (
               <>
@@ -256,6 +253,7 @@ function Folder({
               <span className="font-display text-lg font-extrabold">{formatUsdExact(order.priceUsd - fee)}</span>
             </Line>
           </dl>
+          )}
         </Section>
 
         <Section title="Dates">

@@ -144,7 +144,7 @@ export function Ticket({
           <div aria-hidden className="mx-3 border-t-2 border-dashed border-on-paper/15" />
           <div className="flex items-center justify-between gap-2 px-3.5 text-xs" style={{ height: STUB }}>
             <DueLabel order={order} today={today} />
-            <span className="font-display text-[0.9375rem] font-extrabold tabular-nums">{formatUsd(order.priceUsd)}</span>
+            <span className="font-display text-[0.9375rem] font-extrabold tabular-nums">{order.priceUsd > 0 ? formatUsd(order.priceUsd) : "Quote"}</span>
           </div>
         </div>
       </div>

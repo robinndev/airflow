@@ -171,8 +171,9 @@ test("a small transparent PNG goes on the About board at its real size, see-thro
   await expect(page.locator(".bg-white").filter({ has: image })).toHaveCount(0);
 
   // Kept lossless with its alpha: the corner is still see-through.
+  // Served as uploaded, straight from storage (the image loader only adds a `#w=` mark).
   const src = await image.getAttribute("src");
-  expect(src).toMatch(/\.png$/);
+  expect(src).toMatch(/\/storage\/v1\/object\/public\/art\/.+\.png(#w=\d+)?$/);
   const file = Buffer.from(await (await page.request.get(src!)).body());
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   expect(info.width).toBe(50);

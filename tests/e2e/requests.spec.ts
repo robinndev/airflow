@@ -3,12 +3,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { localSupabase } from "./support/local-supabase";
 
 /*
- * My requests (/requests), the buyer's side, end to end: a signed-in artist
- * opens it from the account menu, sees the shipping label and the postcards,
- * filters to what needs them, then sends a real request (with an add-on) from
- * an artist's commissions page and finds it on top, waiting for a reply.
- * Visitors get a sign-in note. Everything but the sent request is the sample
- * (src/lib/commissions/sample-requests.ts).
+ * My requests (/requests), the buyer's side, end to end and all real: a
+ * signed-in artist with no requests gets an empty postbox pointing at search;
+ * visitors who try to request are sent to sign in first; then they send a
+ * request (with an add-on) to a demo artist, find it as a postcard waiting
+ * for a reply (stored, though demo artists never answer), and take it back.
+ * Visitors get a sign-in note.
  */
 
 function admin() {
@@ -49,28 +49,27 @@ async function signIn(page: Page) {
 
 const postcards = (page: Page) => page.locator("article[data-request]");
 
-test("a buyer follows their requests and finds one they just sent", async ({ page }) => {
+test("a buyer sends a request and follows it; nothing here is a sample", async ({ page }) => {
+  // Visitors are asked to sign in before they fill anything in.
+  await page.goto("/mira/commissions#svc_refsheet");
+  const dialog = page.getByRole("dialog", { name: "Character ref sheet" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Sign in to request" })).toHaveAttribute(
+    "href",
+    `/sign-in?next=${encodeURIComponent("/mira/commissions#svc_refsheet")}`,
+  );
+
   await signIn(page);
   await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("link", { name: "My requests" }).click();
   await expect(page).toHaveURL(/\/requests$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("On its way.");
   await expect(page.getByRole("complementary", { name: "Priority" })).toContainText(`Ship to@${account.handle}`);
-  await expect(page.getByText("These are sample requests.")).toBeVisible();
+  await expect(postcards(page)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Find an open studio" })).toHaveAttribute("href", "/explore/search");
 
-  // The quote is the buyer's move; there's no checkout yet, and the card says so.
-  const quote = page.locator('[data-request="rq_headshot"]');
-  await expect(quote).toContainText("Mira sent a quote");
-  await expect(quote).toContainText("Pay $65 · checkout opens soon");
-  await expect(quote.locator('li[aria-current="step"]')).toContainText("Quote");
-
-  await page.getByRole("link", { name: /Your move/ }).click();
-  await expect(page).toHaveURL(/show=yours/);
-  await expect(postcards(page)).toHaveCount(1);
-
-  // Send a real request with an add-on from Mira's commissions page.
+  // Send a request with an add-on from Mira's commissions page.
   await page.goto("/mira/commissions#svc_refsheet");
-  const dialog = page.getByRole("dialog", { name: "Character ref sheet" });
   await expect(dialog).toBeVisible();
   await dialog.locator('[data-option="outfit"]').click();
   await expect(dialog.getByText("from $160", { exact: true })).toBeVisible();
@@ -80,12 +79,27 @@ test("a buyer follows their requests and finds one they just sent", async ({ pag
   await dialog.getByRole("button", { name: "Send request" }).click();
   await expect(dialog.getByText("Request sent!")).toBeVisible();
 
+  // Stored for real, under the demo artist's handle.
+  const { data: rows } = await admin().from("commission_requests").select("id, demo_artist, status, addons").eq("buyer_id", userId);
+  expect(rows).toHaveLength(1);
+  expect(rows![0]).toMatchObject({ demo_artist: "mira", status: "pending", addons: [expect.objectContaining({ label: "Extra outfit" })] });
+
   await page.goto("/requests?show=waiting");
   const sent = postcards(page).first();
+  await expect(postcards(page)).toHaveCount(1);
   await expect(sent).toContainText("Sent from Artiflow");
   await expect(sent).toContainText("Character ref sheet");
   await expect(sent).toContainText("+ Extra outfit");
   await expect(sent).toContainText("Waiting for Mira to reply.");
+
+  // Taken back: closed, and nothing was charged.
+  await sent.getByRole("button", { name: "Take it back" }).click();
+  await sent.getByRole("button", { name: "Withdraw" }).click();
+  await expect.poll(async () => (await admin().from("commission_requests").select("status").eq("id", rows![0].id).single()).data?.status).toBe(
+    "cancelled",
+  );
+  await page.goto("/requests?show=closed");
+  await expect(postcards(page).first()).toContainText("Nothing was charged.");
 });
 
 test("visitors are asked to sign in", async ({ page }) => {

@@ -1,7 +1,10 @@
 "use client";
 
 import { CircleCheck, LoaderCircle, Send, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useActionState, useId, useState } from "react";
+import { useViewerId } from "@/components/favorites/store";
 import { submitCommissionRequest, type RequestSent } from "@/app/(site)/[handle]/actions";
 import { buttonClasses } from "@/components/ui/button";
 import { extrasUsd, pickOptions, type Option } from "@/lib/commissions/addons";
@@ -73,6 +76,8 @@ export function CommissionRequestForm({
   hasTerms = true,
 }: CommissionRequestFormProps) {
   const id = useId();
+  const viewer = useViewerId();
+  const pathname = usePathname();
   const firstName = artistName.split(" ")[0];
   const [usage, setUsage] = useState<CommissionUsage>("personal");
   const [budget, setBudget] = useState<CommissionBudget | null>(null);
@@ -312,10 +317,20 @@ export function CommissionRequestForm({
           </p>
           <p className="text-xs text-muted">Nothing is charged now — {firstName} sends a final quote first.</p>
         </div>
-        <button type="submit" disabled={pending} className={buttonClasses({ className: "sm:min-w-44" })}>
-          {pending ? <LoaderCircle aria-hidden className="animate-spin" /> : <Send aria-hidden />}
-          {pending ? "Sending…" : isWaitlist ? "Join waitlist" : "Send request"}
-        </button>
+        {viewer === null ? (
+          // Visitors (a custom piece opens straight on the form): requests live in an account.
+          <Link
+            href={`/sign-in?next=${encodeURIComponent(`${pathname}#${serviceId}`)}`}
+            className={buttonClasses({ className: "sm:min-w-44" })}
+          >
+            Sign in to send
+          </Link>
+        ) : (
+          <button type="submit" disabled={pending} className={buttonClasses({ className: "sm:min-w-44" })}>
+            {pending ? <LoaderCircle aria-hidden className="animate-spin" /> : <Send aria-hidden />}
+            {pending ? "Sending…" : isWaitlist ? "Join waitlist" : "Send request"}
+          </button>
+        )}
       </div>
 
       <p role="status" aria-live="polite" className="-mt-3 text-sm text-danger empty:hidden">

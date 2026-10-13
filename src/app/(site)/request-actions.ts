@@ -2,7 +2,10 @@
 
 import { updateTag } from "next/cache";
 import { z } from "zod";
-import { isOwnArtPath } from "@/lib/art-storage";
+import type { StoredImage } from "@/lib/art-storage";
+import { variantFields } from "@/lib/images/schema";
+import { verifyUploads } from "@/lib/images/verify";
+import { originalUrl } from "@/lib/images/originals";
 import { LISTINGS_TAG, profileTag, servicesTag } from "@/lib/profile/queries";
 import { getViewer, type Viewer } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
@@ -125,6 +128,8 @@ const deliverySchema = z.object({
         width: z.number().int().min(1).max(8192),
         height: z.number().int().min(1).max(8192),
         palette: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(8).optional(),
+        // The thumb and the untouched original the browser uploaded beside it (src/lib/images/variants.ts).
+        ...variantFields,
       }),
     )
     .min(1, "Add the finished piece.")
@@ -132,24 +137,52 @@ const deliverySchema = z.object({
   note: z.string().trim().max(1000, "Keep the note under 1,000 characters."),
 });
 
-/** The final files, with a note. The buyer sees them on their postcard. */
+/**
+ * The final files, with a note. The buyer sees them on their postcard and
+ * downloads the originals (kept untouched beside the display copies).
+ */
 export async function deliverOrder(id: string, input: z.input<typeof deliverySchema>): Promise<RequestResult> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, error: "Sign in to manage your commissions." };
   const parsed = deliverySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
-  if (parsed.data.images.some((image) => !isOwnArtPath(image.path, viewer.id, "deliveries"))) {
-    return { ok: false, error: "One of the files isn't yours. Upload it again." };
-  }
+  // Own folder, real format, the size declared: the browser's word isn't enough.
+  const checked = await verifyUploads(parsed.data.images as StoredImage[], { userId: viewer.id, folder: "deliveries" });
+  if (!checked.ok) return checked;
   return done(
     await advance(id, "artist", ["in_progress"], {
       status: "delivered",
       step: "render",
       delivered_at: new Date().toISOString(),
-      delivery: { images: parsed.data.images.map(({ palette, ...image }) => ({ ...image, palette: palette ?? [] })), ...(parsed.data.note && { note: parsed.data.note }) },
+      delivery: { images: checked.images, ...(parsed.data.note && { note: parsed.data.note }) },
       paused: false,
     }),
   );
+}
+
+/**
+ * Download links for a delivered commission's files, as the artist uploaded
+ * them (signed for an hour). Only its buyer and its artist get them.
+ */
+export async function deliveryFiles(id: string): Promise<{ ok: true; files: { url: string; name: string }[] } | { ok: false; error: string }> {
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false, error: "Sign in to download your files." };
+  const { data } = await createSupabaseAdmin()
+    .from("commission_requests")
+    .select("service_title, delivery, buyer_id, artist_id")
+    .eq("id", id)
+    .eq("status", "delivered")
+    .maybeSingle();
+  if (!data || (data.buyer_id !== viewer.id && data.artist_id !== viewer.id)) return { ok: false, error: "That delivery isn't yours." };
+  const images = ((data.delivery as { images?: StoredImage[] } | null)?.images ?? []);
+  const base = data.service_title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "commission";
+  const files = await Promise.all(
+    images.map(async (image, i) => {
+      const name = images.length > 1 ? `${base}-${i + 1}` : base;
+      return { url: await originalUrl(image, { download: name }), name };
+    }),
+  );
+  return { ok: true, files };
 }
 
 /** Pause (the order keeps its place) and archive (out of the way) are the artist's own bookkeeping. */

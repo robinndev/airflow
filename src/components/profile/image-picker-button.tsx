@@ -13,6 +13,8 @@ import { UploadNoticeDialog, type UploadNotice } from "./upload-notice-dialog";
 type Slot = "avatar" | "banner";
 
 const MAX_DIMENSION: Record<Slot, number> = { banner: 2400, avatar: 512 };
+/** Avatars beside names are 24–96px: a 192px thumb covers them on sharp screens. */
+const AVATAR_THUMB = 192;
 
 /**
  * Lets the owner pick a new banner/avatar, frame it (zoom + position, see
@@ -60,8 +62,9 @@ export function ImagePickerButton({
       let shown: string | null = null;
       try {
         // Straight to storage from the browser, then the profile points at it.
-        // Covers get a thumb for cards; pictures are small enough already.
-        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif, allowPng: true, crop, thumb: slot === "banner" });
+        // Thumbs: covers for cards, pictures for the small avatars beside names.
+        const thumb = slot === "banner" ? true : AVATAR_THUMB;
+        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif, allowPng: true, crop, thumb });
         shown = image.previewUrl;
         startTransition(() => setPreview(image.previewUrl));
         const stored = await uploadArt(image, slot);

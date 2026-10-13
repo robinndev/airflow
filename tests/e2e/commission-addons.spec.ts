@@ -1,13 +1,53 @@
-import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { expect, test, type Page } from "@playwright/test";
+import { localSupabase } from "./support/local-supabase";
 
 /*
- * Licenses and add-ons on a commission (demo data, no account needed): under
- * the price, included ones come ticked and locked, licenses the artist doesn't
+ * Licenses and add-ons on a commission (a demo artist's service): under the
+ * price, included ones come ticked and locked, licenses the artist doesn't
  * sell are struck out, and ticking extras (fixed or a percentage) updates the
- * price. The ticks carry into the request form, which sends them.
+ * price. The ticks carry into the request form, which sends them (signed in:
+ * every request is stored).
  */
 
+function admin() {
+  const { apiUrl, secretKey } = localSupabase();
+  return createClient(apiUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+const account = { handle: `e2e_${id}`, email: `e2e+${id}@artiflow.test`, password: `Teal-brush-${id}!` };
+let userId: string;
+
+test.beforeAll(async () => {
+  const { data, error } = await admin().auth.admin.createUser({
+    email: account.email,
+    password: account.password,
+    email_confirm: true,
+    user_metadata: { handle: account.handle, display_name: account.handle },
+  });
+  if (error) throw error;
+  userId = data.user.id;
+});
+
+test.afterAll(async () => {
+  if (userId) await admin().auth.admin.deleteUser(userId);
+});
+
+async function signIn(page: Page) {
+  await page.goto("/sign-in");
+  await page.waitForFunction(() => {
+    const form = document.querySelector("main form");
+    return !!form && Object.keys(form).some((key) => key.startsWith("__reactProps"));
+  });
+  await page.getByLabel("Email or handle").fill(account.handle);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
+  await page.getByRole("button", { name: "Enter the studio" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
+}
+
 test("a buyer ticks add-ons under the price and they carry into the request", async ({ page }) => {
+  await signIn(page);
   await page.goto("/mira/commissions#svc_headshot");
   const dialog = page.getByRole("dialog", { name: "Headshot & icon" });
   await expect(dialog).toBeVisible();
@@ -50,6 +90,12 @@ test("a buyer ticks add-ons under the price and they carry into the request", as
   await dialog.getByLabel("Describe your idea").fill("My OC Juniper, sleepy pastel headshot with a flower clip on the left.");
   await dialog.getByRole("button", { name: "Send request" }).click();
   await expect(dialog.getByText("Request sent!")).toBeVisible();
+
+  // Stored with the package and the extras, priced as they were.
+  const { data } = await admin().from("commission_requests").select("package, addons, estimate_usd").eq("buyer_id", userId).single();
+  expect(data).toMatchObject({ package: { label: "Full render" } });
+  expect(Number(data!.estimate_usd)).toBe(65);
+  expect((data!.addons as { label: string }[]).map((a) => a.label)).toEqual(["Full shading", "Animated blink"]);
 });
 
 test("a service without add-ons still lists its licenses, all included", async ({ page }) => {

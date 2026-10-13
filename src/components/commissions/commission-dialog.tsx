@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ChevronDown,
@@ -17,7 +17,9 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { SaveButton } from "@/components/commissions/save-button";
+import { useViewerId } from "@/components/favorites/store";
 import { openChat } from "@/components/messages/store";
 import { FollowButton } from "@/components/profile/follow-button";
 import { Avatar } from "@/components/ui/avatar";
@@ -105,6 +107,8 @@ export function CommissionDialog(props: CommissionDialogProps) {
 
   const service = services.find((s) => s.id === activeId);
   const isCustom = activeId === CUSTOM_SERVICE_ID;
+  const viewer = useViewerId();
+  const pathname = usePathname();
   // Real services have their own status and slots; demo ones follow the artist's.
   const status = service?.status ?? props.status;
   const slotsLeft = service?.slots !== undefined ? (slotsLeftOf(service.slots) ?? Infinity) : props.slotsLeft;
@@ -241,6 +245,14 @@ export function CommissionDialog(props: CommissionDialogProps) {
                 <div className="flex items-center gap-3">
                   {status === "closed" ? (
                     <p className="flex-1 text-sm text-muted">Commissions are closed right now.</p>
+                  ) : viewer === null ? (
+                    // Every request is stored and answered in your account: sign in first, come back to this service.
+                    <Link
+                      href={`/sign-in?next=${encodeURIComponent(`${pathname}#${service.id}`)}`}
+                      className={buttonClasses({ size: "lg", className: "h-12 flex-1" })}
+                    >
+                      Sign in to request
+                    </Link>
                   ) : (
                     <button
                       type="button"

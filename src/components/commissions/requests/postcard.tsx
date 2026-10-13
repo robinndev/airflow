@@ -11,6 +11,7 @@ import type { MyRequest } from "@/lib/commissions/requests";
 import { formatShortDate, formatUsd, formatUsdExact } from "@/lib/format";
 import { Postmark, PostageStamp, type PostmarkTone } from "./postage";
 import { CancelRequestButton } from "./cancel-request";
+import { DownloadDelivery } from "./download-delivery";
 import { RouteLine } from "./route-line";
 
 // Airmail edging, in the theme's own two colors.
@@ -218,6 +219,7 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
             <span className="text-paper-muted">{formatUsdExact(request.priceUsd)} paid.</span>
           </p>
           <PaperLink href={commissions}>Commission {first} again</PaperLink>
+          {request.real && !request.demo && <DownloadDelivery id={request.id} />}
         </div>
       );
     case "declined":

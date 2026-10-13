@@ -16,6 +16,7 @@
     "plans": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plans.ts",
     "orders": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/orders.ts",
     "ai-check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ai-check.ts",
+    "images": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/images.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.ts\""

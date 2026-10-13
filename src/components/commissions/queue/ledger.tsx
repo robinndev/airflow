@@ -195,7 +195,7 @@ function Row({
         )}
       </td>
       <td className={`${cell} text-right font-display font-extrabold whitespace-nowrap text-ink tabular-nums`}>
-        {formatUsd(order.priceUsd)}
+        {order.priceUsd > 0 ? formatUsd(order.priceUsd) : <span className="text-muted">Quote</span>}
       </td>
       <td className={`${cell} hidden pr-5 text-right sm:table-cell`}>
         {action ? (

@@ -276,7 +276,8 @@ function Deliver({ order, pending, run }: { order: QueueOrder; pending: boolean;
         if (images.length === 0) return showToast({ message: "Add the finished piece first." });
         run(
           order,
-          () => deliverOrder(order.id, { images: images.map(({ path, width, height, palette }) => ({ path, width, height, palette })), note }),
+          // Everything but the preview URL: the thumb and the original go along, to be checked and kept.
+          () => deliverOrder(order.id, { images: images.map(({ src: _src, ...image }) => image), note }),
           { lane: "delivered", step: "render" },
           `Delivered ${name}'s piece ✓`,
           () => setOpen(false),

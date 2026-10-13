@@ -51,7 +51,8 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
  * Files carrying an AI generator's marks are turned away first, while the
  * marks are still there: it throws an AiImageError (show <AiImageDialog>).
  *
- * `thumb` adds a copy up to 1024px for walls and cards; `original` keeps the
+ * `thumb` adds a copy up to 1024px for walls and cards (or up to the size
+ * given: profile pictures use a small one for avatars); `original` keeps the
  * file itself, cleaned of metadata (location, camera, names) without
  * re-encoding. A crop doesn't apply to the original. See variants.ts.
  */
@@ -64,7 +65,7 @@ export async function prepareImage(
     crop,
     thumb: wantThumb = false,
     original: wantOriginal = false,
-  }: { allowGif?: boolean; allowPng?: boolean; crop?: CropRect; thumb?: boolean; original?: boolean } = {},
+  }: { allowGif?: boolean; allowPng?: boolean; crop?: CropRect; thumb?: boolean | number; original?: boolean } = {},
 ): Promise<PreparedImage> {
   if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
   const gif = file.type === "image/gif";
@@ -113,7 +114,8 @@ export async function prepareImage(
     if (rgba[i + 3] < 250) transparent = true;
   }
   const palette = rgb.length ? extractPalette(rgb, sample.width, sample.height, transparent ? alpha : undefined) : [];
-  const thumb = wantThumb && (gif || Math.max(width, height) > THUMB_MAX) ? await makeThumb(canvas, transparent, allowPng) : undefined;
+  const thumbSize = wantThumb === true ? THUMB_MAX : wantThumb || 0;
+  const thumb = thumbSize && (gif || Math.max(width, height) > thumbSize) ? await makeThumb(canvas, thumbSize, transparent, allowPng) : undefined;
 
   if (gif) {
     // Uploaded whole (see above), minus its comments and XMP.
@@ -157,9 +159,9 @@ export async function prepareImage(
   throw new Error("That image is too large. Try a smaller one.");
 }
 
-/** The display canvas scaled down to THUMB_MAX: WebP, or PNG / JPEG where the browser can't encode WebP. */
-async function makeThumb(source: HTMLCanvasElement, transparent: boolean, allowPng: boolean) {
-  const scale = Math.min(1, THUMB_MAX / Math.max(source.width, source.height));
+/** The display canvas scaled down to `size` (long side): WebP, or PNG / JPEG where the browser can't encode WebP. */
+async function makeThumb(source: HTMLCanvasElement, size: number, transparent: boolean, allowPng: boolean) {
+  const scale = Math.min(1, size / Math.max(source.width, source.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(source.width * scale));
   canvas.height = Math.max(1, Math.round(source.height * scale));

@@ -162,7 +162,6 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
         today={queue.today}
         onClose={() => setOpenId(null)}
         onStep={step}
-        onAction={act}
         onPatch={change}
       />
     </div>
