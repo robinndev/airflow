@@ -3,18 +3,14 @@
 import { Kanban, Rows3, Search, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { showToast } from "@/components/favorites/toast-events";
 import type { ViewerQueue } from "@/lib/commissions/queries";
 import {
   countTabs,
   inTab,
   isTab,
-  LANE_INFO,
   matches,
-  moveTo,
   STEP_LABEL,
   TABS,
-  type Lane,
   type NextAction,
   type OrderPatch,
   type QueueOrder,
@@ -27,7 +23,7 @@ import { useLiveAction } from "./live-order";
 import { Ledger } from "./ledger";
 import { OPEN_ORDER_EVENT } from "./open-order";
 import { OrderDrawer } from "./order-drawer";
-import { undoLast, updateOrder, useQueue } from "./store";
+import { useQueue } from "./store";
 
 type View = "board" | "ledger";
 
@@ -49,7 +45,7 @@ const nameOf = (order: QueueOrder) => `${order.client.name}'s ${order.service.to
  * ledger (one ruled page). Tab and view live in the URL (?tab=, ?view=).
  */
 export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
-  const { orders, last } = useQueue(queue);
+  const { orders } = useQueue(queue);
   const params = useSearchParams();
   const tab: Tab = isTab(params.get("tab")) ? (params.get("tab") as Tab) : "all";
   const view: View = params.get("view") === "ledger" ? "ledger" : "board";
@@ -77,47 +73,30 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
 
   const [, live] = useLiveAction();
 
+  /** Pausing and archiving are the artist's own bookkeeping, saved on the server. */
   function change(order: QueueOrder, patch: OrderPatch, message: string) {
-    // Real orders: pausing and archiving are saved on the server (no Undo: the toast just confirms).
-    if (order.real) {
-      const flags = { ...("paused" in patch && { paused: !!patch.paused }), ...("archived" in patch && { archived: !!patch.archived }) };
-      if (Object.keys(flags).length) live(order, () => setOrderFlags(order.id, flags), patch, message);
-      return;
-    }
-    updateOrder(order.id, patch, message);
-    showToast({ message, undo: undoLast });
-  }
-
-  function move(id: string, lane: Lane) {
-    const order = orders.find((o) => o.id === id);
-    // Real orders move only when they're processed (the drawer's next step), never by hand.
-    if (!order || order.lane === lane || order.real) return;
-    const message =
-      lane === "delivered" ? `Delivered ${nameOf(order)} ✓` : `${nameOf(order)} → ${LANE_INFO[lane].label}`;
-    change(order, moveTo(order, lane, new Date()), message);
+    const flags = { ...("paused" in patch && { paused: !!patch.paused }), ...("archived" in patch && { archived: !!patch.archived }) };
+    if (Object.keys(flags).length) live(order, () => setOrderFlags(order.id, flags), patch, message);
   }
 
   function step(id: string, next: Step) {
     const order = orders.find((o) => o.id === id);
     if (!order || order.step === next) return;
-    const message = `${nameOf(order)}: ${STEP_LABEL[next].toLowerCase()}`;
-    if (order.real) return live(order, () => setOrderStep(order.id, next), { step: next }, message);
-    change(order, { step: next }, message);
+    live(order, () => setOrderStep(order.id, next), { step: next }, `${nameOf(order)}: ${STEP_LABEL[next].toLowerCase()}`);
   }
 
+  // Orders move only as they're processed (decided 2026-10-11): each next step is an action, never a drag.
   function act(order: QueueOrder, action: NonNullable<NextAction>) {
     switch (action.kind) {
       case "review":
         return setOpenId(order.id);
       case "start":
-        if (order.real) return live(order, () => startOrder(order.id), { lane: "wip", step: "sketch" }, `Started ${nameOf(order)}`);
-        return move(order.id, "wip");
+        return live(order, () => startOrder(order.id), { lane: "wip", step: "sketch" }, `Started ${nameOf(order)}`);
       case "step":
         return step(order.id, action.step);
       case "deliver":
-        // Delivering a real order takes the finished files: that's in the drawer.
-        if (order.real) return setOpenId(order.id);
-        return move(order.id, "delivered");
+        // Delivering takes the finished files: that's in the drawer.
+        return setOpenId(order.id);
       case "resume":
         return change(order, { paused: false }, `Resumed ${nameOf(order)}`);
     }
@@ -167,14 +146,7 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
         }`}
       >
         {view === "board" ? (
-          <Board
-            orders={shown}
-            today={queue.today}
-            freshId={last?.id ?? null}
-            onOpen={setOpenId}
-            onMove={move}
-            onStep={step}
-          />
+          <Board orders={shown} today={queue.today} onOpen={setOpenId} onStep={step} />
         ) : (
           <Ledger orders={shown} today={queue.today} onOpen={setOpenId} onAction={act} />
         )}
@@ -189,7 +161,6 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
         order={opened}
         today={queue.today}
         onClose={() => setOpenId(null)}
-        onMove={move}
         onStep={step}
         onAction={act}
         onPatch={change}

@@ -1,104 +1,45 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
 import { HandNote } from "@/components/explore/doodles";
 import { LANE_INFO, LANES, laneOrder, type Lane, type QueueOrder, type Step } from "@/lib/commissions/queue";
 import { LANE_TONE } from "./parts";
-import { GhostTicket, ORDER_MIME, Ticket } from "./ticket";
+import { GhostTicket, Ticket } from "./ticket";
 
 /**
  * The board: five columns laid out on the cutting mat, each headed by a strip
- * of masking tape. Tickets are dragged from one to the next as the work moves
- * (mouse); everyone can also move them from the ticket's drawer.
+ * of masking tape. A ticket's column is where its order stands; it moves as
+ * the order is processed (from its drawer), never by dragging.
  */
 export function Board({
   orders,
   today,
-  freshId,
   onOpen,
-  onMove,
   onStep,
 }: {
   orders: QueueOrder[];
   today: string;
-  freshId: string | null;
   onOpen: (id: string) => void;
-  onMove: (id: string, lane: Lane) => void;
   onStep: (id: string, step: Step) => void;
 }) {
-  const [dragging, setDragging] = useState<{ id: string; from: Lane } | null>(null);
-  const [over, setOver] = useState<Lane | null>(null);
-
-  // Accept by what's being dragged, not by React state, which may not have caught up with the first dragover.
-  function allow(event: DragEvent, lane: Lane) {
-    if (!event.dataTransfer.types.includes(ORDER_MIME)) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    if (over !== lane) setOver(lane);
-  }
-
-  function drop(event: DragEvent, lane: Lane) {
-    event.preventDefault();
-    const id = event.dataTransfer.getData(ORDER_MIME);
-    setOver(null);
-    setDragging(null);
-    if (id) onMove(id, lane);
-  }
-
   return (
     <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 pb-4 [scrollbar-width:thin] sm:-mx-6 sm:px-6">
       <div className="flex w-max snap-x snap-mandatory gap-4 sm:gap-5">
         {LANES.map((lane) => {
           const tickets = laneOrder(orders, lane);
-          const tone = LANE_TONE[lane];
-          const target = over === lane && dragging?.from !== lane;
           return (
-            <section
-              key={lane}
-              aria-labelledby={`lane-${lane}`}
-              data-lane={lane}
-              onDragOver={(event) => allow(event, lane)}
-              onDragLeave={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(null);
-              }}
-              onDrop={(event) => drop(event, lane)}
-              className="flex w-[min(84vw,15.5rem)] shrink-0 snap-start flex-col"
-            >
+            <section key={lane} aria-labelledby={`lane-${lane}`} data-lane={lane} className="flex w-[min(84vw,15.5rem)] shrink-0 snap-start flex-col">
               <LaneLabel lane={lane} count={tickets.length} />
 
-              <div
-                className={`relative mt-3 flex min-h-[22rem] flex-1 flex-col gap-4 rounded-[22px] p-3 pt-2.5 transition-[background-color,outline-color] duration-200 outline-2 -outline-offset-4 outline-dashed ${
-                  target ? `${tone.wash} ${tone.outline}` : "outline-transparent"
-                }`}
-              >
+              <div className="relative mt-3 flex min-h-[22rem] flex-1 flex-col gap-4 rounded-[22px] p-3 pt-2.5">
                 {tickets.map((order) => (
-                  <Ticket
-                    key={order.id}
-                    order={order}
-                    today={today}
-                    fresh={order.id === freshId}
-                    dragging={dragging?.id === order.id}
-                    onOpen={() => onOpen(order.id)}
-                    onStep={(step) => onStep(order.id, step)}
-                    onDragStart={(id) => setDragging({ id, from: lane })}
-                    onDragEnd={() => {
-                      setDragging(null);
-                      setOver(null);
-                    }}
-                  />
+                  <Ticket key={order.id} order={order} today={today} onOpen={() => onOpen(order.id)} onStep={(step) => onStep(order.id, step)} />
                 ))}
-                {target ? (
+                {tickets.length === 0 && (
                   <GhostTicket>
-                    <span className={`text-sm font-semibold ${tone.ink}`}>Drop to move to {LANE_INFO[lane].label}</span>
+                    <HandNote tone="muted" className="text-xl">
+                      nothing pinned here
+                    </HandNote>
                   </GhostTicket>
-                ) : (
-                  tickets.length === 0 && (
-                    <GhostTicket>
-                      <HandNote tone="muted" className="text-xl">
-                        nothing pinned here
-                      </HandNote>
-                    </GhostTicket>
-                  )
                 )}
               </div>
             </section>

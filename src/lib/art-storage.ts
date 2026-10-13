@@ -1,5 +1,6 @@
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import type { ImageAsset } from "@/lib/profile/types";
+import { originalPathOf, thumbPathOf, withThumb, type OriginalInfo, type ThumbInfo } from "@/lib/images/variants";
 
 /*
  * Uploaded art lives in the public `art` bucket, one folder per account:
@@ -8,20 +9,56 @@ import type { ImageAsset } from "@/lib/profile/types";
  * adoptables; gallery = gallery artworks; deliveries = finished commissions).
  * Storage policies only let
  * people write inside their own folder.
+ *
+ * Beside each picture: a thumb (`<uuid>.thumb.<ext>`, same folder) and, for
+ * art, the original file in the private `originals` bucket at the same path.
+ * See src/lib/images/variants.ts.
  */
 
 export const ART_BUCKET = "art";
+export const ORIGINALS_BUCKET = "originals";
 export type ArtFolder = "posts" | "avatar" | "banner" | "about" | "listings" | "gallery" | "deliveries";
 
 /** What we store about an uploaded image (`profiles.avatar`, post image columns). */
-export type StoredImage = { path: string; width: number; height: number; palette?: string[] | null };
+export type StoredImage = {
+  path: string;
+  width: number;
+  height: number;
+  palette?: string[] | null;
+  /** A smaller copy beside it, for walls and cards. */
+  thumb?: ThumbInfo | null;
+  /** The file as uploaded (metadata stripped), in the private `originals` bucket. */
+  original?: OriginalInfo | null;
+};
 
 export function artUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/${ART_BUCKET}/${path}`;
 }
 
+/** GIF thumbs are still frames: until walls play GIFs only on screen, GIFs are always shown whole. */
+const thumbFor = (image: StoredImage) => (image.path.endsWith(".gif") ? null : image.thumb);
+
 export function toImageAsset(image: StoredImage, alt: string): ImageAsset {
-  return { src: artUrl(image.path), alt, width: image.width, height: image.height, palette: image.palette ?? undefined };
+  return {
+    src: withThumb(artUrl(image.path), thumbFor(image)),
+    alt,
+    width: image.width,
+    height: image.height,
+    palette: image.palette ?? undefined,
+  };
+}
+
+/** Every file behind these images, per bucket: what to remove when they go. */
+export function filesOf(images: (StoredImage | null | undefined)[]) {
+  const art: string[] = [];
+  const originals: string[] = [];
+  for (const image of images) {
+    if (!image?.path) continue;
+    art.push(image.path);
+    if (image.thumb) art.push(thumbPathOf(image.path, image.thumb));
+    if (image.original) originals.push(originalPathOf(image.path, image.original));
+  }
+  return { art, originals };
 }
 
 /** True for a path this user's upload would have produced in that folder. */

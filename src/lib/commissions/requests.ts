@@ -52,6 +52,8 @@ export type MyRequest = {
   real?: boolean;
   /** Still waiting on the artist, so the buyer can take it back. */
   cancellable?: boolean;
+  /** Sent to one of the demo artists: stored, but nobody answers. */
+  demo?: boolean;
 };
 
 /** The stops on the route, each stamped with its date once it's reached. */

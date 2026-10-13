@@ -60,19 +60,15 @@ export function ImagePickerButton({
       let shown: string | null = null;
       try {
         // Straight to storage from the browser, then the profile points at it.
-        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif, allowPng: true, crop });
+        // Covers get a thumb for cards; pictures are small enough already.
+        const image = await prepareImage(file, MAX_DIMENSION[slot], { allowGif, allowPng: true, crop, thumb: slot === "banner" });
         shown = image.previewUrl;
         startTransition(() => setPreview(image.previewUrl));
-        const path = await uploadArt(image, slot);
-        const result = await updateProfileImage(handle, slot, {
-          path,
-          width: image.width,
-          height: image.height,
-          palette: image.palette,
-        });
+        const stored = await uploadArt(image, slot);
+        const result = await updateProfileImage(handle, slot, stored);
         if (!result.ok) {
           message = result.error;
-          await discardArt(path);
+          await discardArt(stored);
         }
       } catch (err) {
         if (err instanceof AiImageError) refusal = err;

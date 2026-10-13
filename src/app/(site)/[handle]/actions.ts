@@ -4,7 +4,9 @@ import { optionUsd, pickOptions, serviceOptions, usageOf } from "@/lib/commissio
 import { cookies } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
-import { ART_BUCKET, artUrl, isOwnArtPath, type ArtFolder } from "@/lib/art-storage";
+import type { StoredImage } from "@/lib/art-storage";
+import { variantFields } from "@/lib/images/schema";
+import { removeFiles, verifyUploads } from "@/lib/images/verify";
 import { fetchPostInfo, postRef } from "@/lib/profile/conversation";
 import { db } from "@/lib/profile/mock-db";
 import { fetchServicesByHandle } from "@/lib/listings/server";
@@ -17,28 +19,20 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const MAX_POST_LENGTH = 2000;
 
-/** An image already uploaded to the `art` bucket by the browser (see src/lib/images/prepare.ts). */
+/** An image already uploaded to the `art` bucket by the browser (see src/lib/images/prepare.ts), with its thumb and original. */
 const uploadedImage = z.object({
   path: z.string().max(200),
-  width: z.coerce.number().int().min(1).max(8192),
-  height: z.coerce.number().int().min(1).max(8192),
+  width: z.number().int().min(1).max(8192),
+  height: z.number().int().min(1).max(8192),
   palette: z
-    .string()
-    .regex(/^(#[0-9a-f]{6}(,#[0-9a-f]{6}){0,7})?$/i, "Unsupported image.")
-    .transform((value) => (value ? value.toLowerCase().split(",") : [])),
+    .array(z.string().regex(/^#[0-9a-f]{6}$/i))
+    .max(8)
+    .transform((colors) => colors.map((c) => c.toLowerCase())),
+  ...variantFields,
 });
 
 /** The composer's images, as JSON: up to four uploads. */
-const uploadedImages = z
-  .array(
-    z.object({
-      path: z.string().max(200),
-      width: z.number().int().min(1).max(8192),
-      height: z.number().int().min(1).max(8192),
-      palette: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(8),
-    }),
-  )
-  .max(4, "A post holds up to four images.");
+const uploadedImages = z.array(uploadedImage).max(4, "A post holds up to four images.");
 
 /** Forms submit line breaks as CRLF; store plain newlines. */
 const lines = (text: string) => text.replace(/\r\n?/g, "\n");
@@ -59,13 +53,6 @@ async function ownerOf(handle: string) {
   return viewer?.handle === handle ? viewer : null;
 }
 
-/** The upload must be this user's, in the right folder, and actually there. */
-async function checkUpload(path: string, userId: string, folder: ArtFolder) {
-  if (!isOwnArtPath(path, userId, folder)) return false;
-  const res = await fetch(artUrl(path), { method: "HEAD", cache: "no-store" }).catch(() => null);
-  return res?.ok ?? false;
-}
-
 export async function createPost(
   handle: string,
   _prev: ActionResult | null,
@@ -77,16 +64,17 @@ export async function createPost(
   const parsed = postSchema.safeParse({ body: formData.get("body"), kind: formData.get("kind") });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
-  let images: z.infer<typeof uploadedImages> = [];
+  let claimed: z.infer<typeof uploadedImages> = [];
   try {
     const result = uploadedImages.safeParse(JSON.parse(String(formData.get("images") ?? "[]")));
     if (!result.success) return { ok: false, error: result.error.issues[0].message };
-    images = result.data.map((image) => ({ ...image, palette: image.palette.map((c) => c.toLowerCase()) }));
+    claimed = result.data;
   } catch {
     return { ok: false, error: "Those images didn't upload. Try adding them again." };
   }
-  const uploaded = await Promise.all(images.map((image) => checkUpload(image.path, viewer.id, "posts")));
-  if (uploaded.includes(false)) return { ok: false, error: "An image didn't upload. Try adding it again." };
+  const checked = await verifyUploads(claimed, { userId: viewer.id, folder: "posts" });
+  if (!checked.ok) return checked;
+  const images = checked.images;
 
   const [first] = images;
   const supabase = await createSupabaseServer();
@@ -121,10 +109,12 @@ export async function deletePost(postId: string): Promise<ActionResult> {
     .eq("id", postId)
     .eq("author_id", viewer.id)
     .select("image_path, images")
-    .maybeSingle<{ image_path: string | null; images: { path: string }[] | null }>();
+    .maybeSingle<{ image_path: string | null; images: StoredImage[] | null }>();
   if (error || !data) return { ok: false, error: "Couldn't delete that post." };
-  const paths = new Set([...(data.images ?? []).map((image) => image.path), ...(data.image_path ? [data.image_path] : [])]);
-  if (paths.size) await supabase.storage.from(ART_BUCKET).remove([...paths]);
+  const images = data.images ?? [];
+  const legacy = data.image_path && !images.some((image) => image.path === data.image_path);
+  // Its pictures go with it: display copies, thumbs and originals.
+  await removeFiles([...images, ...(legacy ? [{ path: data.image_path!, width: 1, height: 1 }] : [])]);
 
   updateTag(postsTag(viewer.handle));
   updateTag(FEED_TAG);
@@ -168,28 +158,29 @@ export async function repostPost(postId: string, note: string): Promise<ActionRe
 export async function updateProfileImage(
   handle: string,
   slot: "avatar" | "banner",
-  input: { path: string; width: number; height: number; palette: string[] },
+  input: StoredImage,
 ): Promise<ActionResult> {
   const viewer = await ownerOf(handle);
   if (!viewer) return { ok: false, error: "You can only edit your own profile." };
 
-  const image = uploadedImage.safeParse({ ...input, palette: input.palette.join(",") });
-  if (!image.success || !(await checkUpload(image.data.path, viewer.id, slot))) {
-    return { ok: false, error: "That image didn't upload. Try again." };
-  }
+  const parsed = uploadedImage.safeParse({ ...input, palette: input.palette ?? [] });
+  if (!parsed.success) return { ok: false, error: "That image didn't upload. Try again." };
+  const checked = await verifyUploads([parsed.data], { userId: viewer.id, folder: slot });
+  if (!checked.ok) return checked;
+  const [image] = checked.images;
 
   const supabase = await createSupabaseServer();
   const { data: before } = await supabase.from("profiles").select(`${slot}, plan`).eq("id", viewer.id).single();
   // The database enforces this too (profiles_enforce_media).
-  if (image.data.path.endsWith(".gif") && (before as { plan?: string } | null)?.plan !== "flow_plus") {
+  if (image.path.endsWith(".gif") && (before as { plan?: string } | null)?.plan !== "flow_plus") {
     return { ok: false, error: "Animated GIFs come with Flow+." };
   }
-  const { error } = await supabase.from("profiles").update({ [slot]: image.data }).eq("id", viewer.id);
+  const { error } = await supabase.from("profiles").update({ [slot]: image }).eq("id", viewer.id);
   if (error) return { ok: false, error: "Couldn't save that image. Try again." };
 
-  // The previous upload is no longer used anywhere.
-  const previous = (before as Record<string, { path?: string } | null> | null)?.[slot]?.path;
-  if (previous && previous !== image.data.path) await supabase.storage.from(ART_BUCKET).remove([previous]);
+  // The previous upload (and its thumb) is no longer used anywhere.
+  const previous = (before as Record<string, StoredImage | null> | null)?.[slot];
+  if (previous?.path && previous.path !== image.path) await removeFiles([previous]);
 
   updateTag(profileTag(handle));
   updateTag(FEED_TAG); // Feed cards embed the author's avatar.
@@ -254,33 +245,18 @@ export async function submitCommissionRequest(
   const usage = service ? usageOf(service.usage, ids) : (parsed.data.usage ?? "personal");
   const pkg = chosen && { id: chosen.id, label: chosen.label, priceUsd: chosen.priceUsd };
 
+  // Every request is stored, so it shows on the buyer's /requests for real.
   const viewer = await getViewer();
-  if (isDemo) {
-    db.requests.push({
-      id: `req_${crypto.randomUUID()}`,
-      artistHandle: handle,
-      requesterHandle: viewer?.handle ?? null,
-      ...parsed.data,
-      usage,
-      ...(pkg && { package: pkg }),
-      ...(addons.length > 0 && { addons }),
-      acceptedTerms: true,
-      createdAt: new Date().toISOString(),
-    });
-    return { ok: true, waitlisted: db.profiles.find((p) => p.handle === handle)?.commissions.status === "waitlist" };
-  }
-
-  // Real artists: stored, and the request takes a slot (see the listings migration).
   if (!viewer) return { ok: false, error: "Sign in to send a request, so the artist can answer you." };
   if (viewer.handle === handle) return { ok: false, error: "That's your own service." };
   const admin = createSupabaseAdmin();
-  const { data: artist } = await admin.from("profiles").select("id").eq("handle", handle).maybeSingle();
-  if (!artist) return { ok: false, error: "That artist doesn't exist anymore." };
+  const { data: artist } = isDemo ? { data: null } : await admin.from("profiles").select("id").eq("handle", handle).maybeSingle();
+  if (!isDemo && !artist) return { ok: false, error: "That artist doesn't exist anymore." };
 
   const { data: sent, error } = await admin.from("commission_requests").insert({
     buyer_id: viewer.id,
-    artist_id: artist.id,
-    service_id: service?.id ?? null,
+    // Real artists by id (the request takes a slot, see the listings migration); demo artists by handle.
+    ...(isDemo ? { demo_artist: handle, demo_service_id: service?.id ?? null } : { artist_id: artist!.id, service_id: service?.id ?? null }),
     service_title: service?.title ?? "Custom piece",
     package: pkg ?? null,
     addons,
@@ -290,11 +266,18 @@ export async function submitCommissionRequest(
     deadline: parsed.data.deadline ?? null,
     usage,
     budget: service ? null : (parsed.data.budget ?? null),
-  }).select("status").single();
+  }).select("id, status").single();
   if (error?.code === "23505") return { ok: false, error: "You already have a request waiting on this service." };
   // The database's own messages: closed, full, daily limit.
   if (error?.code === "23514" || error?.code === "P0002") return { ok: false, error: error.message };
   if (error) return { ok: false, error: "Couldn't send your request. Try again in a moment." };
+
+  // A demo artist on a waitlist queues it there (they have no services in the database to say so).
+  if (isDemo && db.profiles.find((p) => p.handle === handle)?.commissions.status === "waitlist") {
+    await admin.from("commission_requests").update({ status: "waitlisted" }).eq("id", sent!.id);
+    return { ok: true, waitlisted: true };
+  }
+  if (isDemo) return { ok: true, waitlisted: false };
 
   updateTag(servicesTag(handle)); // Slots and maybe status.
   updateTag(profileTag(handle));

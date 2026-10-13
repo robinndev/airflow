@@ -71,7 +71,7 @@ export function BoardPanel({
     try {
       const image = await prepareImage(file, 1600, { allowGif: isPaid, allowPng: true });
       URL.revokeObjectURL(image.previewUrl);
-      const path = await uploadArt(image, "about");
+      const { path } = await uploadArt(image, "about");
       // As it is: real size, no frame (a polaroid would put paper behind a transparent PNG).
       onAdd({
         type: "image",

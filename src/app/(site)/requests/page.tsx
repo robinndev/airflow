@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Caveat } from "next/font/google";
 import { Mail } from "lucide-react";
 import { Suspense } from "react";
@@ -8,6 +9,7 @@ import { RequestFilters } from "@/components/commissions/requests/request-filter
 import { ShippingLabel, ShippingLabelSkeleton } from "@/components/commissions/requests/shipping-label";
 import { Scribble, Sparkle, Wash } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
+import { buttonClasses } from "@/components/ui/button";
 import { getViewerRequests } from "@/lib/commissions/queries";
 import { countShows, inShow, isShow, sortRequests, type Show } from "@/lib/commissions/requests";
 
@@ -68,9 +70,6 @@ export default function RequestsPage({ searchParams }: PageProps<"/requests">) {
                 Every commission you&apos;ve asked another artist for, from the first message to the file in your
                 hands. Follow each one like a parcel: where it is, what it costs and when it lands.
               </p>
-              <Suspense>
-                <SampleNote />
-              </Suspense>
               <Sparkle className="absolute top-20 left-[40%] hidden size-5 text-sky lg:block" />
             </div>
 
@@ -87,24 +86,6 @@ export default function RequestsPage({ searchParams }: PageProps<"/requests">) {
         </section>
       </main>
     </>
-  );
-}
-
-async function SampleNote() {
-  const data = await getViewerRequests();
-  if (!data?.sample) return null;
-  return (
-    <div className="relative mt-7 max-w-md -rotate-[0.6deg] rounded-[4px] bg-paper py-3 pr-4 pl-5 text-sm leading-snug text-on-paper shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.12),0_10px_24px_-14px_rgb(var(--shadow-rgb)/0.4)]">
-      <span
-        aria-hidden
-        className="absolute top-1/2 -left-2.5 h-5 w-7 -translate-y-1/2 -rotate-[8deg] bg-mint/45 [clip-path:polygon(0_8%,100%_0,96%_50%,100%_100%,0_92%,4%_50%)]"
-      />
-      <span className="font-semibold">These are sample requests.</span>{" "}
-      <span className="text-paper-muted">
-        Requests you send from an artist&apos;s commissions page show up here for real, marked &ldquo;Sent from
-        Artiflow&rdquo;. Quotes, payments and deliveries arrive once checkout opens.
-      </span>
-    </div>
   );
 }
 
@@ -126,7 +107,17 @@ async function Postbox({ searchParams }: Pick<PageProps<"/requests">, "searchPar
     <>
       <RequestFilters show={show} counts={countShows(data.requests)} />
       <div className="mt-8">
-        {shown.length === 0 ? (
+        {data.requests.length === 0 ? (
+          <EmptyShow
+            action={
+              <Link href="/explore/search" className={buttonClasses({ size: "sm", className: "mt-5" })}>
+                Find an open studio
+              </Link>
+            }
+          >
+            {EMPTY.all}
+          </EmptyShow>
+        ) : shown.length === 0 ? (
           <EmptyShow>{EMPTY[show]}</EmptyShow>
         ) : (
           // A pinboard of postcards: two columns on wide screens, each card where it fits.

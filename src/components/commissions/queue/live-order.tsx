@@ -192,7 +192,7 @@ function Answer({ order, today, pending, run }: { order: QueueOrder; today: stri
           className={`${inputClass} -mt-2 resize-y py-2`}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted">
+          <label className="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted">
             Expires in
             <select value={days} onChange={(e) => setDays(Number(e.target.value))} className={`${inputClass} h-8 w-auto text-xs`}>
               {[1, 3, 7, 14].map((d) => (

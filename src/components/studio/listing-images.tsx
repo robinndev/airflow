@@ -5,7 +5,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { ListingArt } from "@/components/listings/listing-art";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
-import { artUrl, type ArtFolder } from "@/lib/art-storage";
+import { toImageAsset, type ArtFolder } from "@/lib/art-storage";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
 import type { EditableImage } from "@/lib/listings/editable";
 
@@ -14,8 +14,9 @@ const MAX_DIMENSION = 2400;
 
 /**
  * The listing's pictures: add (checked for AI generators, resized, uploaded
- * straight to art/<you>/listings/), remove, and pick the cover. Files that
- * stop being used are removed when the listing is saved.
+ * straight to art/<you>/listings/ with a thumb and the original file),
+ * remove, and pick the cover. Files that stop being used are removed when
+ * the listing is saved.
  */
 export function ListingImages({
   value,
@@ -48,10 +49,10 @@ export function ListingImages({
     const added: EditableImage[] = [];
     for (const file of files) {
       try {
-        const image = await prepareImage(file, MAX_DIMENSION, { allowGif: true, allowPng: true });
-        const path = await uploadArt(image, folder);
+        const image = await prepareImage(file, MAX_DIMENSION, { allowGif: true, allowPng: true, thumb: true, original: true });
+        const stored = await uploadArt(image, folder);
         URL.revokeObjectURL(image.previewUrl);
-        added.push({ src: artUrl(path), path, width: image.width, height: image.height, palette: image.palette });
+        added.push({ ...stored, palette: stored.palette ?? [], src: toImageAsset(stored, "").src });
       } catch (err) {
         if (err instanceof AiImageError) setRefusal(err);
         else setError(err instanceof Error ? err.message : "Upload failed. Try again.");

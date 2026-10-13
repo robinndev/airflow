@@ -37,7 +37,7 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
     try {
       const image = await prepareImage(file, 2400, { allowGif: isPaid, allowPng: true });
       URL.revokeObjectURL(image.previewUrl);
-      const path = await uploadArt(image, "about");
+      const { path } = await uploadArt(image, "about");
       onChange({ ...custom, background: { ...custom.background, image: { path, width: image.width, height: image.height } } });
     } catch (err) {
       if (err instanceof AiImageError) setAiRefusal(err);

@@ -1,7 +1,8 @@
 "use server";
 
 import { updateTag } from "next/cache";
-import { ART_BUCKET, isOwnArtPath } from "@/lib/art-storage";
+import type { StoredImage } from "@/lib/art-storage";
+import { removeFiles, verifyUploads } from "@/lib/images/verify";
 import { adoptableInput, serviceInput, type AdoptableInput, type ServiceInput } from "@/lib/listings/schema";
 import { LISTINGS_TAG, adoptablesTag, profileTag, servicesTag } from "@/lib/profile/queries";
 import { getViewer, type Viewer } from "@/lib/session";
@@ -39,11 +40,10 @@ function failure(error: { code?: string; message: string } | null, fallback: str
   return { ok: false, error: fallback };
 }
 
-/** Files an edit stopped using, removed from the artist's folder (best effort). */
-async function dropFiles(paths: string[]) {
-  if (paths.length === 0) return;
-  const supabase = await createSupabaseServer();
-  await supabase.storage.from(ART_BUCKET).remove(paths).catch(() => {});
+/** Pictures an edit stopped using, removed with their thumbs and originals (best effort). */
+async function dropFiles(before: StoredImage[] | null, after: StoredImage[] = []) {
+  const kept = new Set(after.map((image) => image.path));
+  await removeFiles((before ?? []).filter((image) => !kept.has(image.path)));
 }
 
 const firstIssue = (error: { issues: { message: string }[] }) => error.issues[0]?.message ?? "Something's missing.";
@@ -56,9 +56,15 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
   const parsed = serviceInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   const s = parsed.data;
-  if (s.examples.some((image) => !isOwnArtPath(image.path, viewer.id, "listings"))) {
-    return { ok: false, error: "One of the examples isn't yours. Upload it again." };
-  }
+
+  const supabase = await createSupabaseServer();
+  const { data: before } = s.id
+    ? await supabase.from("services").select("examples, status, slots_total, slots_taken").eq("id", s.id).eq("owner_id", viewer.id).maybeSingle()
+    : { data: null };
+  if (s.id && !before) return { ok: false, error: "That service doesn't exist anymore." };
+  // New pictures are checked (verify.ts); ones already on the listing keep their thumb and original.
+  const examples = await verifyUploads(s.examples, { userId: viewer.id, folder: "listings", known: before?.examples ?? [] });
+  if (!examples.ok) return examples;
 
   const row = {
     title: s.title,
@@ -69,7 +75,7 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
     packages: s.packages.toSorted((a, b) => a.priceUsd - b.priceUsd),
     turnaround_min_days: s.turnaround.min,
     turnaround_max_days: s.turnaround.max,
-    examples: s.examples.map(({ path, width, height, palette }) => ({ path, width, height, palette: palette ?? [] })),
+    examples: examples.images,
     usage: s.usage,
     addons: s.addons,
     status: s.status,
@@ -77,21 +83,12 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
     when_full: s.whenFull,
   };
 
-  const supabase = await createSupabaseServer();
-  if (!s.id) {
+  if (!s.id || !before) {
     const { data, error } = await supabase.from("services").insert(row).select("id").single();
     if (error || !data) return failure(error, "Couldn't list that service. Try again in a moment.");
     refresh(viewer, "services");
     return { ok: true, id: data.id };
   }
-
-  const { data: before } = await supabase
-    .from("services")
-    .select("examples, status, slots_total, slots_taken")
-    .eq("id", s.id)
-    .eq("owner_id", viewer.id)
-    .maybeSingle();
-  if (!before) return { ok: false, error: "That service doesn't exist anymore." };
 
   // Saving a status by hand clears the "filled up" mark; raising the slots past what's taken does too.
   const statusChanged = before.status !== s.status;
@@ -103,8 +100,7 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
     .eq("owner_id", viewer.id);
   if (error) return failure(error, "Couldn't save your changes. Try again in a moment.");
 
-  const kept = new Set(row.examples.map((image) => image.path));
-  await dropFiles(((before.examples ?? []) as { path: string }[]).map((image) => image.path).filter((path) => !kept.has(path)));
+  await dropFiles(before.examples, row.examples);
   refresh(viewer, "services");
   return { ok: true, id: s.id };
 }
@@ -122,7 +118,7 @@ export async function deleteService(id: string): Promise<StudioResult> {
     .maybeSingle();
   if (error) return failure(error, "Couldn't delete that service.");
   if (!data) return { ok: false, error: "That service doesn't exist anymore." };
-  await dropFiles(((data.examples ?? []) as { path: string }[]).map((image) => image.path));
+  await dropFiles(data.examples);
   refresh(viewer, "services");
   return { ok: true };
 }
@@ -217,35 +213,36 @@ export async function saveAdoptable(input: AdoptableInput): Promise<StudioResult
   const parsed = adoptableInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   const a = parsed.data;
-  if (a.images.some((image) => !isOwnArtPath(image.path, viewer.id, "listings"))) {
-    return { ok: false, error: "One of the pictures isn't yours. Upload it again." };
-  }
+
+  const supabase = await createSupabaseServer();
+  const { data: before } = a.id
+    ? await supabase.from("adoptables").select("images").eq("id", a.id).eq("owner_id", viewer.id).maybeSingle()
+    : { data: null };
+  if (a.id && !before) return { ok: false, error: "That listing doesn't exist anymore." };
+  const images = await verifyUploads(a.images, { userId: viewer.id, folder: "listings", known: before?.images ?? [] });
+  if (!images.ok) return images;
 
   const row = {
     name: a.name,
     species: a.species,
     description: a.description,
-    images: a.images.map(({ path, width, height, palette }) => ({ path, width, height, palette: palette ?? [] })),
+    images: images.images,
     price_usd: a.priceUsd,
     includes: a.includes,
     status: a.status,
   };
 
-  const supabase = await createSupabaseServer();
-  if (!a.id) {
+  if (!a.id || !before) {
     const { data, error } = await supabase.from("adoptables").insert(row).select("id").single();
     if (error || !data) return failure(error, "Couldn't list that character. Try again in a moment.");
     refresh(viewer, "adoptables");
     return { ok: true, id: data.id };
   }
 
-  const { data: before } = await supabase.from("adoptables").select("images").eq("id", a.id).eq("owner_id", viewer.id).maybeSingle();
-  if (!before) return { ok: false, error: "That listing doesn't exist anymore." };
   const { error } = await supabase.from("adoptables").update(row).eq("id", a.id).eq("owner_id", viewer.id);
   if (error) return failure(error, "Couldn't save your changes. Try again in a moment.");
 
-  const kept = new Set(row.images.map((image) => image.path));
-  await dropFiles(((before.images ?? []) as { path: string }[]).map((image) => image.path).filter((path) => !kept.has(path)));
+  await dropFiles(before.images, row.images);
   refresh(viewer, "adoptables");
   return { ok: true, id: a.id };
 }
@@ -263,7 +260,7 @@ export async function deleteAdoptable(id: string): Promise<StudioResult> {
     .maybeSingle();
   if (error) return failure(error, "Couldn't delete that listing.");
   if (!data) return { ok: false, error: "That listing doesn't exist anymore." };
-  await dropFiles(((data.images ?? []) as { path: string }[]).map((image) => image.path));
+  await dropFiles(data.images);
   refresh(viewer, "adoptables");
   return { ok: true };
 }

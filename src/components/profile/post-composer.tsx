@@ -54,24 +54,21 @@ export function PostComposer({
     async (prev: ActionResult | null, formData: FormData): Promise<ActionResult> => {
       // Images go straight to storage first, side by side; the post then points at them.
       const uploads = await Promise.allSettled(images.map((image) => uploadArt(image, "posts")));
-      const paths = uploads.flatMap((u) => (u.status === "fulfilled" ? [u.value] : []));
+      const stored = uploads.flatMap((u) => (u.status === "fulfilled" ? [u.value] : []));
       const failed = uploads.find((u) => u.status === "rejected");
       if (failed) {
-        await Promise.all(paths.map(discardArt));
+        await Promise.all(stored.map(discardArt));
         const reason = (failed as PromiseRejectedResult).reason;
         return { ok: false, error: reason instanceof Error ? reason.message : "Upload failed. Try again." };
       }
-      formData.set(
-        "images",
-        JSON.stringify(images.map(({ width, height, palette }, i) => ({ path: paths[i], width, height, palette }))),
-      );
+      formData.set("images", JSON.stringify(stored));
       const result = await createPost(handle, prev, formData);
       if (result.ok) {
         setBody("");
         clearImages();
         onPosted?.();
       } else {
-        await Promise.all(paths.map(discardArt));
+        await Promise.all(stored.map(discardArt));
       }
       return result;
     },
@@ -92,7 +89,7 @@ export function PostComposer({
     setPreparingImage(true);
     try {
       // One bad file doesn't sink the others: keep what prepared, explain the first failure.
-      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400, { allowPng: true })));
+      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400, { allowPng: true, thumb: true, original: true })));
       const prepared = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
       setImages((current) => [...current, ...prepared].slice(0, MAX_IMAGES));
       const failure = results.find((result) => result.status === "rejected")?.reason;

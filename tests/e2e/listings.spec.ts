@@ -4,13 +4,15 @@ import sharp from "sharp";
 import { localSupabase } from "./support/local-supabase";
 
 /*
- * Listings and discovery, end to end: an artist lists a commission service
- * (three packages, one slot, switches to waitlist when full) and an
- * adoptable from /studio. A buyer finds the service in search, requests the
- * Lineart package (the slot is taken, the service moves to its waitlist and
- * search follows), and sees the adoptable's ready-made sheet (no fake
- * checkout). The artist declines the request from the queue and the slot
- * comes back; marking the adoptable adopted takes it out of search.
+ * Listings, discovery and the commission order, end to end: an artist lists
+ * a commission service (three packages, one slot, switches to waitlist when
+ * full) and an adoptable from /studio. A buyer finds the service in search,
+ * requests the Lineart package (the slot is taken, the service moves to its
+ * waitlist and search follows), and sees the adoptable's ready-made sheet (no
+ * fake checkout). The artist quotes from the queue; the team marks it paid
+ * (checkout doesn't exist yet); the artist starts, moves it to lineart and
+ * delivers, and the buyer follows each step. A declined request gives its
+ * slot back; marking the adoptable adopted takes it out of search.
  */
 
 function admin() {
@@ -161,26 +163,110 @@ test("a buyer finds it, requests a package, and the slot is taken", async ({ bro
   await expect(sheet.getByRole("button", { name: /Adopt for \$30 · checkout opens soon/ })).toBeDisabled();
 });
 
-test("the artist declines from the queue: the slot comes back; adopted leaves search", async ({ browser }) => {
-  const page = await signIn(browser, artist);
+test("the whole order: quote, paid (team), start, steps, delivery; the buyer follows it", async ({ browser }) => {
+  const artistPage = await signIn(browser, artist);
+  const buyerPage = await signIn(browser, buyer);
   const { data: request } = await admin().from("commission_requests").select("id").eq("service_title", serviceTitle).single();
+  const order = async () =>
+    (await admin().from("commission_requests").select("status, quote_usd, step, delivery").eq("id", request!.id).single()).data!;
 
-  await page.goto("/commissions");
-  const ticket = page.locator(`[data-order="${request!.id}"]`).first();
+  // The artist's board shows the real order (no sample), and it can't be dragged.
+  await artistPage.goto("/commissions");
+  await expect(artistPage.getByText("These are sample orders")).toHaveCount(0);
+  const ticket = artistPage.locator(`[data-order="${request!.id}"]`).first();
   await expect(ticket).toBeVisible();
-  // Real requests move only when processed: no dragging.
   await expect(ticket).toHaveAttribute("draggable", "false");
+
+  // Yes, with a quote.
   await ticket.click();
-  await page.getByRole("button", { name: "Decline" }).click();
+  const drawer = artistPage.getByRole("dialog");
+  await drawer.getByLabel("Price").fill("40");
+  await drawer.getByLabel(/A note for/).fill("Two revisions included. Sketch in 3 days.");
+  await drawer.getByRole("button", { name: "Send quote" }).click();
+  await expect.poll(async () => (await order()).status).toBe("quoted");
+  expect(Number((await order()).quote_usd)).toBe(40);
+  await expect(drawer.getByText("Quote sent: $40")).toBeVisible();
+
+  // The buyer sees the quote, and can't pay yet.
+  await buyerPage.goto("/requests");
+  await expect(buyerPage.getByText("sent a quote:").first()).toBeVisible();
+  await expect(buyerPage.getByText("Pay $40 · checkout opens soon").first()).toBeVisible();
+
+  // Checkout doesn't exist yet: the team marks it paid (npm run orders -- paid <id>).
+  await admin().from("commission_requests").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", request!.id);
+
+  // Up next → on the easel → lineart → delivered.
+  await artistPage.goto("/commissions");
+  await artistPage.locator(`[data-order="${request!.id}"]`).first().click();
+  await drawer.getByRole("button", { name: "Start sketching" }).click();
+  await expect.poll(async () => (await order()).status).toBe("in_progress");
+  await expect(drawer.getByRole("button", { name: "Set progress to Lineart" })).toBeVisible();
+  await drawer.getByRole("button", { name: "Set progress to Lineart" }).click();
+  await expect.poll(async () => (await order()).step).toBe("lineart");
+
+  await buyerPage.goto("/requests");
+  await expect(buyerPage.getByLabel(/Progress: Lineart/).first()).toBeVisible();
+
+  await drawer.getByRole("button", { name: "Deliver", exact: true }).click();
+  await drawer.locator('input[type="file"]').setInputFiles({ name: "final.png", mimeType: "image/png", buffer: await art(240, 200, 120) });
+  await expect(drawer.getByText("Uploading")).toHaveCount(0);
+  await drawer.getByLabel(/A note for/).fill("Here she is! Thank you 💙");
+  await drawer.getByRole("button", { name: "Deliver", exact: true }).click();
+  await expect.poll(async () => (await order()).status).toBe("delivered");
+  expect(((await order()).delivery as { images: unknown[] }).images).toHaveLength(1);
+
+  await buyerPage.goto("/requests");
+  await expect(buyerPage.getByText(/Arrived/).first()).toBeVisible();
+});
+
+test("declining gives the slot back; adopted leaves search", async ({ browser }) => {
+  const artistPage = await signIn(browser, artist);
+  const buyerPage = await signIn(browser, buyer);
+
+  // Delivered work keeps its slot; the artist frees it by hand to take the next one.
+  expect(await service()).toMatchObject({ slots_taken: 1, status: "waitlist" });
+  await artistPage.goto("/studio");
+  await artistPage.getByRole("button", { name: "Free a slot" }).first().click();
+  await expect.poll(async () => (await service()).status).toBe("open");
+
+  // A second request, declined with a kind word.
+  await buyerPage.goto(`/${artist.handle}/commissions`);
+  const dialog = buyerPage.getByRole("dialog", { name: serviceTitle });
+  await expect(async () => {
+    await buyerPage.getByRole("button", { name: "Request", exact: true }).first().click();
+    await expect(dialog).toBeVisible({ timeout: 1500 });
+  }).toPass();
+  await dialog.getByRole("button", { name: "Start request" }).click();
+  await dialog.getByLabel("Describe your idea").fill("Another one please: my star cat, now with wings and a scarf.");
+  await dialog.locator('input[name="acceptedTerms"]').check();
+  await dialog.getByRole("button", { name: "Send request" }).click();
+  await expect(dialog.getByText("Request sent!")).toBeVisible();
+  expect((await service()).slots_taken).toBe(1);
+
+  const { data: second } = await admin()
+    .from("commission_requests")
+    .select("id")
+    .eq("service_title", serviceTitle)
+    .eq("status", "pending")
+    .single();
+  await artistPage.goto("/commissions");
+  await artistPage.locator(`[data-order="${second!.id}"]`).first().click();
+  const drawer = artistPage.getByRole("dialog");
+  await drawer.getByRole("button", { name: "Decline", exact: true }).click();
+  await drawer.getByPlaceholder(/A kind word/).fill("My queue is full this month, sorry!");
+  await drawer.getByRole("button", { name: "Decline", exact: true }).click();
   await expect.poll(async () => (await service()).slots_taken).toBe(0);
   expect((await service()).status).toBe("open");
 
+  await buyerPage.goto("/requests");
+  await expect(buyerPage.getByText("My queue is full this month, sorry!").first()).toBeVisible();
+
   // Marked adopted from the studio: gone from search's default (available) view.
-  await page.goto("/studio");
-  await page.getByRole("radiogroup", { name: `${adoptName} status` }).getByText("Adopted").click();
-  await expect(page.getByText(`${adoptName} is adopted`)).toBeVisible();
-  await page.goto(`/explore/search?type=adoptables&q=${adoptName}`);
-  await expect(page.getByText("Nothing matches all of that.")).toBeVisible();
-  await page.goto(`/explore/search?type=adoptables&q=${adoptName}&avail=all`);
-  await expect(page.getByRole("link", { name: adoptName, exact: true })).toBeVisible();
+  await artistPage.goto("/studio");
+  await artistPage.getByRole("radiogroup", { name: `${adoptName} status` }).getByText("Adopted").click();
+  await expect(artistPage.getByText(`${adoptName} is adopted`)).toBeVisible();
+  await artistPage.goto(`/explore/search?type=adoptables&q=${adoptName}`);
+  await expect(artistPage.getByText("Nothing matches all of that.")).toBeVisible();
+  await artistPage.goto(`/explore/search?type=adoptables&q=${adoptName}&avail=all`);
+  await expect(artistPage.getByRole("link", { name: adoptName, exact: true })).toBeVisible();
 });

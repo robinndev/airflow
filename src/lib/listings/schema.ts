@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { variantFields } from "@/lib/images/schema";
 import { LIMITS, SERVICE_CATEGORY_IDS, STYLE_IDS, MAX_STYLES } from "./catalog";
 
 /*
@@ -25,6 +26,7 @@ export const listingImage = z.object({
   width: z.number().int().min(1).max(8192),
   height: z.number().int().min(1).max(8192),
   palette: z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).max(8).optional(),
+  ...variantFields,
 });
 export type ListingImage = z.infer<typeof listingImage>;
 

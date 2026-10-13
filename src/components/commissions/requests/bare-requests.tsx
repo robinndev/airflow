@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HandNote, Tape } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
+import type { ReactNode } from "react";
 
 /*
  * Requests before they load, for visitors, and when a filter is empty: the
@@ -63,12 +64,13 @@ export function SignedOutRequests() {
   );
 }
 
-export function EmptyShow({ children }: { children: string }) {
+export function EmptyShow({ children, action }: { children: string; action?: ReactNode }) {
   return (
     <div className="grid place-items-center rounded-[24px] border-2 border-dashed border-border px-6 py-16 text-center">
       <HandNote tone="muted" className="text-2xl">
         {children}
       </HandNote>
+      {action}
     </div>
   );
 }

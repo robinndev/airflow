@@ -34,7 +34,6 @@ export function OrderDrawer({
   order,
   today,
   onClose,
-  onMove,
   onStep,
   onAction,
   onPatch,
@@ -42,7 +41,6 @@ export function OrderDrawer({
   order: QueueOrder | null;
   today: string;
   onClose: () => void;
-  onMove: (id: string, lane: Lane) => void;
   onStep: (id: string, step: Step) => void;
   onAction: (order: QueueOrder, action: NonNullable<NextAction>) => void;
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
@@ -73,7 +71,6 @@ export function OrderDrawer({
           order={shown}
           today={today}
           close={() => ref.current?.close()}
-          onMove={onMove}
           onStep={onStep}
           onAction={onAction}
           onPatch={onPatch}
@@ -87,20 +84,15 @@ function Folder({
   order,
   today,
   close,
-  onMove,
   onStep,
-  onAction,
   onPatch,
 }: {
   order: QueueOrder;
   today: string;
   close: () => void;
-  onMove: (id: string, lane: Lane) => void;
   onStep: (id: string, step: Step) => void;
-  onAction: (order: QueueOrder, action: NonNullable<NextAction>) => void;
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
 }) {
-  const action = nextAction(order);
   const fee = (order.priceUsd * PLATFORM_FEE_PERCENT) / 100;
   const name = `${order.client.name}'s ${order.service.toLowerCase()}`;
 
@@ -147,34 +139,27 @@ function Folder({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-8">
         {/* What to do next comes first. */}
-        {order.real ? (
-          <LiveNextStep order={order} today={today} />
-        ) : (
-          <NextStep order={order} action={action} onAction={onAction} onPatch={onPatch} />
-        )}
+        <LiveNextStep order={order} today={today} />
 
         <Section title="Where it is">
-          {/* Real orders move only as they're processed (decided 2026-10-11): the track is read-only. */}
-          <div role="group" aria-label={order.real ? "Where the order stands" : "Move to"} className="grid grid-cols-5 gap-1 rounded-[14px] bg-ice p-1">
+          {/* Orders move only as they're processed (decided 2026-10-11): the track only shows where it stands. */}
+          <ol aria-label="Where the order stands" className="grid grid-cols-5 gap-1 rounded-[14px] bg-ice p-1">
             {LANES.map((lane) => {
               const current = lane === order.lane;
               return (
-                <button
+                <li
                   key={lane}
-                  type="button"
-                  aria-pressed={current}
-                  disabled={order.real}
-                  onClick={() => onMove(order.id, lane)}
-                  className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-1.5 text-center text-[0.6875rem] leading-tight font-semibold transition-colors disabled:cursor-default ${
-                    current ? "bg-surface text-ink shadow-soft" : "text-muted enabled:hover:bg-surface/60 enabled:hover:text-ink"
+                  aria-current={current ? "step" : undefined}
+                  className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-1.5 text-center text-[0.6875rem] leading-tight font-semibold ${
+                    current ? "bg-surface text-ink shadow-soft" : "text-muted"
                   }`}
                 >
                   <span aria-hidden className={`size-2 rounded-full ${LANE_TONE[lane].dot} ${current ? "" : "opacity-50"}`} />
                   {LANE_INFO[lane].label}
-                </button>
+                </li>
               );
             })}
-          </div>
+          </ol>
           {order.lane === "wip" && order.step && (
             <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] border border-border px-4 py-3">
               <span className="text-sm text-muted">On the easel</span>
@@ -320,77 +305,6 @@ function Folder({
         </button>
       </footer>
     </div>
-  );
-}
-
-/** The primary action (and, for a new request, the three answers: yes, later, no). */
-function NextStep({
-  order,
-  action,
-  onAction,
-  onPatch,
-}: {
-  order: QueueOrder;
-  action: NextAction;
-  onAction: (order: QueueOrder, action: NonNullable<NextAction>) => void;
-  onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
-}) {
-  const name = `${order.client.name}'s ${order.service.toLowerCase()}`;
-
-  if (order.lane === "request" && !order.archived && !order.paused) {
-    return (
-      <div className="rounded-[18px] bg-ice p-4">
-        <p className="text-sm font-semibold">Take this one on?</p>
-        <p className="mt-0.5 text-sm text-muted">Accepting sends {order.client.name} a proposal to pay. Declining lets them know kindly.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onPatch(order, moveTo(order, "proposal", new Date()), `Sent a proposal for ${name}`)}
-            className={buttonClasses({ size: "sm" })}
-          >
-            Accept & send proposal
-          </button>
-          {!order.waitlist && (
-            <button
-              type="button"
-              onClick={() => onPatch(order, { waitlist: true }, `Moved ${name} to the waitlist`)}
-              className={buttonClasses({ variant: "secondary", size: "sm" })}
-            >
-              Waitlist
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => onPatch(order, { archived: true, declined: true }, `Declined ${name}`)}
-            className={buttonClasses({ variant: "ghost", size: "sm" })}
-          >
-            Decline
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (order.lane === "proposal" && !order.archived) {
-    return (
-      <div className="rounded-[18px] bg-ice p-4 text-sm">
-        <p className="font-semibold">Waiting on {order.client.name}</p>
-        <p className="mt-0.5 text-muted">
-          They have the proposal and the pay link. It moves to Up next by itself once they pay; if it expires, the slot comes back.
-        </p>
-      </div>
-    );
-  }
-
-  if (!action) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => onAction(order, action)}
-      className={buttonClasses({ size: "lg", className: "w-full" })}
-    >
-      {action.label}
-    </button>
   );
 }
 

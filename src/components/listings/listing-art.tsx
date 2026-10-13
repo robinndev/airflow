@@ -2,18 +2,11 @@ import Image from "next/image";
 import type { ImageAsset } from "@/lib/profile/types";
 
 /**
- * Small images (chibis, pixel art) and GIFs go out as uploaded: the
- * optimizer's lossy re-encode smears the first, and the second would only
- * pass through it.
- */
-function asUploaded(image: Pick<ImageAsset, "src" | "width" | "height">) {
-  return /\.gif(\?|$)/i.test(image.src) || Math.max(image.width, image.height) <= 640;
-}
-
-/**
  * A listing's picture (commission example, adoptable) in its box: whole,
  * never cropped, never enlarged past its real size, and see-through parts
  * showing the box behind it. Fills the nearest positioned parent, centered.
+ * Served as uploaded (its thumb when that's wide enough; see loader.ts), so
+ * chibis, pixel art and GIFs come out exactly as the artist made them.
  */
 export function ListingArt({
   image,
@@ -37,7 +30,6 @@ export function ListingArt({
         fill
         sizes={sizes}
         priority={priority}
-        unoptimized={asUploaded(image)}
         className={`object-contain ${className}`}
       />
     </span>

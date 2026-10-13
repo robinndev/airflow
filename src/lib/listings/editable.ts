@@ -21,10 +21,14 @@ export type AdoptableDraft = Omit<AdoptableInput, "images"> & { images: Editable
 
 const MARKER = `/storage/v1/object/public/${ART_BUCKET}/`;
 
-/** The storage path of an uploaded art URL (the editors send paths, not URLs). */
+/**
+ * The storage path of an uploaded art URL (the editors send paths, not URLs),
+ * without the loader's `#thumb=` mark. Its thumb and original are known to
+ * the server, which keeps them when the listing is saved again.
+ */
 export function artPathOf(src: string) {
   const at = src.indexOf(MARKER);
-  return at < 0 ? src : decodeURIComponent(src.slice(at + MARKER.length));
+  return at < 0 ? src : decodeURIComponent(src.slice(at + MARKER.length).split("#")[0]);
 }
 
 export const toEditableImage = (image: ImageAsset): EditableImage => ({

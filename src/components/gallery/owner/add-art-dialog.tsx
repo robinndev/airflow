@@ -10,6 +10,7 @@ import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
 import type { GalleryIndex } from "@/lib/gallery/assemble";
 import { LIMITS } from "@/lib/gallery/types";
+import type { StoredImage } from "@/lib/art-storage";
 import { discardArt, prepareImage, uploadArt, type PreparedImage } from "@/lib/images/prepare";
 import { ChipInput, fieldLabel, GalleryDialogShell, ink, PlacementPicker } from "./fields";
 import type { Placement } from "./store";
@@ -76,7 +77,7 @@ export function AddArtDialog({
     setError(files.length > room ? `Up to ${LIMITS.batch} at a time: kept the first ${room}.` : null);
     setPreparing(true);
     try {
-      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400, { allowPng: true })));
+      const results = await Promise.allSettled(files.slice(0, room).map((file) => prepareImage(file, 2400, { allowPng: true, thumb: true, original: true })));
       const ready = results.flatMap((r, i) =>
         r.status === "fulfilled" ? [{ ...r.value, key: crypto.randomUUID(), title: titleFromFile(files[i].name) }] : [],
       );
@@ -100,16 +101,16 @@ export function AddArtDialog({
   function save() {
     setError(null);
     startTransition(async () => {
-      const paths: string[] = [];
+      const stored: StoredImage[] = [];
       try {
-        for (const draft of drafts) paths.push(await uploadArt(draft, "gallery"));
+        for (const draft of drafts) stored.push(await uploadArt(draft, "gallery"));
       } catch (e) {
-        await Promise.all(paths.map(discardArt));
+        await Promise.all(stored.map(discardArt));
         setError(e instanceof Error ? e.message : "Upload failed. Try again.");
         return;
       }
       const result = await addArtworks(index.handle, {
-        items: drafts.map((d, i) => ({ path: paths[i], width: d.width, height: d.height, palette: d.palette, title: d.title })),
+        items: drafts.map((d, i) => ({ ...stored[i], palette: d.palette, title: d.title })),
         kind,
         client,
         description,
@@ -118,7 +119,7 @@ export function AddArtDialog({
       }).catch(() => null);
       if (!result?.ok) {
         // Nothing was saved: the uploads would be orphans.
-        await Promise.all(paths.map(discardArt));
+        await Promise.all(stored.map(discardArt));
         setError(result?.error ?? "Couldn't reach the studio. Try again in a moment.");
         return;
       }

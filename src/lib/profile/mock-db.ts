@@ -3,7 +3,6 @@ import type {
   Adoptable,
   ArtistProfile,
   Artwork,
-  CommissionRequest,
   CommissionService,
   Post,
   Review,
@@ -566,7 +565,6 @@ type Store = {
   adoptables: Adoptable[];
   services: CommissionService[];
   reviews: Review[];
-  requests: CommissionRequest[];
 };
 
 const globalForStore = globalThis as unknown as {
@@ -574,7 +572,7 @@ const globalForStore = globalThis as unknown as {
   __artiflowSeed?: string;
 };
 
-/** Bump to wipe what was made in dev (posts, uploads, requests) without restarting the server. */
+/** Bump to wipe what was made in dev (posts, uploads) without restarting the server. */
 const SEED_VERSION = 2;
 
 // Re-seed when the seed data above changes (e.g. a new field), otherwise keep
@@ -589,7 +587,6 @@ if (globalForStore.__artiflowSeed !== seed) {
     adoptables,
     services,
     reviews,
-    requests: [],
   });
 }
 

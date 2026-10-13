@@ -1,6 +1,7 @@
 import "server-only";
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { ACCOUNT_COLUMNS, toArtistProfile, type AccountRow } from "@/lib/profile/accounts";
+import { db } from "@/lib/profile/mock-db";
 import type { Viewer } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -13,7 +14,9 @@ import type { MyRequest, RequestStatus } from "./requests";
  * and the buyer's postcards (/requests). The order runs
  * pending | waitlisted → quoted → paid → in_progress → delivered, or ends
  * declined / cancelled / expired. Paying is stubbed until checkout exists:
- * only the team marks an order paid (`npm run orders`).
+ * only the team marks an order paid (`npm run orders`). Requests to the demo
+ * artists are stored too (`demo_artist`), so the buyer's side is all real;
+ * nobody answers those.
  */
 
 type Row = {
@@ -44,13 +47,17 @@ type Row = {
   archived_by_artist: boolean;
   /** Only on the artist's own read. */
   artist_note?: string | null;
+  /** A demo artist (mock-db) instead of an account, and their service's id. */
+  demo_artist: string | null;
+  demo_service_id: string | null;
   buyer: AccountRow;
-  artist: AccountRow;
+  artist: AccountRow | null;
   service: { examples: StoredImage[] } | null;
 };
 
 const BASE = `id, service_title, package, addons, estimate_usd, description, reference_links, deadline, usage, status, created_at, updated_at,
-  quote_usd, quote_note, due_date, quoted_at, quote_expires_at, paid_at, started_at, step, delivered_at, delivery, answer_note, paused, archived_by_artist`;
+  quote_usd, quote_note, due_date, quoted_at, quote_expires_at, paid_at, started_at, step, delivered_at, delivery, answer_note, paused, archived_by_artist,
+  demo_artist, demo_service_id`;
 const PEOPLE = `buyer:profiles!commission_requests_buyer_id_fkey(${ACCOUNT_COLUMNS}),
   artist:profiles!commission_requests_artist_id_fkey(${ACCOUNT_COLUMNS}),
   service:services(examples)`;
@@ -176,9 +183,12 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your requests: ${error.message}`);
 
-  return data.map((row) => {
-    const artist = toArtistProfile(row.artist);
-    const cover = row.service?.examples?.[0];
+  return data.flatMap((row) => {
+    const demo = row.demo_artist ? db.profiles.find((p) => p.handle === row.demo_artist) : undefined;
+    const artist = demo ?? (row.artist && toArtistProfile(row.artist));
+    if (!artist) return [];
+    const demoCover = demo && db.services.find((s) => s.id === row.demo_service_id)?.examples[0];
+    const cover = demoCover ? undefined : row.service?.examples?.[0];
     const closed = CLOSED.includes(row.status);
     const delivery = deliveryOf(row);
     const note = row.answer_note ?? (row.status === "quoted" || row.status === "delivered" ? (row.quote_note && row.status === "quoted" ? row.quote_note : row.delivery?.note) : null);
@@ -187,6 +197,7 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
       artist: { handle: artist.handle, name: artist.displayName, avatar: { ...artist.avatar, alt: "" } },
       service: serviceName(row),
       ...(cover && { cover: toImageAsset(cover, row.service_title) }),
+      ...(demoCover && { cover: demoCover }),
       brief: row.description,
       status: STATUS[row.status],
       ...(row.status === "in_progress" && { step: row.step ?? "sketch" }),
@@ -202,6 +213,7 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
       ...(note && { artistNote: note }),
       ...(delivery && { delivery: delivery.images[0] }),
       real: true,
+      ...(demo && { demo: true }),
       cancellable: row.status === "pending" || row.status === "waitlisted" || row.status === "quoted",
     } satisfies MyRequest;
   });

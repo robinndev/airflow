@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Lock } from "lucide-react";
-import type { CSSProperties, DragEvent, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Tape } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
 import { ticketNumber, type QueueOrder, type Step } from "@/lib/commissions/queue";
@@ -10,32 +10,30 @@ import { formatUsd } from "@/lib/format";
 import { DueLabel, PaymentStamp, Swatches, tapeOf, tiltOf } from "./parts";
 import { StepTrack } from "./step-track";
 
-export const ORDER_MIME = "application/x-artiflow-order";
 
 // The stub: the perforation sits a fixed height above the bottom, with a half-circle bite on each side.
 const STUB = "2.75rem";
 const BITE = `radial-gradient(circle at 0 calc(100% - ${STUB}), transparent 7px, black 7.5px) left / 51% 100% no-repeat, radial-gradient(circle at 100% calc(100% - ${STUB}), transparent 7px, black 7.5px) right / 51% 100% no-repeat`;
 
 /** The stamp in the top corner: how the order stands, most final first. */
-function CornerStamp({ order, fresh }: { order: QueueOrder; fresh: boolean }) {
-  const land = fresh ? "animate-stamp" : "";
+function CornerStamp({ order }: { order: QueueOrder }) {
   if (order.declined) {
     return (
-      <Stamp tone="like" onPaper className={`rotate-[5deg] bg-paper ${land}`}>
+      <Stamp tone="like" onPaper className="rotate-[5deg] bg-paper">
         Declined
       </Stamp>
     );
   }
   if (order.lane === "delivered") {
     return (
-      <Stamp tone="ocean" onPaper className={`rotate-[6deg] bg-paper ${land}`}>
+      <Stamp tone="ocean" onPaper className="rotate-[6deg] bg-paper">
         Delivered ✓
       </Stamp>
     );
   }
   if (order.waitlist) {
     return (
-      <Stamp tone="lilac" onPaper className={`rotate-[4deg] bg-paper ${land}`}>
+      <Stamp tone="lilac" onPaper className="rotate-[4deg] bg-paper">
         Waitlist
       </Stamp>
     );
@@ -51,45 +49,26 @@ function CornerStamp({ order, fresh }: { order: QueueOrder; fresh: boolean }) {
 export function Ticket({
   order,
   today,
-  fresh = false,
-  dragging = false,
   onOpen,
   onStep,
-  onDragStart,
-  onDragEnd,
 }: {
   order: QueueOrder;
   today: string;
-  /** Just moved or changed: it lands with a little thump. */
-  fresh?: boolean;
-  dragging?: boolean;
   onOpen: () => void;
   onStep?: (step: Step) => void;
-  onDragStart?: (id: string) => void;
-  onDragEnd?: () => void;
 }) {
   const cover = order.references[0];
   const tape = tapeOf(order);
-
-  function start(event: DragEvent) {
-    event.dataTransfer.setData(ORDER_MIME, order.id);
-    event.dataTransfer.effectAllowed = "move";
-    onDragStart?.(order.id);
-  }
 
   return (
     // Mouse users click anywhere on the ticket; keyboard and screen readers use the title button.
     <article
       data-order={order.id}
       data-part="ticket"
-      // Real requests move only as the order is processed (decided 2026-10-11): answer them from the drawer.
-      draggable={!order.real}
-      onDragStart={order.real ? undefined : start}
-      onDragEnd={onDragEnd}
+      // Orders move only as they're processed (decided 2026-10-11): open the ticket to answer, start or deliver.
+      draggable={false}
       onClick={onOpen}
-      className={`group/ticket relative pt-2.5 ${order.real ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-[rotate,translate,opacity] duration-300 ease-out [rotate:var(--tilt)] hover:-translate-y-0.5 hover:[rotate:0deg] ${
-        dragging ? "opacity-30" : ""
-      } ${fresh ? "animate-rise" : ""}`}
+      className="group/ticket relative cursor-pointer pt-2.5 transition-[rotate,translate,opacity] duration-300 ease-out [rotate:var(--tilt)] hover:-translate-y-0.5 hover:[rotate:0deg]"
       style={{ "--tilt": `${tiltOf(order.id)}deg` } as CSSProperties}
     >
       <div className="drop-shadow-[0_8px_14px_rgb(var(--shadow-rgb)/0.13)] transition-[filter] duration-300 group-hover/ticket:drop-shadow-[0_16px_22px_rgb(var(--shadow-rgb)/0.2)]">
@@ -174,7 +153,7 @@ export function Ticket({
       {cover && <Tape color={tape} className="top-1.5 left-2.5 h-4! w-11! -rotate-[14deg]" />}
 
       <div className="pointer-events-none absolute top-0 right-2.5">
-        <CornerStamp order={order} fresh={fresh} />
+        <CornerStamp order={order} />
       </div>
 
       {order.paused && (

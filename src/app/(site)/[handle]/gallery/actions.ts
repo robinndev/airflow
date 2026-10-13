@@ -2,7 +2,9 @@
 
 import { updateTag } from "next/cache";
 import { z } from "zod";
-import { ART_BUCKET, artUrl, isOwnArtPath } from "@/lib/art-storage";
+import type { StoredImage } from "@/lib/art-storage";
+import { variantFields } from "@/lib/images/schema";
+import { removeFiles, verifyUploads } from "@/lib/images/verify";
 import { galleryTag } from "@/lib/gallery/queries";
 import { characterHref, cleanList, collectionHref, LIMITS, SECTION_IDS, uniqueSlug } from "@/lib/gallery/types";
 import { getViewer, type Viewer } from "@/lib/session";
@@ -53,6 +55,7 @@ const upload = z.object({
     .array(z.string().regex(/^#[0-9a-f]{6}$/i))
     .max(8)
     .transform((colors) => colors.map((c) => c.toLowerCase())),
+  ...variantFields,
   title: text(LIMITS.title).min(1, "Give each piece a title."),
 });
 
@@ -64,13 +67,6 @@ const addSchema = z.object({
   tags: list(LIMITS.tags, LIMITS.tag),
   ...placement.shape,
 });
-
-/** The upload must be this artist's, in their gallery folder, and actually there. */
-async function uploaded(path: string, userId: string) {
-  if (!isOwnArtPath(path, userId, "gallery")) return false;
-  const res = await fetch(artUrl(path), { method: "HEAD", cache: "no-store" }).catch(() => null);
-  return res?.ok ?? false;
-}
 
 type Supabase = Awaited<ReturnType<typeof createSupabaseServer>>;
 
@@ -105,20 +101,22 @@ export async function addArtworks(handle: string, input: unknown): Promise<Galle
   if (!parsed.success) return fail(parsed.error.issues[0].message);
   const { items, kind, client, description, tags, characters, collections } = parsed.data;
 
-  const checks = await Promise.all(items.map((item) => uploaded(item.path, viewer.id)));
-  if (checks.includes(false)) return fail("A picture didn't upload. Try adding it again.");
+  // Each picture must be the artist's, really there, and really an image (verify.ts).
+  const checked = await verifyUploads(items, { userId: viewer.id, folder: "gallery" });
+  if (!checked.ok) return checked;
+  const images = checked.images;
 
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase
     .from("artworks")
     .insert(
-      items.map((item) => ({
+      items.map((item, i) => ({
         title: item.title,
         description,
         kind,
         client: kind === "commission" ? client : null,
         tags,
-        image: { path: item.path, width: item.width, height: item.height, palette: item.palette },
+        image: images[i],
       })),
     )
     .select("id");
@@ -168,9 +166,9 @@ export async function deleteArtwork(handle: string, id: string): Promise<Gallery
     .eq("id", id)
     .eq("owner_id", viewer.id)
     .select("image")
-    .maybeSingle<{ image: { path?: string } }>();
+    .maybeSingle<{ image: StoredImage }>();
   if (error || !data) return fail("Couldn't delete that piece.");
-  if (data.image.path) await supabase.storage.from(ART_BUCKET).remove([data.image.path]);
+  await removeFiles([data.image]);
 
   updateTag(galleryTag(handle));
   return { ok: true };
