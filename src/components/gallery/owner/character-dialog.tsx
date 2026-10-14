@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import { deleteCharacter, saveCharacter } from "@/app/(site)/[handle]/gallery/actions";
 import { HandNote, Tape } from "@/components/explore/doodles";
 import { showToast } from "@/components/favorites/toast-events";
@@ -61,32 +61,27 @@ export function CharacterDialog({
   const id = useId();
   const router = useRouter();
   const existing = characterId ? index.characters.find((c) => c.id === characterId) : undefined;
-  const [form, setForm] = useState<Form>(blank);
+  // The dialog mounts for one character (see <GalleryDialogs>), so the form starts from them.
+  const [form, setForm] = useState<Form>(() =>
+    existing
+      ? {
+          name: existing.name,
+          tagline: existing.tagline,
+          species: existing.species,
+          pronouns: existing.pronouns,
+          story: existing.story,
+          traits: existing.traits,
+          tags: existing.tags,
+          palette: existing.ownPalette,
+          designer: existing.designer ?? "",
+          coverId: existing.coverId ?? null,
+          adoptableId: index.adoptableOf[existing.id] ?? null,
+        }
+      : blank,
+  );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setForm(
-      existing
-        ? {
-            name: existing.name,
-            tagline: existing.tagline,
-            species: existing.species,
-            pronouns: existing.pronouns,
-            story: existing.story,
-            traits: existing.traits,
-            tags: existing.tags,
-            palette: existing.ownPalette,
-            designer: existing.designer ?? "",
-            coverId: existing.coverId ?? null,
-            adoptableId: index.adoptableOf[existing.id] ?? null,
-          }
-        : blank,
-    );
-    setConfirming(false);
-    setError(null);
-  }, [existing, index.adoptableOf]);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));

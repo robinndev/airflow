@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { addArtworks } from "@/app/(site)/[handle]/gallery/actions";
 import { showToast } from "@/components/favorites/toast-events";
 import { buttonClasses } from "@/components/ui/button";
@@ -53,18 +53,6 @@ export function AddArtDialog({
   const [error, setError] = useState<string | null>(null);
   const [aiRefusal, setAiRefusal] = useState<AiImageError | null>(null);
   const [pending, startTransition] = useTransition();
-
-  // A fresh sheet every time it opens.
-  useEffect(() => {
-    if (!open) return;
-    setDrafts([]);
-    setKind("personal");
-    setClient("");
-    setDescription("");
-    setTags([]);
-    setPlacement(preset ?? { characters: [], collections: [] });
-    setError(null);
-  }, [open, preset]);
 
   function close() {
     for (const d of drafts) URL.revokeObjectURL(d.previewUrl);

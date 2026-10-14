@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { LoaderCircle, Trash2 } from "lucide-react";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { deleteArtwork, updateArtwork } from "@/app/(site)/[handle]/gallery/actions";
 import { showToast } from "@/components/favorites/toast-events";
 import { buttonClasses } from "@/components/ui/button";
@@ -15,27 +15,16 @@ import type { Placement } from "./store";
 export function PieceDialog({ index, pieceId, onClose }: { index: GalleryIndex; pieceId: string | null; onClose: () => void }) {
   const id = useId();
   const piece = pieceId ? index.pieces[pieceId] : undefined;
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<"personal" | "commission">("personal");
-  const [client, setClient] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [placement, setPlacement] = useState<Placement>({ characters: [], collections: [] });
+  // The dialog mounts for one piece (see <GalleryDialogs>), so its fields start from it.
+  const [title, setTitle] = useState(piece?.title ?? "");
+  const [description, setDescription] = useState(piece?.description ?? "");
+  const [kind, setKind] = useState<"personal" | "commission">(piece?.kind === "commission" ? "commission" : "personal");
+  const [client, setClient] = useState(piece?.client ?? "");
+  const [tags, setTags] = useState<string[]>(piece?.tags ?? []);
+  const [placement, setPlacement] = useState<Placement>((piece && index.places[piece.id]) ?? { characters: [], collections: [] });
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (!piece) return;
-    setTitle(piece.title);
-    setDescription(piece.description ?? "");
-    setKind(piece.kind === "commission" ? "commission" : "personal");
-    setClient(piece.client ?? "");
-    setTags(piece.tags ?? []);
-    setPlacement(index.places[piece.id] ?? { characters: [], collections: [] });
-    setConfirming(false);
-    setError(null);
-  }, [piece, index.places]);
 
   if (!piece) return null;
 

@@ -53,7 +53,7 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | Item | Scope | Status | Notes |
 | ---- | ----- | ------ | ----- |
 | Auth & accounts | Sign-up, sign-in, roles, permissions | **Built (Supabase)** | Real accounts since 2026-10-10: email + password sign-up with a handle, sign in with email **or** handle, sign out, password reset (`/new-password`), email confirmation (`/auth/confirm`). A database trigger creates each profile; invites are separate (see the [brief](#brief-artist-invite-codes)). Real profiles show at `/{handle}` beside the demo artists. **Before opening sign-ups:** Resend as Supabase's SMTP (the built-in mailer only reaches the project team) (redirect URLs are set). Social logins: **Google and Discord on** (2026-10-10); Twitch shows faded and disabled until 2FA is on for the owner's Twitch account and its app exists. A button turns on by itself once its provider is on in Supabase. Accounts without a handle (first social sign-in) go through `/join/handle` ("Connected to Twitch as @…", handle prefilled from their username). Roles and permissions not started. |
-| ↳ **Artist invite codes** | "Got an invite from another artist?" at sign-up; invite links; who brought whom | **Prototype (UI)** | Request, 2026-10-10. Code entry, invite links and the inviter reveal are built on mock codes. Where codes come from and what they unlock are open. See the [brief](#brief-artist-invite-codes). |
+| ↳ **Artist codes: who can sell** | Anyone joins, browses and commissions; selling (services, adoptables) takes a single-use artist code, used at sign-up or later; the Artist mark on profiles; the codes you hold, and who used each | **Built (real)** | Request, 2026-10-14 (VGen's model, Toyhouse's invitations page). `/codes`, the strip on a collector's own profile, the gift when codes arrive, the welcome + Artist Pass post, 2 codes for every new artist, +1 a week for Flow+ artists. Sabrina (@shinllz) and Ipphie hold 6 each. See the [brief](#brief-artist-invite-codes). |
 | Artist profile | Banner, identity, links, post feed + composer, free vs Pro appearance | Prototype | `/[handle]`. Pro gating in `resolveAppearance()`. |
 | ↳ **What you draw: artist categories** | Sign-up asks "What do you draw?" (Humans, Anthro / furry, Humanoids, Ferals, Ponies; several or all); Edit profile adds what you make (OC design, concept art, backgrounds, chibi, pixel art, emotes, ref sheets, animation). The profile shows them as labels ("Furry artist", "OC designer", "Draws it all"); Explore's open studios filter by them, and each label opens that filter | **Built** | Request (Sabrina), 2026-10-11. `profiles.draws` (enum `draw_tag`), list in `src/lib/profile/draws.ts`. Explore's studios are demo data, so the filter runs over them until real services exist. See the [brief](#brief-what-you-draw-artist-categories). |
 | Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | **Built (real)**, partly | Request, 2026-10-12. `/{handle}/gallery` with characters, collections and every piece (Supabase `artworks`, `characters`, `collections`). Upload up to 12 at once (AI check), titles, personal / commission for @client, tags. **Every picture you post hangs in your gallery too** (2026-10-14), tied to its post. **Not yet:** content tags (their own [brief](#brief-content-rating-mature-art-hidden-until-you-click)), visibility, reordering. See the [brief](#brief-the-gallery-characters-and-collections). |
@@ -302,31 +302,59 @@ What's built runs request → quote → paid → in progress → delivered on re
 
 ## Brief: artist invite codes
 
-- **Requested by:** project lead, 2026-10-10. First: "when creating an account, ask: do you have an invite code from another artist?" Then, clarified: invites are **random**, **specific artists receive them**, and later the others get them another way.
-- **Phase / priority:** Phase 1, with Auth & accounts.
-- **Status:** **Built** (codes, redemption, team script). Distribution beyond the team script is open. Blueprint §13 plans a small closed beta of invited artists; this is how it grows.
+- **Requested by:** project lead, 2026-10-10 (codes at sign-up, random, granted to specific artists) and 2026-10-14 (artist codes decide who sells; the Artist mark; codes for new artists and Flow+; the gift and the welcome).
+- **Phase / priority:** Phase 1, with Auth & accounts and Admin & moderation (it's our first line against bots, AI sellers and scammers).
+- **Status:** **Built, real data, 2026-10-14.** In production: Sabrina (@shinllz) and Ipphie hold 6 codes each.
+
+### How the others do it (checked 2026-10-14)
+
+| | VGen ([Artist Code Policy](https://help.vgen.co/hc/en-us/articles/38855847115415-VGen-Artist-Code-Policy), [how to get a code](https://help.vgen.co/hc/en-us/articles/20572952850967-How-do-I-get-a-code-to-become-an-Artist-on-VGen)) | Toyhouse (forums and guides; its FAQ blocks automated reads) |
+| --- | --- | --- |
+| Who needs a code | Only artists: anyone joins to request and track commissions; the code gives "artist access". | Everyone: registration takes an invite code. |
+| Where codes come from | Artists share theirs; codes are tied to whoever shared them, who is answerable for whom they invite. | Premium members get 2 when they buy, then 2 every week (they roll over). |
+| Rules | Free; never sold or traded; never posted publicly (not even partly hidden); no unscreened giveaways; send them in DMs. | (Not documented in the sources found.) |
+| Where you see them | — | Settings → Invitations. |
+| A "Verified" mark | Separate from the code: a track record (followers, earnings, reviews, rating, on-time rate), reviewed by hand. | — |
+
+We follow VGen's model (open to everyone, a code to sell), with Toyhouse's two good ideas: a page listing your codes, and paid members getting codes on a schedule.
 
 ### How it works
 
-- **Codes are scarce and random:** `K7QH-3MPA` style, 8 characters with no look-alikes (no 0/O, 1/I), drawn from a strong random source. Accounts **don't** get codes automatically.
-- **The team grants them to specific artists:** `npm run invites -- grant @handle [count] ["why"]` (1–50 at a time; "why" is an internal note, never shown). `npm run invites -- list @handle` shows each code and who used it.
-- **Single-use:** joining with a code redeems it and links the new account to whoever held it (`profiles.invited_by`). A used code says "already used" everywhere. It stays used even if the account that used it is deleted. One code per account.
-- **Sign-up stays open:** the code is optional ("Got an invite from another artist?"). On `/join` (and `/join/handle` after a social sign-in), the sealed envelope opens into a code field. A good code shows who invited you, pins their polaroid on the canvas and lights the desk with their colors.
-- **Invite links:** `/join?invite=CODE` arrives with the envelope open and checked.
-- The demo artists keep reusable demo codes (`MIRA-7Q2K`, `KAI-B4NN`, `NADIA-1NK5`, `PEBB-L3S`) so the prototype still works.
+- **Collector or artist.** Every account is a collector (browse, collect, commission). An artist code gives **artist access** (`profiles.artist_since`), the right to list commission services and adoptables. The database enforces it: restrictive insert policies on `services` and `adoptables`, and custom requests to a collector are refused.
+- **Single-use codes** (`K7QH-3MPA`: 8 characters, no look-alikes, from a strong random source), in `invites`. The team grants them (`npm run invites -- grant @handle [count] ["why"]`), which makes the holder a (founding) artist. `list @handle` shows who used each code. `artist @handle` / `collector @handle` give or take access by hand.
+- **Using a code, before or after.**
+  - At sign-up: the sealed envelope, "Got an artist code?". It's optional: without one you join as a collector. Invite links (`/join?invite=CODE`) arrive with the envelope open.
+  - Later, from three places: a strip on your own profile ("Are you an artist?"), which keeps asking until you're in; `/studio`, whose desk is the code sheet until then; and `/codes`.
+  - `redeem_artist_code()` allows ten wrong tries an hour, then pauses guessing.
+- **Passing it on.** Every new artist gets **2 codes** to let 2 more artists in. Flow+ artists get **1 more code every Monday** (pg_cron, `grant_weekly_codes()`), until they hold 5 unused; the cap is so codes get passed on instead of piling up.
+- **The Artist mark.**
+  - On artists' profiles: a little exhibitor pass ("Artist") beside the name. It opens to "since October 2026, let in with @…'s code" (or "a founding artist").
+  - Collectors show "Collector" beside their handle, and their profile has no Commission button, commission card or services.
+- **`/codes` ("Artists let artists in.").**
+  - Your Artist Pass, with Share.
+  - Your codes as admit-one tickets: "To give" with Copy code / Copy invite link, or stamped "Used" with who and when.
+  - "6 codes · 4 to give · 2 used".
+  - The rules (VGen's policy in our words).
+  - Account menu: "Artist codes · N to give", or "Have an artist code?".
+- **The gift.** When codes arrive (team grants, Flow+'s weekly one), the next page opens a modal: an envelope tied with a ribbon, the tickets fanning out of it, "You've got 6 artist codes!". It shows once: `profiles.codes_seen_at` remembers, so it comes back only for new codes.
+- **The welcome and the Artist Pass.** The moment a code goes through:
+  - **"Welcome to the artists, {name}!"**: confetti, and your **Artist Pass** swinging in on its lanyard. The pass sits in a foil frame and shows your picture, your artist number (artists are numbered in the order they got in), since when, and whose code.
+  - What opened, and your 2 codes.
+  - The pass ready to post in one click, with a caption you can change. The post (`posts.milestone`, written only by the server) shows the pass in the feed and on your profile.
+- **Guest book.**
+  - The holder gets "@x used your artist code".
+  - The new artist gets "You're an Artiflow artist now ✦" with a tiny pass.
+  - Codes arriving gets "6 artist codes arrived for you to hand on", or "Your weekly Flow+ artist code".
+- **Data:** `*_artist_access.sql`, `*_artist_codes_pass_on.sql`, `*_artist_pass_and_weekly_codes.sql`. **Tests:** `tests/e2e/artist-codes.spec.ts`.
 
 ### Open questions
 
 | Question | Recommendation |
 | -------- | -------------- |
-| How do "the others" get invites later? | Pick one once the beta is running. Options: a few codes per active artist every couple of weeks (Bluesky's beta model), codes earned by activity (first sale, complete profile), or a public waitlist that releases codes in waves. |
-| How many codes per chosen artist? | Start with 3–5 and watch how fast they're used. |
-| Where do artists see the codes they hold? | An "Your invites" panel in the account menu: copy code, copy link, used/unused, who joined. Until then the team sends them from the script's output. |
-| Do codes expire? | Not at first. Add an expiry if unused codes pile up. |
-| Should sign-up require a code (closed beta)? | Keep it optional unless spam or growth makes a closed beta necessary. Switching later is one check in the sign-up actions. |
-| What does an invite unlock? | Decide with the payments and Flow+ decisions (skip a waitlist, Flow+ trial, lower fee on the first sale). The UI promises nothing yet. |
-| Does the inviter hear about it? Show "Invited by @…" on profiles? | Yes to both, with the notifications slice and a profile setting to hide it. |
-
+| Should team accounts sell? | No by default (robindev and robson_silva are collectors). The team can use `npm run invites -- artist @handle` to test, or a code. |
+| Codes expire? | Not yet. If unused codes pile up, expire them after 90 days and say so on the ticket. |
+| Revoke a bad inviter's unused codes? | Yes, with the [reporting brief](#brief-reporting-and-keeping-artiflow-human-made): the chain (`invited_by`) shows who brought in a bad actor. |
+| The artist health mark (VGen's "Verified", our own way) | Proposed 2026-10-14; see the [track record brief](#brief-artist-track-record). Options to be chosen by the project lead. |
 ---
 
 ## Brief: reporting, and keeping Artiflow human-made
@@ -1002,6 +1030,7 @@ Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead c
 | 2026-10-13 | Is the commission working, does a request reach the artist's board? Integrate the board for real ("make it work properly"); allow choosing add-ons when creating a service; the ticks show a stray dot and feel slow. | **Built:** the whole order on real data, from the artist's board and the buyer's postcards: request → quote (price, date, note, expiry) → paid → sketch → lineart → flats → render → delivered (files + note), plus waitlist, decline, cancel, expiry; notifications at each step. The board shows only real orders once there are any. **Decided:** with no payments provider, orders stop at "Awaiting payment"; the team marks test orders paid (`npm run orders`). Add-ons were already editable in the service editor (Add-ons block). Fixed the ticks: no more dot (a round line cap showing under the hidden cross), and the cross draws in 150ms instead of ~450ms. **Needs:** the `listings` and `commission_orders` migrations applied to production. |
 | 2026-10-13 | Make My requests real; remove the mocked requests and the mocked commissions from the boards. Note what's still missing: checkout, email, revision rounds, editable terms for real artists, and the open decision on whether a delivery frees its slot. | **Done:** `/requests` and `/commissions` show real data only (the sample requests and sample orders were removed, with empty states pointing at search and at the studio). Requests to the demo artists are stored too, so everything a buyer sends is real; visitors are sent to sign in before filling in a request. Unpriced custom pieces show "Quote" instead of $0. **Noted** in the commission flow brief ("Still to build") and in Pending decisions (the slot on delivery). **Needs:** the `requests_to_demo_artists` migration applied to production. |
 | 2026-10-14 | Project lead: the gallery is the showcase; every image post I make must also hang in the gallery, tied to the post. | **Built:** [pictures from posts](#pictures-from-posts-2026-10-14). A trigger hangs one piece per picture (old posts included), titled from the caption and linked "From a post", with a WIP / sketch tag. Deleting the post removes them; taking one out of the gallery keeps the post. The profile's gallery count and preview are real now. **Needs:** the `post_pictures_in_gallery` migration applied to production. |
+| 2026-10-14 | Project lead: anyone can create an account and browse, but selling (commissions, adoptables) takes an artist code, used at sign-up or later from the profile (a place that keeps asking); profiles show who is an official artist; codes are single-use; Sabrina (shinz) and Ipphie get 6 each and see them, and who used them; "follow VGen and Toyhouse", "make it round". Then: a very cute modal when codes arrive (once, then only for new ones); everyone who uses a code gets 2 to invite 2 more; Flow+ artists get +1 code a week; a cute notification when adding a code, and a beautiful "became an official Artiflow artist" post. | **Built:** [artist codes](#brief-artist-invite-codes), after checking VGen's help center and Toyhouse's forums. Collector / artist access enforced in the database; the Artist mark and Collector label; `/codes` with tickets and who used them; the profile strip and the studio's code sheet; the gift modal (once per batch); 2 codes per new artist; +1 a week for Flow+ (cap 5 unused); the welcome with the foil **Artist Pass** and a one-click pass post; guest book notes. In production: migrations applied, 6 codes each to @shinllz and @ipphie. |
 
 ## Pending decisions
 

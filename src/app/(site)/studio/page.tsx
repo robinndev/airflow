@@ -79,7 +79,7 @@ async function Desk() {
   if (!access?.artist) {
     return (
       <div className="mt-8 space-y-6">
-        <CodeSheet handle={viewer.handle} />
+        <CodeSheet />
         {(services.length > 0 || adoptables.length > 0) && (
           <StudioDesk
             artist={{ handle: profile.handle, name: profile.displayName, avatar: profile.avatar }}

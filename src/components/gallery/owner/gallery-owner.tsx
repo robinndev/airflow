@@ -77,7 +77,8 @@ export function GalleryDialogs({ index }: { index: GalleryIndex }) {
   if (!owner) return null;
   return (
     <>
-      <AddArtDialog index={index} open={dialog?.type === "add-art"} preset={dialog?.type === "add-art" ? dialog.placement : undefined} onClose={closeGalleryDialog} />
+      {/* Each dialog mounts when it opens, so it starts fresh every time. */}
+      {dialog?.type === "add-art" && <AddArtDialog index={index} open preset={dialog.placement} onClose={closeGalleryDialog} />}
       {dialog?.type === "piece" && <PieceDialog index={index} pieceId={dialog.pieceId} onClose={closeGalleryDialog} />}
       {dialog?.type === "character" && <CharacterDialog index={index} characterId={dialog.characterId} onClose={closeGalleryDialog} />}
       {dialog?.type === "collection" && <CollectionDialog index={index} collectionId={dialog.collectionId} onClose={closeGalleryDialog} />}

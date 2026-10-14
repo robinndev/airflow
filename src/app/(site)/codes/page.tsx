@@ -8,10 +8,9 @@ import { SharePassButton } from "@/components/artists/artist-welcome";
 import { CodeSheet } from "@/components/artists/code-sheet";
 import { CodeTickets } from "@/components/artists/code-tickets";
 import { Scribble } from "@/components/explore/doodles";
-import { Stamp } from "@/components/explore/stamp";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
-import { ANSWERABLE, CODE_RULES, sinceMonth, WHY_CODES } from "@/lib/artists/codes";
+import { ANSWERABLE, CODE_RULES, WHY_CODES } from "@/lib/artists/codes";
 import { getViewerAccess, getViewerCodes, getViewerPass } from "@/lib/artists/server";
 
 // The artist's handwriting, for the title.
@@ -83,7 +82,7 @@ async function Codes() {
     );
   }
 
-  if (!access.artist) return <CodeSheet handle={access.handle} />;
+  if (!access.artist) return <CodeSheet />;
 
   const [codes, pass] = await Promise.all([getViewerCodes(), getViewerPass()]);
   const left = codes.filter((c) => !c.usedAt).length;

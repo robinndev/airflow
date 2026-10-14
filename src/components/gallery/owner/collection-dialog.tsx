@@ -2,7 +2,7 @@
 
 import { LoaderCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { deleteCollection, saveCollection } from "@/app/(site)/[handle]/gallery/actions";
 import { showToast } from "@/components/favorites/toast-events";
 import { buttonClasses } from "@/components/ui/button";
@@ -14,20 +14,13 @@ import { CoverPicker, fieldLabel, GalleryDialogShell, ink } from "./fields";
 export function CollectionDialog({ index, collectionId, onClose }: { index: GalleryIndex; collectionId: string | null; onClose: () => void }) {
   const router = useRouter();
   const existing = collectionId ? index.collections.find((c) => c.id === collectionId) : undefined;
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [coverId, setCoverId] = useState<string | null>(null);
+  // The dialog mounts for one collection (see <GalleryDialogs>), so its fields start from it.
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [coverId, setCoverId] = useState<string | null>(existing?.coverId ?? null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setTitle(existing?.title ?? "");
-    setDescription(existing?.description ?? "");
-    setCoverId(existing?.coverId ?? null);
-    setConfirming(false);
-    setError(null);
-  }, [existing]);
 
   const pieces = useMemo(() => {
     const all = Object.values(index.pieces);

@@ -65,7 +65,7 @@ function CodeField({ id, value, onChange, error, compact = false }: { id: string
 }
 
 /** The full sheet: what an artist code opens, why codes exist, and the stub to type it on. */
-export function CodeSheet({ handle }: { handle: string }) {
+export function CodeSheet() {
   const id = useId();
   const [done, setDone] = useState<{ inviter: string | null } | null>(null);
   const { code, setCode, error, pending, submit } = useRedeem((inviter) => setDone({ inviter }));
