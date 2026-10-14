@@ -34,7 +34,7 @@ const SECTIONS: { title: string; items: ExploreItem[] }[] = [
   {
     title: "Shop",
     items: [
-      { href: "/explore/studios", label: "Open studios", hint: "Commissions, made to order", icon: Brush },
+      { href: "/explore/studios", label: "Open studios", hint: "Made to order", icon: Brush },
       { href: "/explore/adoptables", label: "Adoptables", hint: "Ready-made characters", icon: Tag },
       { href: "/explore/literatures", label: "Literatures", hint: "Stories and lore", icon: BookOpen },
       { href: "/explore/worlds", label: "Worlds", hint: "Shared universes", icon: Earth },
