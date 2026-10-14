@@ -21,7 +21,18 @@ const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "s
 
 const TICKET_TONES = ["bg-lilac/25", "bg-sky/25", "bg-mint/25", "bg-like/20", "bg-star/30", "bg-ocean/15"];
 
-export function CodesGift({ fresh, weekly = false, invitedBy }: { fresh: number; weekly?: boolean; invitedBy?: string }) {
+export function CodesGift({
+  fresh,
+  reason = "grant",
+  invitedBy,
+}: {
+  fresh: number;
+  /** grant: the team's; weekly: Flow+'s; verified: the prize for reaching the goals. */
+  reason?: "grant" | "weekly" | "verified";
+  invitedBy?: string;
+}) {
+  const weekly = reason === "weekly";
+  const verified = reason === "verified";
   const ref = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -93,13 +104,22 @@ export function CodesGift({ fresh, weekly = false, invitedBy }: { fresh: number;
         </div>
 
         <HandNote tone="lilac" className="-rotate-3 text-[1.75rem]">
-          for you ♡
+          {verified ? "you did it ✦" : "for you ♡"}
         </HandNote>
         <h2 id="codes-gift-title" className="mt-1 font-display text-2xl leading-tight font-extrabold tracking-tight text-balance">
-          {weekly && fresh === 1 ? "Your weekly artist code is here!" : `You've got ${fresh} artist ${fresh === 1 ? "code" : "codes"}!`}
+          {verified
+            ? "You're a verified artist!"
+            : weekly && fresh === 1
+              ? "Your weekly artist code is here!"
+              : `You've got ${fresh} artist ${fresh === 1 ? "code" : "codes"}!`}
         </h2>
         <p className="mx-auto mt-2 max-w-[22rem] text-[0.9375rem] leading-relaxed text-paper-muted">
-          {weekly ? (
+          {verified ? (
+            <>
+              You reached the goals: followers who love your work and your first sales. The verified mark is on your profile, and here are{" "}
+              {fresh} codes to let {fresh} more artists into Artiflow.
+            </>
+          ) : weekly ? (
             <>A thank-you for being on Flow+: one more artist you can let into Artiflow this week. Codes work once, so hand it out with love.</>
           ) : invitedBy ? (
             <>

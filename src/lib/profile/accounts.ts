@@ -35,6 +35,7 @@ export type AccountRow = {
   draws?: string[];
   /** Only on full profile reads: when they got artist access (null: a collector), and whose code it was. */
   artist_since?: string | null;
+  verified_at?: string | null;
   inviter?: { handle: string } | null;
 };
 
@@ -65,6 +66,7 @@ const COLUMNS = ACCOUNT_COLUMNS;
  * falls back to the next set instead of failing the page.
  */
 const PROFILE_COLUMN_SETS = [
+  `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws, artist_since, verified_at, inviter:invited_by(handle)`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws, artist_since, inviter:invited_by(handle)`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links`,
@@ -237,7 +239,9 @@ export function toArtistProfile(row: AccountRow): ArtistProfile {
     }),
     draws: cleanDraws(row.draws ?? []),
     ...(row.artist_since !== undefined && {
-      artist: row.artist_since ? { since: row.artist_since, ...(row.inviter && { invitedBy: row.inviter.handle }) } : null,
+      artist: row.artist_since
+        ? { since: row.artist_since, ...(row.inviter && { invitedBy: row.inviter.handle }), ...(row.verified_at && { verifiedAt: row.verified_at }) }
+        : null,
     }),
     appearance: { accent: art.accent, bannerFocusY: 50 },
     ...(row.customization !== undefined && { customization: readCustomization(row.customization) }),

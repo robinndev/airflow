@@ -575,6 +575,13 @@ const globalForStore = globalThis as unknown as {
 /** Bump to wipe what was made in dev (posts, uploads) without restarting the server. */
 const SEED_VERSION = 2;
 
+// A demo artist's starting price is their cheapest service, as for real
+// accounts (summarizeServices), so cards never quote more than the shop.
+for (const profile of profiles) {
+  const own = services.filter((s) => s.ownerHandle === profile.handle);
+  if (own.length) profile.commissions.startingPriceUsd = Math.min(...own.map((s) => s.priceFromUsd));
+}
+
 // Re-seed when the seed data above changes (e.g. a new field), otherwise keep
 // the store across hot reloads so posts/images created in dev survive.
 const seed = JSON.stringify({ SEED_VERSION, profiles, posts, artworks, adoptables, services, reviews });

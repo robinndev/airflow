@@ -115,6 +115,10 @@ function toNotification(row: Row): AppNotification | null {
       const number = Number(row.data?.number);
       return { ...base, ...(Number.isFinite(number) && number > 0 && { artist: { number } }), href: "/codes" };
     }
+    case "verified": {
+      const codes = Number(row.data?.codes);
+      return { ...base, artist: { codes: Number.isFinite(codes) && codes > 0 ? codes : 2 }, href: "/codes" };
+    }
     case "artist_codes": {
       const codes = Number(row.data?.count);
       return { ...base, artist: { codes: Number.isFinite(codes) && codes > 0 ? codes : 1, weekly: row.data?.weekly === true }, href: "/codes" };

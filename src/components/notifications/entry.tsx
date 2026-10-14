@@ -127,7 +127,7 @@ function NoteEntry({
             <Avatar image={{ ...note.actor.avatar, alt: "" }} size={roomy ? 48 : 40} className={roomy ? "size-12" : "size-10"} />
             <PenCircle rotate={wobble * 20} />
           </span>
-        ) : note.kind === "became_artist" || note.kind === "artist_codes" ? (
+        ) : note.kind === "became_artist" || note.kind === "artist_codes" || note.kind === "verified" ? (
           // From the studio itself: a sparkle in the margin.
           <span className={`grid place-items-center rounded-full bg-lilac/15 ${roomy ? "size-12" : "size-10"}`}>
             <Sparkle className="size-5" />
@@ -198,6 +198,8 @@ function Keepsake({ note, wobble, box }: { note: AppNotification; wobble: number
       return <AdmitOne rotate={wobble * 1.5} />;
     case "became_artist":
       return <PassStub number={note.artist?.number} rotate={wobble * 2} />;
+    case "verified":
+      return <PassStub verified rotate={wobble * 2} />;
     case "artist_codes":
       return (
         <span className="relative">
@@ -268,6 +270,13 @@ function Sentence({ note }: { note: AppNotification }) {
         </>
       ) : (
         <b className="font-semibold text-on-paper">You&apos;re an Artiflow artist now ✦</b>
+      );
+    case "verified":
+      return (
+        <>
+          <b className="font-semibold text-on-paper">You&apos;re a verified artist ✓</b> You reached the goals, and {note.artist?.codes ?? 2} artist codes
+          are yours to hand on
+        </>
       );
     case "artist_codes": {
       const n = note.artist?.codes ?? 1;

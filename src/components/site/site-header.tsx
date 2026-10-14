@@ -136,7 +136,7 @@ async function ViewerNav() {
         }}
       />
       {/* New artist codes: a little gift, once. */}
-      {codes && codes.fresh > 0 && <CodesGift fresh={codes.fresh} weekly={codes.weekly} invitedBy={codes.invitedBy} />}
+      {codes && codes.fresh > 0 && <CodesGift fresh={codes.fresh} reason={codes.reason} invitedBy={codes.invitedBy} />}
     </>
   );
 }

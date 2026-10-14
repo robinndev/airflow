@@ -60,8 +60,8 @@ export function ArtistPass({ pass, size = "md", className = "" }: { pass: PassDa
           <p className={`mt-3 truncate font-display leading-tight font-extrabold tracking-tight ${small ? "text-lg" : "text-xl"}`}>{pass.name}</p>
           <p className="truncate text-sm text-paper-muted">@{pass.handle}</p>
 
-          <Stamp tone="lilac" onPaper className="mt-3 -rotate-3">
-            ✦ Official artist
+          <Stamp tone={pass.verifiedAt ? "mint" : "lilac"} onPaper className="mt-3 -rotate-3">
+            {pass.verifiedAt ? "✓ Verified artist" : "✦ Official artist"}
           </Stamp>
 
           <dl className="mt-4 grid grid-cols-2 gap-2 border-y-2 border-dashed border-paper-muted/25 py-2.5 text-left">

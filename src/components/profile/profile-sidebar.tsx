@@ -71,7 +71,7 @@ function CommissionsCard({ profile }: { profile: ArtistProfile }) {
       <div className="flex items-center justify-between gap-3">
         <CardHeading id="commissions-heading" icon={<Brush />} title="Commissions" />
         <p className="text-sm text-muted">
-          from{" "}
+          starting at{" "}
           <span className="font-display text-base font-extrabold text-ink">
             {formatUsd(commissions.startingPriceUsd)}
           </span>
@@ -259,8 +259,8 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
             </span>
             <span className="min-w-0">
               <span className="block font-display text-sm font-bold text-ink">Commissions</span>
-              <span className="block truncate text-xs text-muted">
-                {hasNoServices(profile) ? "Not open yet" : `${statusLabel} · from ${formatUsd(commissions.startingPriceUsd)}`}
+              <span className="block text-xs text-muted">
+                {hasNoServices(profile) ? "Not open yet" : `${statusLabel} · starting at ${formatUsd(commissions.startingPriceUsd)}`}
               </span>
             </span>
           </Link>

@@ -4,8 +4,9 @@ import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { configured } from "@/lib/profile/accounts";
 import { defaultArt } from "@/lib/profile/default-art";
 import { getProfile } from "@/lib/profile/queries";
-import type { HeldCode, ViewerPass } from "./codes";
+import type { HeldCode, Progress, ViewerPass } from "./codes";
 import { getViewer } from "@/lib/session";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabasePublic, createSupabaseServer } from "@/lib/supabase/server";
 
 /*
@@ -14,7 +15,7 @@ import { createSupabasePublic, createSupabaseServer } from "@/lib/supabase/serve
  * are private (row level security: you only see the invites you hold).
  */
 
-export type ViewerAccess = { id: string; handle: string; artist: { since: string; invitedBy?: string } | null };
+export type ViewerAccess = { id: string; handle: string; artist: { since: string; invitedBy?: string; verifiedAt?: string } | null };
 
 /** Who's signed in and whether they can sell. Reads cookies: call it inside <Suspense>. */
 export const getViewerAccess = cache(async (): Promise<ViewerAccess | null> => {
@@ -24,11 +25,16 @@ export const getViewerAccess = cache(async (): Promise<ViewerAccess | null> => {
   const supabase = await createSupabaseServer();
   const { data } = await supabase
     .from("profiles")
-    .select("artist_since, inviter:invited_by(handle)")
+    .select("*, inviter:invited_by(handle)")
     .eq("id", viewer.id)
-    .maybeSingle<{ artist_since: string | null; inviter: { handle: string } | null }>();
+    .maybeSingle<{ artist_since: string | null; verified_at?: string | null; inviter: { handle: string } | null }>();
   const since = data?.artist_since;
-  return { ...viewer, artist: since ? { since, ...(data?.inviter && { invitedBy: data.inviter.handle }) } : null };
+  return {
+    ...viewer,
+    artist: since
+      ? { since, ...(data?.inviter && { invitedBy: data.inviter.handle }), ...(data?.verified_at && { verifiedAt: data.verified_at }) }
+      : null,
+  };
 });
 
 type CodeRow = {
@@ -75,7 +81,7 @@ export async function getViewerCodes(): Promise<HeldCode[]> {
  * arrived since they last saw them (the gift modal shows those, once).
  * Null when there's nothing to say, or on a database without codes yet.
  */
-export async function getViewerCodeNews(): Promise<{ toGive: number; fresh: number; weekly: boolean; invitedBy?: string } | null> {
+export async function getViewerCodeNews(): Promise<{ toGive: number; fresh: number; reason: "grant" | "weekly" | "verified"; invitedBy?: string } | null> {
   const viewer = await getViewer();
   if (!viewer || !configured()) return null;
   const supabase = await createSupabaseServer();
@@ -95,9 +101,10 @@ export async function getViewerCodeNews(): Promise<{ toGive: number; fresh: numb
   const seen = me.data?.codes_seen_at ? Date.parse(me.data.codes_seen_at) : -Infinity;
   const toGive = held.data.filter((c) => !c.redeemed_at).length;
   const news = held.data.filter((c) => !c.redeemed_at && Date.parse(c.created_at) > seen);
-  // Only Flow+'s weekly codes (`grant_weekly_codes`): the gift says so.
-  const weekly = news.length > 0 && news.every((c) => c.note?.startsWith("weekly"));
-  return { toGive, fresh: news.length, weekly, ...(me.data?.inviter && { invitedBy: me.data.inviter.handle }) };
+  // Why they came, so the gift can say so: Flow+'s weekly code, or the prize for getting verified.
+  const all = (prefix: string) => news.length > 0 && news.every((c) => c.note?.startsWith(prefix));
+  const reason = all("weekly") ? "weekly" : all("verified") ? "verified" : "grant";
+  return { toGive, fresh: news.length, reason, ...(me.data?.inviter && { invitedBy: me.data.inviter.handle }) };
 }
 
 /**
@@ -122,6 +129,16 @@ export async function getViewerPass(): Promise<ViewerPass | null> {
     number: earlier.count ?? undefined,
     since: access.artist.since,
     ...(access.artist.invitedBy && { invitedBy: access.artist.invitedBy }),
+    ...(access.artist.verifiedAt && { verifiedAt: access.artist.verifiedAt }),
     shared: shared.data?.[0]?.id ?? null,
   };
+}
+
+/** The viewer's way to verification: followers and paid sales (totals only, read with the secret key). */
+export async function getViewerProgress(): Promise<Progress | null> {
+  const access = await getViewerAccess();
+  if (!access?.artist || !configured()) return null;
+  const { data, error } = await createSupabaseAdmin().rpc("artist_progress", { uid: access.id }).maybeSingle<{ followers: number; sales_usd: number | string }>();
+  if (error || !data) return null;
+  return { followers: Number(data.followers) || 0, salesUsd: Number(data.sales_usd) || 0 };
 }

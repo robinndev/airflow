@@ -37,6 +37,7 @@ export const KIND_INK: Record<NotificationKind, string> = {
   request_update: "text-ocean-ink dark:text-ocean",
   became_artist: "text-lilac-ink dark:text-lilac",
   artist_codes: "text-lilac-ink dark:text-lilac",
+  verified: "text-mint-ink dark:text-mint",
 };
 
 const HEART = "M12 20.6c-.5 0-7.7-4.4-9.5-9C1 7.9 3.1 4.1 6.8 4.1c2.2 0 3.9 1.2 5.2 3 1.3-1.8 3-3 5.2-3 3.7 0 5.8 3.8 4.3 7.5-1.8 4.6-9 9-9.5 9z";
@@ -209,14 +210,14 @@ export function AdmitOne({ rotate = 0 }: { rotate?: number }) {
 }
 
 /** A tiny Artist Pass: lilac, on a lanyard clip, with your artist number. */
-export function PassStub({ number, rotate = 0 }: { number?: number; rotate?: number }) {
+export function PassStub({ number, verified = false, rotate = 0 }: { number?: number; verified?: boolean; rotate?: number }) {
   return (
     <span aria-hidden className="relative flex h-16 w-12 shrink-0 flex-col items-center" style={{ rotate: `${rotate}deg` }}>
       <span className="h-2.5 w-3 rounded-t-[3px] bg-muted/70" />
       <span className="foil -mt-px flex w-full flex-1 flex-col items-center justify-center rounded-[7px] p-[3px] shadow-[0_1px_3px_rgb(var(--shadow-rgb)/0.2)]">
         <span className="flex w-full flex-1 flex-col items-center justify-center rounded-[5px] bg-paper font-display leading-none">
           <span className="text-[0.4375rem] font-extrabold tracking-[0.16em] text-lilac-ink uppercase dark:text-lilac">Artist</span>
-          <span className="mt-1 font-mono text-[0.5625rem] font-bold text-on-paper/75">{number ? `No.${number}` : "✦"}</span>
+          <span className="mt-1 font-mono text-[0.5625rem] font-bold text-on-paper/75">{verified ? "✓" : number ? `No.${number}` : "✦"}</span>
         </span>
       </span>
     </span>

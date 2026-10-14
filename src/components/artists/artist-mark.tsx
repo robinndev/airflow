@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { sinceMonth } from "@/lib/artists/codes";
+import { BadgeCheck } from "lucide-react";
+import { sinceMonth, VERIFY_GOALS } from "@/lib/artists/codes";
 import type { ArtistProfile } from "@/lib/profile/types";
 
 /*
@@ -16,24 +17,47 @@ const note =
 
 export function ArtistMark({ profile }: { profile: Pick<ArtistProfile, "handle" | "artist"> }) {
   if (!profile.artist) return null;
-  const { since, invitedBy } = profile.artist;
+  const { since, invitedBy, verifiedAt } = profile.artist;
   const id = `artist-mark-${profile.handle.replace(/[^a-z0-9_]/g, "")}`;
   return (
     <>
-      <button
-        type="button"
-        popoverTarget={id}
-        data-part="artist-mark"
-        aria-label="Artiflow artist: more about it"
-        className="inline-flex h-7 -rotate-2 items-center gap-1.5 rounded-[6px] bg-lilac/15 pr-2.5 pl-2 font-display text-[0.6875rem] font-extrabold tracking-[0.16em] text-lilac-ink uppercase shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.15)] transition-[rotate,background-color] hover:rotate-0 hover:bg-lilac/22 dark:text-lilac"
-        style={{ anchorName: `--${id}` } as CSSProperties}
-      >
-        {/* The punched hole of a pass on a lanyard. */}
-        <span aria-hidden className="size-1.5 rounded-full bg-canvas shadow-[inset_0_1px_1px_rgb(var(--shadow-rgb)/0.3)]" />
-        Artist
-      </button>
+      {verifiedAt ? (
+        // Verified: the same pass in a foil frame (the theme's iridescence, drifting), with a check.
+        <button
+          type="button"
+          popoverTarget={id}
+          data-part="artist-mark"
+          data-verified
+          aria-label="Verified Artiflow artist: more about it"
+          className="foil inline-flex -rotate-2 rounded-[8px] p-[2px] shadow-[0_1px_3px_rgb(var(--shadow-rgb)/0.2)] transition-[rotate] hover:rotate-0"
+          style={{ anchorName: `--${id}` } as CSSProperties}
+        >
+          <span className="inline-flex h-6 items-center gap-1.5 rounded-[6px] bg-paper pr-2.5 pl-2 font-display text-[0.6875rem] font-extrabold tracking-[0.16em] text-lilac-ink uppercase dark:text-lilac">
+            <BadgeCheck aria-hidden className="size-3.5" strokeWidth={2.5} />
+            Verified artist
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          popoverTarget={id}
+          data-part="artist-mark"
+          aria-label="Artiflow artist: more about it"
+          className="inline-flex h-7 -rotate-2 items-center gap-1.5 rounded-[6px] bg-lilac/15 pr-2.5 pl-2 font-display text-[0.6875rem] font-extrabold tracking-[0.16em] text-lilac-ink uppercase shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.15)] transition-[rotate,background-color] hover:rotate-0 hover:bg-lilac/22 dark:text-lilac"
+          style={{ anchorName: `--${id}` } as CSSProperties}
+        >
+          {/* The punched hole of a pass on a lanyard. */}
+          <span aria-hidden className="size-1.5 rounded-full bg-canvas shadow-[inset_0_1px_1px_rgb(var(--shadow-rgb)/0.3)]" />
+          Artist
+        </button>
+      )}
       <div id={id} popover="auto" className={note} style={{ positionAnchor: `--${id}` } as CSSProperties}>
-        <p className="font-display font-bold">Artiflow artist</p>
+        <p className="font-display font-bold">{verifiedAt ? "Verified Artiflow artist" : "Artiflow artist"}</p>
+        {verifiedAt && (
+          <p className="mt-1 text-muted">
+            Verified since {sinceMonth(verifiedAt)}: {VERIFY_GOALS.followers}+ followers and ${VERIFY_GOALS.salesUsd}+ in sales on Artiflow.
+          </p>
+        )}
         <p className="mt-1 text-muted">
           Selling here since {sinceMonth(since)}.{" "}
           {invitedBy ? (

@@ -272,6 +272,8 @@ test("every picture an artist posts hangs in their gallery, tied to the post", a
   await page.getByRole("button", { name: "Post options" }).first().click();
   await page.getByRole("button", { name: "Delete post" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
+  // The action is done (files removed, caches refreshed) once the post leaves the page.
+  await expect(page.locator(`article[id="${postId}"]`)).toHaveCount(0, { timeout: 15_000 });
   await expect.poll(async () => (await pieces()).length).toBe(0);
   await page.goto(`/${poster.handle}/gallery`);
   await expect(page.getByText("No artworks yet")).toBeVisible();

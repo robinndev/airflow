@@ -27,6 +27,8 @@ export type PassData = {
   number?: number;
   since: string;
   invitedBy?: string;
+  /** When they reached the goals (verified). */
+  verifiedAt?: string;
 };
 
 /** The viewer's own pass, and the post that shared it (null: not shared yet). */
@@ -48,16 +50,34 @@ export const REDEEM_ERRORS: Record<Exclude<RedeemOutcome, "ok">, string> = {
   no_profile: "Finish setting up your account first.",
 };
 
-/** Codes a new artist gets to pass on (mirrors `grant_invites(uid, 2, …)` in *_artist_codes_pass_on.sql). */
-export const CODES_PER_NEW_ARTIST = 2;
+/**
+ * Verification: reach both goals and you're a verified artist, with codes to
+ * let more artists in. Mirrors `private.verify_goals()` and the 2 codes in
+ * `private.check_verification()` (*_verified_artists.sql).
+ */
+export const VERIFY_GOALS = { followers: 10, salesUsd: 100 } as const;
+export const CODES_FOR_VERIFIED = 2;
 
 /** What artist access opens, in the order artists care about. */
 export const ARTIST_UNLOCKS = [
   { title: "Take commissions", detail: "Services with packages, slots and your own terms." },
   { title: "Sell adoptables", detail: "Ready-made characters at a fixed price." },
   { title: "The Artist mark", detail: "On your profile, so buyers know you're the real deal." },
-  { title: `${CODES_PER_NEW_ARTIST} codes of your own`, detail: `To let ${CODES_PER_NEW_ARTIST} more artists in.` },
+  {
+    title: "Get verified",
+    detail: `${VERIFY_GOALS.followers} followers and $${VERIFY_GOALS.salesUsd} in sales earn the verified mark and ${CODES_FOR_VERIFIED} codes to invite artists.`,
+  },
 ] as const;
+
+/** Where an artist stands on the way to verification. */
+export type Progress = { followers: number; salesUsd: number };
+
+/** 0..1 for each goal, and whether both are met. */
+export function progressOf({ followers, salesUsd }: Progress) {
+  const f = Math.min(1, followers / VERIFY_GOALS.followers);
+  const s = Math.min(1, salesUsd / VERIFY_GOALS.salesUsd);
+  return { followers: f, sales: s, done: f >= 1 && s >= 1 };
+}
 
 /** Why codes at all, in one breath (said on the code sheet). */
 export const WHY_CODES =

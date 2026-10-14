@@ -60,7 +60,7 @@ export function ArtistCard({ artist, priority = false }: { artist: ArtistHit; pr
             {status.label}
           </span>
           {artist.fromUsd !== undefined && artist.commissions !== "closed" && (
-            <span className="text-muted">from <span className="font-bold text-ink">{formatUsd(artist.fromUsd)}</span></span>
+            <span className="text-muted">starting at <span className="font-bold text-ink">{formatUsd(artist.fromUsd)}</span></span>
           )}
           <span className="ml-auto inline-flex items-center gap-1 text-muted">
             <Users aria-hidden className="size-3.5" />

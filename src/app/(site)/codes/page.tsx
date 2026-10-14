@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Caveat } from "next/font/google";
 import { Suspense } from "react";
-import { Check, Ticket, X } from "lucide-react";
+import { BadgeCheck, Banknote, Check, Store, Ticket, Users, X } from "lucide-react";
 import { ArtistPass, passNumber } from "@/components/artists/artist-pass";
 import { SharePassButton } from "@/components/artists/artist-welcome";
 import { CodeSheet } from "@/components/artists/code-sheet";
@@ -10,8 +10,9 @@ import { CodeTickets } from "@/components/artists/code-tickets";
 import { Scribble } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
-import { ANSWERABLE, CODE_RULES, WHY_CODES } from "@/lib/artists/codes";
-import { getViewerAccess, getViewerCodes, getViewerPass } from "@/lib/artists/server";
+import { ANSWERABLE, CODE_RULES, CODES_FOR_VERIFIED, progressOf, VERIFY_GOALS, WHY_CODES, type Progress } from "@/lib/artists/codes";
+import { formatUsd } from "@/lib/format";
+import { getViewerAccess, getViewerCodes, getViewerPass, getViewerProgress } from "@/lib/artists/server";
 
 // The artist's handwriting, for the title.
 const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
@@ -22,6 +23,11 @@ export const metadata: Metadata = {
 };
 
 const container = "mx-auto w-full max-w-[1184px] px-4 sm:px-6";
+
+/** A white button on the dotted paper, beside the accent one (paper stays light in both themes). */
+const paperButton = buttonClasses({
+  className: "border border-paper-muted/25 bg-paper! text-on-paper! shadow-soft hover:border-ocean/50 hover:brightness-100!",
+});
 
 /*
  * Artist codes, from both sides. Without artist access: the code sheet to
@@ -84,7 +90,7 @@ async function Codes() {
 
   if (!access.artist) return <CodeSheet />;
 
-  const [codes, pass] = await Promise.all([getViewerCodes(), getViewerPass()]);
+  const [codes, pass, progress] = await Promise.all([getViewerCodes(), getViewerPass(), getViewerProgress()]);
   const left = codes.filter((c) => !c.usedAt).length;
 
   return (
@@ -92,17 +98,21 @@ async function Codes() {
       <div className="min-w-0 space-y-8">
         {/* Your own pass. */}
         {pass && (
-          <section aria-labelledby="pass-heading" className="dot-paper grid items-center gap-6 rounded-panel bg-[size:14px_14px] p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-8">
+          // Dotted paper, light in both themes: paper inks, not the theme's (Ember's ink is light).
+          <section
+            aria-labelledby="pass-heading"
+            className="dot-paper grid items-center gap-6 rounded-panel bg-[size:14px_14px] p-6 text-on-paper sm:grid-cols-[auto_minmax(0,1fr)] sm:p-8"
+          >
             <ArtistPass pass={pass} />
             <div className="min-w-0">
-              <h2 id="pass-heading" className="font-display text-xl font-extrabold tracking-tight text-ink">
+              <h2 id="pass-heading" className="font-display text-xl font-extrabold tracking-tight text-on-paper">
                 Your Artist Pass
               </h2>
-              <p className="mt-1.5 max-w-prose text-sm text-muted">
+              <p className="mt-1.5 max-w-prose text-[0.9375rem] text-on-paper/80">
                 {pass.invitedBy ? (
                   <>
                     Artist {passNumber(pass.number)} on Artiflow, let in with{" "}
-                    <Link href={`/${pass.invitedBy}`} className="font-semibold text-ink hover:underline">
+                    <Link href={`/${pass.invitedBy}`} className="font-semibold text-on-paper underline decoration-paper-muted/40 underline-offset-2 hover:decoration-ocean">
                       @{pass.invitedBy}
                     </Link>
                     &apos;s code.
@@ -113,19 +123,23 @@ async function Codes() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {pass.shared ? (
-                  <Link href={`/${pass.handle}#${pass.shared}`} className={buttonClasses({ variant: "secondary" })}>
+                  <Link href={`/${pass.handle}#${pass.shared}`} className={paperButton}>
                     See your pass post
                   </Link>
                 ) : (
                   <SharePassButton pass={pass} />
                 )}
-                <Link href="/studio" className={buttonClasses({ variant: "ghost" })}>
+                <Link href="/studio" className={paperButton}>
+                  <Store aria-hidden />
                   Your studio
                 </Link>
               </div>
             </div>
           </section>
         )}
+
+        {/* The way to verification: both goals, filling up like paint strokes. */}
+        {!access.artist.verifiedAt && progress && <VerifyGoals progress={progress} />}
 
         <section aria-labelledby="held-heading">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b-2 border-dashed border-border pb-2.5">
@@ -145,7 +159,11 @@ async function Codes() {
           ) : (
             <div className="rounded-card border border-dashed border-border bg-surface px-6 py-10 text-center">
               <p className="font-display font-bold text-ink">No codes to hand on yet</p>
-              <p className="mt-1 text-sm text-muted">The team gives codes to artists to pass on. When you get some, they&apos;ll be here.</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+                {access.artist.verifiedAt
+                  ? "Your codes have all found artists. More come with Flow+: one every week."
+                  : `Getting verified earns you ${CODES_FOR_VERIFIED} codes to invite artists. After that, more come with Flow+.`}
+              </p>
             </div>
           )}
         </section>
@@ -171,5 +189,70 @@ async function Codes() {
         <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">{ANSWERABLE}</p>
       </aside>
     </div>
+  );
+}
+
+/** Two goals to get verified, each a paint stroke that fills as you go. */
+function VerifyGoals({ progress }: { progress: Progress }) {
+  const share = progressOf(progress);
+  const goals = [
+    {
+      label: "Followers",
+      icon: <Users aria-hidden className="size-4" />,
+      have: `${Math.min(progress.followers, VERIFY_GOALS.followers)} of ${VERIFY_GOALS.followers}`,
+      done: share.followers >= 1,
+      fill: share.followers,
+    },
+    {
+      label: "Sales on Artiflow",
+      icon: <Banknote aria-hidden className="size-4" />,
+      have: `${formatUsd(Math.min(progress.salesUsd, VERIFY_GOALS.salesUsd))} of ${formatUsd(VERIFY_GOALS.salesUsd)}`,
+      done: share.sales >= 1,
+      fill: share.sales,
+    },
+  ];
+  return (
+    <section aria-labelledby="verify-heading" data-part="verify-goals" className="rounded-card border border-border bg-surface p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="verify-heading" className="flex items-center gap-2 font-display text-xl font-extrabold tracking-tight text-ink">
+            <BadgeCheck aria-hidden className="size-5 text-lilac-ink dark:text-lilac" />
+            Get verified
+          </h2>
+          <p className="mt-1 max-w-prose text-sm text-muted">
+            Reach both and you&apos;re a verified artist: the mark on your profile, and {CODES_FOR_VERIFIED} codes to let more artists in.
+          </p>
+        </div>
+      </div>
+      <ul className="mt-5 grid gap-4 sm:grid-cols-2">
+        {goals.map((goal) => (
+          <li key={goal.label}>
+            <p className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex items-center gap-2 font-semibold text-ink">
+                <span className={`grid size-7 place-items-center rounded-full ${goal.done ? "bg-mint/20 text-mint-ink dark:text-mint" : "bg-ice text-muted"}`}>
+                  {goal.done ? <Check aria-hidden className="size-4" strokeWidth={3} /> : goal.icon}
+                </span>
+                {goal.label}
+              </span>
+              <span className="font-semibold text-muted tabular-nums">{goal.have}</span>
+            </p>
+            {/* A brush stroke: rounded ends, a lighter wet edge. */}
+            <span
+              role="progressbar"
+              aria-label={`${goal.label}: ${goal.have}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(goal.fill * 100)}
+              className="mt-2 block h-3 overflow-hidden rounded-full bg-ice"
+            >
+              <span
+                className={`block h-full rounded-full bg-gradient-to-r transition-[width] duration-700 ${goal.done ? "from-mint to-sky" : "from-lilac to-ocean"}`}
+                style={{ width: `${Math.max(goal.fill * 100, goal.fill > 0 ? 6 : 0)}%` }}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -6,9 +6,10 @@ import { localSupabase } from "./support/local-supabase";
  * Artist codes, end to end: anyone can join, but selling takes an artist
  * code. A founding artist gets codes from the team and a gift on their next
  * visit (once); a collector uses one from their own profile and becomes an
- * artist with 2 codes to pass on; the holder sees who used it; a code works
- * once; joining with a code makes you an artist on the spot; a collector
- * can't list anything, not even straight through the API.
+ * artist (no codes of their own yet); the holder sees who used it; a code
+ * works once; joining with a code makes you an artist on the spot; reaching
+ * 10 followers and $100 in sales makes you verified, with 2 codes; a
+ * collector can't list anything, not even straight through the API.
  */
 
 function admin() {
@@ -125,13 +126,13 @@ test("a collector uses a code from their profile and gets 2 to pass on", async (
   await strip.getByLabel("Artist code").fill(codes[0].toLowerCase().replace("-", ""));
   await strip.getByRole("button", { name: "Unlock" }).click();
 
-  // The welcome: their Artist Pass, and their 2 codes to pass on.
+  // The welcome: their Artist Pass, and the way to verification (codes come with it, not with the code).
   const welcome = page.getByRole("dialog", { name: `Welcome to the artists, ${collector.handle}!` });
   await expect(welcome).toBeVisible();
   await expect(welcome).toContainText(`@${holder.handle} let you in`);
-  await expect(welcome).toContainText("You got 2 codes of your own");
+  await expect(welcome).toContainText("Next: 10 followers and $100 in sales make you a verified artist");
   await expect(welcome.locator('[data-part="artist-pass"]')).toContainText("Official artist");
-  expect(await codesOf(collector)).toHaveLength(2);
+  expect(await codesOf(collector)).toHaveLength(0);
 
   // They share the pass: a post on their profile, drawn by the app.
   await expect(welcome.getByLabel("Tell everyone")).toHaveValue(`I'm officially an Artiflow artist! ✦ Thank you @${holder.handle} for letting me in.`);
@@ -141,15 +142,15 @@ test("a collector uses a code from their profile and gets 2 to pass on", async (
   expect(posts).toEqual([expect.objectContaining({ milestone: expect.objectContaining({ kind: "artist_pass", invitedBy: holder.handle }) })]);
   await welcome.getByRole("button", { name: "Close" }).click();
 
-  // The codes were in the welcome, so no second gift on the next page.
+  // No codes yet, so no gift on the next page.
   await page.reload();
   await page.waitForTimeout(800);
   await expect(page.getByRole("dialog", { name: /artist codes!/ })).toHaveCount(0);
   await expect(page.locator('[data-part="artist-pass"]:visible').first()).toBeVisible();
 
-  // Their guest book: you're an artist, and 2 codes arrived.
+  // Their guest book: you're an artist (no codes arrived).
   const { data: theirNotes } = await admin().from("notifications").select("kind").eq("recipient_id", collector.id).in("kind", ["became_artist", "artist_codes"]);
-  expect(theirNotes?.map((n) => n.kind).toSorted()).toEqual(["artist_codes", "became_artist"]);
+  expect(theirNotes?.map((n) => n.kind)).toEqual(["became_artist"]);
 
   // Their profile wears the Artist mark, which says whose code let them in.
   const mark = page.locator('[data-part="artist-mark"]');
@@ -181,8 +182,12 @@ test("a code works once", async ({ browser }) => {
   // A fresh one works, and the sheet says what's next.
   await page.getByLabel("Your code").fill(codes[1]);
   await page.getByRole("button", { name: "Unlock my studio" }).click();
-  await expect(page.getByRole("heading", { name: "You're an Artiflow artist." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open your studio" })).toBeVisible();
+  const welcome = page.getByRole("dialog", { name: /Welcome to the artists/ });
+  await expect(welcome).toBeVisible();
+  await welcome.getByRole("button", { name: "Close" }).click();
+  // The codes page is theirs now: the pass, and the way to verification.
+  await expect(page.getByRole("heading", { name: "Your Artist Pass" })).toBeVisible();
+  await expect(page.locator('[data-part="verify-goals"]')).toContainText("0 of 10");
   await page.close();
 });
 
@@ -198,6 +203,57 @@ test("joining with a code makes you an artist on the spot", async () => {
   const { data: profile } = await admin().from("profiles").select("artist_since, invited_by").eq("id", joiner.id).single();
   expect(profile?.artist_since).toBeTruthy();
   expect(profile?.invited_by).toBe(holder.id);
-  expect(await codesOf(joiner)).toHaveLength(2);
+  expect(await codesOf(joiner)).toHaveLength(0);
   expect((await codesOf(holder)).every((c) => c.redeemed_by)).toBe(true);
+});
+
+test("reaching the goals makes an artist verified, with 2 codes", async ({ browser }) => {
+  // Ten followers, then a $120 order paid: the database checks the goals as each happens.
+  const fans = await Promise.all(
+    Array.from({ length: 10 }, async (_, i) => {
+      const fan = newAccount(`f${i}`);
+      const { data, error } = await admin().auth.admin.createUser({
+        email: fan.email,
+        password: fan.password,
+        email_confirm: true,
+        user_metadata: { handle: fan.handle, display_name: fan.handle },
+      });
+      if (error) throw error;
+      return data.user.id;
+    }),
+  );
+  try {
+    for (const fan of fans) expect((await admin().from("follows").insert({ follower_id: fan, followee_id: collector.id })).error).toBeNull();
+    const notYet = await admin().from("profiles").select("verified_at").eq("id", collector.id).single();
+    expect(notYet.data?.verified_at).toBeNull();
+
+    const { data: order, error } = await admin()
+      .from("commission_requests")
+      .insert({ buyer_id: fans[0], artist_id: collector.id, service_title: "Custom piece", description: "A fox in a winter scarf, half body, soft colors please." })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    await admin()
+      .from("commission_requests")
+      .update({ status: "quoted", quote_usd: 120, quoted_at: new Date().toISOString(), quote_expires_at: new Date(Date.now() + 864e5).toISOString() })
+      .eq("id", order!.id);
+    await admin().from("commission_requests").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", order!.id);
+
+    const { data: verified } = await admin().from("profiles").select("verified_at").eq("id", collector.id).single();
+    expect(verified?.verified_at).toBeTruthy();
+    expect(await codesOf(collector)).toHaveLength(2);
+    const { data: notes } = await admin().from("notifications").select("kind").eq("recipient_id", collector.id).eq("kind", "verified");
+    expect(notes).toHaveLength(1);
+
+    // The gift says so, and the profile wears the verified mark.
+    const page = await signIn(browser, collector);
+    const gift = page.getByRole("dialog", { name: "You're a verified artist!" });
+    await expect(gift).toBeVisible();
+    await gift.getByRole("button", { name: "Later" }).click();
+    await page.goto(`/${collector.handle}`);
+    await expect(page.locator('[data-part="artist-mark"][data-verified]:visible')).toContainText("Verified artist");
+    await page.close();
+  } finally {
+    for (const fan of fans) await admin().auth.admin.deleteUser(fan);
+  }
 });

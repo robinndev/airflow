@@ -2,12 +2,12 @@
 
 import { Caveat } from "next/font/google";
 import Link from "next/link";
-import { ArrowRight, Check, LoaderCircle, Store, Ticket } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, LoaderCircle, Store, Ticket } from "lucide-react";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { shareArtistPass } from "@/app/(site)/artist-actions";
 import { HandNote, Sparkle } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
-import { passCaption, type ViewerPass } from "@/lib/artists/codes";
+import { CODES_FOR_VERIFIED, passCaption, VERIFY_GOALS, type ViewerPass } from "@/lib/artists/codes";
 import { ArtistPass } from "./artist-pass";
 
 
@@ -125,13 +125,25 @@ function Welcome({ pass, codes, onClose }: { pass: ViewerPass; codes?: number; o
               </span>
               The Artist mark is on your profile now.
             </li>
-            {codes !== undefined && (
+            {codes !== undefined ? (
               <li className="flex items-center gap-2.5">
                 <span aria-hidden className="grid size-6 place-items-center rounded-full bg-mint/15 text-mint-ink">
                   <Ticket className="size-3.5" />
                 </span>
                 You got {codes} codes of your own, to let {codes} more artists in.
               </li>
+            ) : (
+              !pass.verifiedAt && (
+                <li className="flex items-start gap-2.5">
+                  <span aria-hidden className="mt-px grid size-6 shrink-0 place-items-center rounded-full bg-mint/15 text-mint-ink">
+                    <BadgeCheck className="size-3.5" />
+                  </span>
+                  <span>
+                    Next: {VERIFY_GOALS.followers} followers and ${VERIFY_GOALS.salesUsd} in sales make you a{" "}
+                    <span className="font-semibold">verified artist</span>, with {CODES_FOR_VERIFIED} codes to invite more artists.
+                  </span>
+                </li>
+              )
             )}
           </ul>
 

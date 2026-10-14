@@ -6,6 +6,8 @@
  *   npm run invites -- list @handle                    what they hold, and who used each
  *   npm run invites -- artist @handle                  give artist access by hand (no code)
  *   npm run invites -- collector @handle               take it back (their listings stay; they can't add new ones)
+ *   npm run invites -- verify @handle                  verify an artist by hand (no codes: those come with the goals)
+ *   npm run invites -- unverify @handle                take verification back
  *
  * Uses the Supabase secret key from .env.local (`vercel env pull .env.local`).
  */
@@ -38,8 +40,10 @@ if (command === "grant" && handle) {
     .order("created_at")
     .returns<Row[]>();
   if (error) throw new Error(error.message);
-  const { data: access } = await supabase.from("profiles").select("artist_since").eq("id", profile.id).maybeSingle();
-  console.log(`@${handle}: ${access?.artist_since ? `artist since ${String(access.artist_since).slice(0, 10)}` : "collector"}`);
+  const { data: access } = await supabase.from("profiles").select("artist_since, verified_at").eq("id", profile.id).maybeSingle();
+  console.log(
+    `@${handle}: ${access?.artist_since ? `artist since ${String(access.artist_since).slice(0, 10)}` : "collector"}${access?.verified_at ? `, verified since ${String(access.verified_at).slice(0, 10)}` : ""}`,
+  );
   if (data.length === 0) console.log(`@${handle} holds no artist codes.`);
   for (const row of data) {
     const status = row.redeemed ? `used by @${row.redeemed.handle}` : row.redeemed_at ? "used" : "unused";
@@ -49,9 +53,13 @@ if (command === "grant" && handle) {
   const { data, error } = await supabase.rpc("set_artist_access", { handle, artist: command === "artist" });
   if (error) throw new Error(error.message);
   console.log(data ? `@${handle} is an artist (since ${String(data).slice(0, 10)}).` : `@${handle} is a collector now.`);
+} else if ((command === "verify" || command === "unverify") && handle) {
+  const { data, error } = await supabase.rpc("set_verified", { handle, verified: command === "verify" });
+  if (error) throw new Error(error.message);
+  console.log(data ? `@${handle} is verified (since ${String(data).slice(0, 10)}).` : `@${handle} isn't verified now.`);
 } else {
   console.log(
-    "Usage:\n  npm run invites -- grant @handle [count] [\"why\"]\n  npm run invites -- list @handle\n  npm run invites -- artist @handle\n  npm run invites -- collector @handle",
+    "Usage:\n  npm run invites -- grant @handle [count] [\"why\"]\n  npm run invites -- list @handle\n  npm run invites -- artist @handle\n  npm run invites -- collector @handle\n  npm run invites -- verify @handle\n  npm run invites -- unverify @handle",
   );
   process.exitCode = 1;
 }

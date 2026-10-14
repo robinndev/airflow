@@ -20,8 +20,10 @@ export type NotificationKind =
   | "request_update"
   /** You got artist access (from someone's artist code, or the team). */
   | "became_artist"
-  /** Artist codes arrived to hand on (from the team, for joining, or Flow+'s weekly one). */
-  | "artist_codes";
+  /** Artist codes arrived to hand on (from the team, or Flow+'s weekly one). */
+  | "artist_codes"
+  /** You reached the goals (followers, sales): verified, with codes to invite artists. */
+  | "verified";
 
 /** A commission request's state when the notice was written ("accepted" is from before quotes existed). */
 export type RequestStatus =

@@ -8,7 +8,7 @@ import { redeemArtistCode } from "@/app/(site)/artist-actions";
 import { Envelope } from "@/components/auth/invite-envelope";
 import { Stamp } from "@/components/explore/stamp";
 import { buttonClasses } from "@/components/ui/button";
-import { ARTIST_UNLOCKS, CODES_PER_NEW_ARTIST, formatCode, WHY_CODES, type ViewerPass } from "@/lib/artists/codes";
+import { ARTIST_UNLOCKS, CODES_FOR_VERIFIED, formatCode, VERIFY_GOALS, WHY_CODES, type ViewerPass } from "@/lib/artists/codes";
 import { showArtistWelcome } from "./artist-welcome";
 
 /*
@@ -35,7 +35,7 @@ function useRedeem(onDone: (inviter: string | null, pass: ViewerPass | null) => 
         return setError(result.error);
       }
       onDone(result.inviter, result.pass);
-      if (result.pass) showArtistWelcome(result.pass, CODES_PER_NEW_ARTIST);
+      if (result.pass) showArtistWelcome(result.pass);
       router.refresh();
     });
   }
@@ -85,7 +85,7 @@ export function CodeSheet() {
           ) : (
             "Your studio is open."
           )}{" "}
-          Your profile wears the Artist mark now, and you got {CODES_PER_NEW_ARTIST} codes of your own to let {CODES_PER_NEW_ARTIST} more artists in.
+          Your profile wears the Artist mark now. {VERIFY_GOALS.followers} followers and ${VERIFY_GOALS.salesUsd} in sales make you a verified artist, with {CODES_FOR_VERIFIED} codes to invite more artists.
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5">
           <Link href="/studio" className={buttonClasses()}>
@@ -93,7 +93,7 @@ export function CodeSheet() {
             <ArrowRight aria-hidden />
           </Link>
           <Link href="/codes" className={buttonClasses({ variant: "secondary" })}>
-            See your {CODES_PER_NEW_ARTIST} codes
+            See your progress
           </Link>
         </div>
       </section>

@@ -92,7 +92,7 @@ export type ArtistProfile = {
    * `null` is a collector, who browses, collects and commissions. Absent when
    * the read didn't ask (lists, a database without the column): treat as unknown.
    */
-  artist?: { since: string; invitedBy?: string } | null;
+  artist?: { since: string; invitedBy?: string; verifiedAt?: string } | null;
   displayName: string;
   pronouns?: string;
   headline: string;

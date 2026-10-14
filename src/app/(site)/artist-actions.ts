@@ -76,10 +76,15 @@ export async function shareArtistPass(caption: string): Promise<ShareResult> {
   return { ok: true, href: `/${pass.handle}#${data.id}` };
 }
 
-/** The gift modal was seen: codes granted until now aren't news anymore. */
+/**
+ * The gift modal was seen: codes granted until now aren't news anymore. The
+ * gift can be the prize for getting verified, which the database decided on
+ * its own (a follow, a paid order): refresh the profile so it wears the mark.
+ */
 export async function markCodesSeen(): Promise<void> {
   const viewer = await getViewer();
   if (!viewer) return;
   const supabase = await createSupabaseServer();
   await supabase.rpc("mark_codes_seen");
+  updateTag(profileTag(viewer.handle));
 }

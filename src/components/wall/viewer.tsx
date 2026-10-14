@@ -217,7 +217,7 @@ function WallLabel({ item, items, onIndex }: { item: WallItem; items: WallItem[]
               <dt className={term}>Studio</dt>
               <dd>
                 <Link href={linkToCommissions(item.artist)} className="font-semibold text-accent-strong hover:underline">
-                  Taking commissions · from {formatUsd(item.openFromUsd)}
+                  Taking commissions · starting at {formatUsd(item.openFromUsd)}
                 </Link>
               </dd>
             </>
