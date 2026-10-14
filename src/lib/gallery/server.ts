@@ -181,3 +181,46 @@ export async function fetchArtworksByIds(ids: string[]) {
   if (error) throw new Error(`Couldn't load artworks: ${error.message}`);
   return data;
 }
+
+/** The newest pieces from every gallery, with their owner: Explore's wall. */
+export async function fetchRecentArtworks(limit = 500) {
+  if (!configured()) return [];
+  const { data, error } = await createSupabasePublic()
+    .from("artworks")
+    .select(`${ARTWORK_COLUMNS}, owner:profiles!inner(${ACCOUNT_COLUMNS})`)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<(ArtworkRow & { owner: AccountRow })[]>();
+  if (error && NOT_MIGRATED.has(error.code)) return [];
+  if (error) throw new Error(`Couldn't load recent art: ${error.message}`);
+  return data;
+}
+
+/** The newest characters, with their owner, cover and how many pieces they're in: Explore's wall. */
+export async function fetchRecentCharacters(limit = 200) {
+  if (!configured()) return [];
+  const { data, error } = await createSupabasePublic()
+    .from("characters")
+    .select(
+      `id, slug, name, species, tags, palette, created_at, character_art(artwork_id), owner:profiles!inner(${ACCOUNT_COLUMNS}), cover:artworks!characters_cover_artwork_id_fkey(image, title)`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<
+      {
+        id: string;
+        slug: string;
+        name: string;
+        species: string;
+        tags: string[];
+        palette: string[];
+        created_at: string;
+        character_art: { artwork_id: string }[];
+        owner: AccountRow;
+        cover: { image: StoredImage; title: string } | null;
+      }[]
+    >();
+  if (error && NOT_MIGRATED.has(error.code)) return [];
+  if (error) throw new Error(`Couldn't load recent characters: ${error.message}`);
+  return data;
+}

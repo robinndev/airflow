@@ -5,6 +5,7 @@ import { db } from "@/lib/profile/mock-db";
 import type { Viewer } from "@/lib/session";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { isCancelReason, type CancelReason } from "./cancel";
 import type { Lane, OrderStatus, QueueOrder, Step } from "./queue";
 import type { MyRequest, RequestStatus } from "./requests";
 
@@ -64,6 +65,25 @@ const PEOPLE = `buyer:profiles!commission_requests_buyer_id_fkey(${ACCOUNT_COLUM
 
 const NOT_MIGRATED = new Set(["42P01", "PGRST205", "42703"]);
 
+type Client = ReturnType<typeof createSupabaseAdmin> | Awaited<ReturnType<typeof createSupabaseServer>>;
+type Why = { reason: CancelReason; note?: string };
+
+/**
+ * Why the buyer cancelled, for the cancelled ones among `rows`. A separate
+ * read, so a database without the *_commission_cancel_reasons.sql migration
+ * still shows every order (just without reasons).
+ */
+async function cancelReasons(client: Client, rows: Pick<Row, "id" | "status">[]): Promise<Map<string, Why>> {
+  const ids = rows.filter((row) => row.status === "cancelled").map((row) => row.id);
+  const reasons = new Map<string, Why>();
+  if (ids.length === 0) return reasons;
+  const { data } = await client.from("commission_requests").select("id, cancel_reason, cancel_note").in("id", ids);
+  for (const row of (data ?? []) as { id: string; cancel_reason: string | null; cancel_note: string | null }[]) {
+    if (isCancelReason(row.cancel_reason)) reasons.set(row.id, { reason: row.cancel_reason, ...(row.cancel_note && { note: row.cancel_note }) });
+  }
+  return reasons;
+}
+
 /** Quotes past their expiry close (and give their slots back) before anyone reads them. */
 async function expireQuotes() {
   await createSupabaseAdmin().rpc("expire_commission_quotes").then(
@@ -113,8 +133,10 @@ export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[
     .returns<Row[]>();
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your commissions: ${error.message}`);
+  const reasons = await cancelReasons(createSupabaseAdmin(), data);
 
   return data.map((row) => {
+    const why = reasons.get(row.id);
     const client = toArtistProfile(row.buyer);
     const closed = CLOSED.includes(row.status);
     const delivery = deliveryOf(row);
@@ -136,6 +158,7 @@ export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[
       ...(row.paused && { paused: true }),
       ...((closed || row.archived_by_artist) && { archived: true }),
       ...(row.status === "declined" && { declined: true }),
+      ...(why && { cancelReason: why.reason, ...(why.note && { cancelNote: why.note }) }),
       brief: row.description,
       references: [],
       ...(row.reference_links && { referenceLinks: row.reference_links }),
@@ -182,8 +205,10 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
     .returns<Row[]>();
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your requests: ${error.message}`);
+  const reasons = await cancelReasons(supabase, data);
 
   return data.flatMap((row) => {
+    const why = reasons.get(row.id);
     const demo = row.demo_artist ? db.profiles.find((p) => p.handle === row.demo_artist) : undefined;
     const artist = demo ?? (row.artist && toArtistProfile(row.artist));
     if (!artist) return [];
@@ -211,6 +236,7 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
       ...(row.delivered_at && { deliveredAt: row.delivered_at }),
       ...(closed && { closedAt: row.updated_at }),
       ...(note && { artistNote: note }),
+      ...(why && { cancelReason: why.reason, ...(why.note && { cancelNote: why.note }) }),
       ...(delivery && { delivery: delivery.images[0] }),
       real: true,
       ...(demo && { demo: true }),

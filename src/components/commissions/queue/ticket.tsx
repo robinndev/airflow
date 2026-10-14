@@ -17,6 +17,13 @@ const BITE = `radial-gradient(circle at 0 calc(100% - ${STUB}), transparent 7px,
 
 /** The stamp in the top corner: how the order stands, most final first. */
 function CornerStamp({ order }: { order: QueueOrder }) {
+  if (order.orderStatus === "cancelled") {
+    return (
+      <Stamp tone="like" onPaper className="rotate-[5deg] bg-paper">
+        Cancelled
+      </Stamp>
+    );
+  }
   if (order.declined) {
     return (
       <Stamp tone="like" onPaper className="rotate-[5deg] bg-paper">

@@ -62,3 +62,9 @@ export function pickVariant(src: string, width: number) {
   else if (base.startsWith("/demo-art/") && !base.includes(".thumb.") && width <= DEMO_THUMB_WIDTH) url = `${stem(base)}.thumb.webp`;
   return `${url}#w=${width}`;
 }
+
+/** The URL without our `#…` hints (thumb, width), as the server sees it. */
+export const withoutHints = (src: string) => src.split("#")[0];
+
+/** An animated GIF (by its file, never by the hints). */
+export const isGif = (src: string) => /\.gif$/i.test(withoutHints(src));

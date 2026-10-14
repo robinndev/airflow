@@ -92,14 +92,22 @@ test("a buyer sends a request and follows it; nothing here is a sample", async (
   await expect(sent).toContainText("+ Extra outfit");
   await expect(sent).toContainText("Waiting for Mira to reply.");
 
-  // Taken back: closed, and nothing was charged.
+  // Taken back, with a reason (the artist sees it): "something else" needs a few words.
   await sent.getByRole("button", { name: "Take it back" }).click();
-  await sent.getByRole("button", { name: "Withdraw" }).click();
-  await expect.poll(async () => (await admin().from("commission_requests").select("status").eq("id", rows![0].id).single()).data?.status).toBe(
-    "cancelled",
-  );
+  const why = page.getByRole("dialog", { name: "Why are you cancelling this commission request?" });
+  await expect(why).toBeVisible();
+  await expect(why.getByRole("button", { name: "Withdraw request" })).toBeDisabled();
+  await why.getByText("Something else").click();
+  await expect(why.getByLabel("Tell Mira why")).toBeVisible();
+  await why.getByLabel("Tell Mira why").fill("Wren's design changed, I'll send a new request.");
+  await why.getByRole("button", { name: "Withdraw request" }).click();
+  await expect(why).toBeHidden();
+  await expect
+    .poll(async () => (await admin().from("commission_requests").select("status, cancel_reason, cancel_note").eq("id", rows![0].id).single()).data)
+    .toEqual({ status: "cancelled", cancel_reason: "other", cancel_note: "Wren's design changed, I'll send a new request." });
   await page.goto("/requests?show=closed");
   await expect(postcards(page).first()).toContainText("Nothing was charged.");
+  await expect(postcards(page).first()).toContainText("You told Mira: Something else · “Wren's design changed, I'll send a new request.”");
 });
 
 test("visitors are asked to sign in", async ({ page }) => {

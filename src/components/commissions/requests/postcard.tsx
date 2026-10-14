@@ -6,6 +6,7 @@ import { MessageIconButton } from "@/components/messages/message-button";
 import { Tape } from "@/components/explore/doodles";
 import { Swatches, tiltOf } from "@/components/commissions/queue/parts";
 import { StepTrack } from "@/components/commissions/queue/step-track";
+import { CANCEL_CHOICES } from "@/lib/commissions/cancel";
 import { daysUntil, relativeDay, STEP_LABEL } from "@/lib/commissions/queue";
 import type { MyRequest } from "@/lib/commissions/requests";
 import { formatShortDate, formatUsd, formatUsdExact } from "@/lib/format";
@@ -237,9 +238,20 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
     case "cancelled":
       return (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p className="text-paper-muted">
-            {request.status === "expired" ? "The quote ran out before it was paid." : "Cancelled."} Nothing was charged.
-          </p>
+          <div className="min-w-0">
+            <p className="text-paper-muted">
+              {request.status === "expired" ? "The quote ran out before it was paid." : "You cancelled it."} Nothing was charged.
+            </p>
+            {request.cancelReason && (
+              <p className="mt-1">
+                <span className="font-semibold">You told {first}:</span>{" "}
+                <span className="text-paper-muted">
+                  {CANCEL_CHOICES[request.cancelReason].request}
+                  {request.cancelNote && <> · &ldquo;{request.cancelNote}&rdquo;</>}
+                </span>
+              </p>
+            )}
+          </div>
           <PaperLink href={commissions}>Ask {first} again</PaperLink>
         </div>
       );

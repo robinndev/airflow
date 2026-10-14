@@ -115,7 +115,7 @@ test("labels on the profile, specialties from Edit profile, and a label opens Ex
   expect((await profileRow(account.handle)).draws).toEqual(["feral", "pixel"]);
 
   await labels.getByRole("link", { name: "Feral artist" }).click();
-  await page.waitForURL(/\/explore\?draws=feral/);
+  await page.waitForURL(/\/explore\/studios\?draws=feral/);
   const filter = page.getByRole("group", { name: "Who should they draw?" });
   await expect(filter.getByRole("button", { name: "Ferals" })).toHaveAttribute("aria-pressed", "true");
   const studios = page.locator("#studios");

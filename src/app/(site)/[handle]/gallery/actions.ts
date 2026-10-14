@@ -7,6 +7,7 @@ import { variantFields } from "@/lib/images/schema";
 import { removeFiles, verifyUploads } from "@/lib/images/verify";
 import { galleryTag } from "@/lib/gallery/queries";
 import { characterHref, cleanList, collectionHref, LIMITS, SECTION_IDS, uniqueSlug } from "@/lib/gallery/types";
+import { WALL_TAG } from "@/lib/wall/query";
 import { getViewer, type Viewer } from "@/lib/session";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -125,6 +126,7 @@ export async function addArtworks(handle: string, input: unknown): Promise<Galle
   const ids = data.map((row) => row.id as string);
   const placed = await place(supabase, ids, { characters, collections }, false);
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return placed
     ? { ok: true, ids }
     : { ok: true, ids, warning: "Added, but not to every character or collection. Edit a piece to try again." };
@@ -150,6 +152,7 @@ export async function updateArtwork(handle: string, id: string, input: unknown):
 
   const placed = await place(supabase, [id], { characters, collections }, true);
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return placed ? { ok: true } : { ok: true, warning: "Saved, but not on every character or collection." };
 }
 
@@ -171,6 +174,7 @@ export async function deleteArtwork(handle: string, id: string): Promise<Gallery
   await removeFiles([data.image]);
 
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true };
 }
 
@@ -240,6 +244,7 @@ export async function saveCharacter(handle: string, id: string | null, input: un
       .upsert({ character_id: data.id, artwork_id: parsed.data.coverId, section: "design" }, { onConflict: "character_id,artwork_id", ignoreDuplicates: true });
   }
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true, href: characterHref(handle, slug), ids: [data.id as string] };
 }
 
@@ -252,6 +257,7 @@ export async function deleteCharacter(handle: string, id: string): Promise<Galle
   const { data, error } = await supabase.from("characters").delete().eq("id", id).eq("owner_id", viewer.id).select("id").maybeSingle();
   if (error || !data) return fail("Couldn't delete that character.");
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true, href: `/${handle}/gallery` };
 }
 
@@ -286,6 +292,7 @@ export async function saveCollection(handle: string, id: string | null, input: u
       .upsert({ collection_id: data.id, artwork_id: parsed.data.coverId }, { onConflict: "collection_id,artwork_id", ignoreDuplicates: true });
   }
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true, href: collectionHref(handle, slug), ids: [data.id as string] };
 }
 
@@ -297,6 +304,7 @@ export async function deleteCollection(handle: string, id: string): Promise<Gall
   const { data, error } = await supabase.from("collections").delete().eq("id", id).eq("owner_id", viewer.id).select("id").maybeSingle();
   if (error || !data) return fail("Couldn't delete that collection.");
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true, href: `/${handle}/gallery` };
 }
 
@@ -318,6 +326,7 @@ export async function setCover(handle: string, target: "character" | "collection
     .maybeSingle();
   if (error || !data) return fail("Couldn't change the cover.");
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true };
 }
 
@@ -339,6 +348,7 @@ export async function moveToSection(handle: string, characterId: string, artwork
     .maybeSingle();
   if (error || !data) return fail("Couldn't move that piece.");
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true };
 }
 
@@ -354,5 +364,6 @@ export async function removeFrom(handle: string, target: "character" | "collecti
       : await supabase.from("collection_art").delete().eq("collection_id", id).eq("artwork_id", artworkId);
   if (error) return fail("Couldn't take it off.");
   updateTag(galleryTag(handle));
+  updateTag(WALL_TAG);
   return { ok: true };
 }

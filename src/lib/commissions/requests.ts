@@ -1,4 +1,5 @@
 import type { ImageAsset } from "@/lib/profile/types";
+import type { CancelReason } from "./cancel.ts";
 import { daysUntil, type Step } from "./queue.ts";
 
 /*
@@ -52,6 +53,9 @@ export type MyRequest = {
   real?: boolean;
   /** Still waiting on the artist, so the buyer can take it back. */
   cancellable?: boolean;
+  /** Why you cancelled (a real request), and what you added. */
+  cancelReason?: CancelReason;
+  cancelNote?: string;
   /** Sent to one of the demo artists: stored, but nobody answers. */
   demo?: boolean;
 };

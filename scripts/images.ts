@@ -3,6 +3,8 @@
  *
  *   npm run images -- thumbs            what would get a thumb (dry run)
  *   npm run images -- thumbs --apply    make the thumbs and save them on the rows
+ *   npm run images -- backup            copy new files to the backup bucket now (what the hourly cron does)
+ *   npm run images -- backup --sweep    let go of files deleted 30+ days ago (the daily cron)
  *
  * `thumbs` gives pictures uploaded before thumbs existed a thumb, the way
  * prepareImage() makes them now: posts, gallery pieces, service examples,
@@ -10,13 +12,16 @@
  * get their first frame. Originals can't be backfilled: only the display
  * copy was kept.
  *
- * Uses .env.local (production, `vercel env pull .env.local`); add `--local`
- * for the local stack.
+ * Uses .env.local (production, `vercel env pull .env.local`; the backup
+ * also needs its BACKUP_S3_* variables there); add `--local` for the local
+ * stack.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { readLocalSupabase } from "./lib/local-supabase.ts";
 import { THUMB_MAX, thumbPathOf, type ThumbInfo } from "../src/lib/images/variants.ts";
+import { copyNewFiles, sweepDeleted } from "../src/lib/backup/art.ts";
+import { backupTargetFromEnv } from "../src/lib/backup/s3.ts";
 
 type Image = { path: string; width: number; height: number; palette?: string[] | null; thumb?: ThumbInfo | null; original?: unknown };
 
@@ -111,7 +116,11 @@ if (args[0] === "thumbs") {
     total += await backfill(table, column, size);
   }
   console.log(apply ? `\nMade ${total} thumbs.` : `\n${total} pictures would get a thumb. Run again with --apply to make them.`);
+} else if (args[0] === "backup") {
+  const target = backupTargetFromEnv();
+  if (!target) throw new Error("Set BACKUP_S3_ENDPOINT, BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID and BACKUP_S3_SECRET_ACCESS_KEY first.");
+  console.log(args.includes("--sweep") ? await sweepDeleted(supabase, target) : await copyNewFiles(supabase, target));
 } else {
-  console.log("Usage:\n  npm run images -- thumbs [--apply] [--local]");
+  console.log("Usage:\n  npm run images -- thumbs [--apply] [--local]\n  npm run images -- backup [--sweep] [--local]");
   process.exitCode = 1;
 }

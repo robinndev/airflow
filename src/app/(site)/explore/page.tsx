@@ -1,186 +1,205 @@
 import Link from "next/link";
+import Form from "next/form";
 import { Caveat } from "next/font/google";
-import { AdoptCard, DropCard } from "@/components/explore/adopt-card";
-import { Scribble, Wash } from "@/components/explore/doodles";
-import { ExploreSearch } from "@/components/explore/explore-search";
-import { HeroCollage } from "@/components/explore/hero-collage";
-import { Manifesto } from "@/components/explore/manifesto";
-import { ResidentFeature } from "@/components/explore/resident-feature";
-import { RotatingWord } from "@/components/explore/rotating-word";
-import { SalonWall } from "@/components/explore/salon-wall";
-import { SectionHeading } from "@/components/explore/section-heading";
-import { StickerSheet } from "@/components/explore/sticker-sheet";
-import { StudioBoard } from "@/components/explore/studio-board";
-import { StudioSheet } from "@/components/explore/studio-sheet";
+import { Search } from "lucide-react";
+import { Suspense, type CSSProperties } from "react";
+import { HandNote, Scribble } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
+import { buttonClasses } from "@/components/ui/button";
+import { ActiveFilters, WallRail } from "@/components/wall/rail";
+import { Salon } from "@/components/wall/salon";
+import { tileSizeScript } from "@/components/wall/tile-size";
+import { getWallCatalog } from "@/lib/wall/catalog";
 import {
-  CATEGORIES,
-  POPULAR_SEARCHES,
-  PULSE,
-  getExploreData,
-  getSearchIndex,
-  type StudioStatus,
-} from "@/lib/explore";
-import { formatCompact } from "@/lib/format";
-import { MOODS } from "@/lib/palette";
+  WALL_PAGE,
+  parseWall,
+  runWall,
+  wallCounts,
+  wallFilters,
+  wallHref,
+  wallQuery,
+  type WallParams,
+} from "@/lib/wall/query";
 
-// The artist's handwriting. Only Explore uses it, so only Explore loads it.
+// The artist's handwriting, for the asides.
 const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
 
 export const metadata = {
   title: "Explore",
-  description: "Commission artists, adopt original characters and discover art made by real people.",
+  description:
+    "Every piece on Artiflow, wall to wall: art, original characters, adoptables and commissions, each hung at its own size.",
 };
 
-const container = "mx-auto w-full max-w-[1184px] px-4 sm:px-6";
+/** Masthead and controls; the wall itself runs closer to the edge on phones (more art). */
+const wide = "mx-auto w-full max-w-[1800px] px-4 lg:px-6";
+const wallWidth = "mx-auto w-full max-w-[1800px] px-2 sm:px-4 lg:px-6";
 
-const BOARD: { status: StudioStatus; label: string }[] = [
-  { status: "open", label: "Open now" },
-  { status: "soon", label: "Opening soon" },
-  { status: "closing", label: "Last slots" },
-];
+const TRY = ["fox", "pixel art", "mermaid", "chibi", "ref sheet"];
 
 /*
- * Fully prerendered: everything here is cached data. Countdowns, tabs and the
- * wall's filters are small client islands working over the shipped data.
+ * Explore: the salon wall. Everything on Artiflow hung edge to edge, each
+ * piece at its own size, as many as fit (unlike the home feed, which follows
+ * a piece through its stages). The masthead is static; the search box, the
+ * controls and the wall read the URL and stream in.
  */
-export default async function ExplorePage() {
-  const [index, data] = await Promise.all([getSearchIndex(), getExploreData()]);
-
+export default function ExplorePage(props: PageProps<"/explore">) {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader wide />
+      {/* The viewer's tile size, before the wall paints. */}
+      <script dangerouslySetInnerHTML={{ __html: tileSizeScript }} />
       <main className={`${hand.variable} overflow-x-clip pb-24`}>
-        {/* Starts under the header (transparent until scrolled), so the grain and the wash reach the top. */}
-        <section aria-labelledby="explore-heading" className="grain relative -mt-16 pt-16">
-          <Wash id="hero-wash" className="-top-24 right-[-18%] h-[130%] w-[80%] max-lg:top-[38%] max-lg:right-[-30%] max-lg:h-[70%] max-lg:w-[140%]" />
-          <div
-            className={`${container} relative grid items-center gap-10 pt-8 pb-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14 lg:pt-14 lg:pb-20`}
-          >
-            <div className="relative z-10">
-              <p className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 py-1 pr-3 pl-2 text-xs font-semibold text-ink shadow-soft backdrop-blur-sm">
-                <span aria-hidden className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-mint opacity-70" />
-                  <span className="relative inline-flex size-2 rounded-full bg-mint-dot" />
-                </span>
-                {formatCompact(PULSE.openStudios)} studios open for commissions
-              </p>
+        <section aria-labelledby="explore-heading" className={`${wide} pt-3 pb-4 sm:pt-8 sm:pb-5`}>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+            <div>
+              <p className="text-[0.6875rem] font-bold tracking-[0.16em] text-muted uppercase">Explore</p>
               <h1
                 id="explore-heading"
-                className="mt-6 font-display text-[2.75rem] leading-[0.98] font-extrabold tracking-[-0.035em] text-ink sm:text-[4rem] xl:text-[4.5rem]"
+                className="mt-1.5 font-display text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] text-ink sm:text-[3rem]"
               >
-                <span className="block">
-                  Your <RotatingWord words={["OC", "fursona", "ship", "pet", "story"]} />
-                </span>
-                <span className="block">deserves to be</span>
-                <span className="relative mt-1 inline-block font-hand text-[1.32em] leading-[0.85] font-bold tracking-normal text-ocean">
-                  drawn.
-                  <Scribble className="absolute -bottom-2 left-[-4%] w-[108%] text-mint" />
+                Everything,{" "}
+                <span className="relative inline-block font-hand text-[1.18em] leading-[0.8] font-bold tracking-normal text-ocean">
+                  wall to wall.
+                  <Scribble className="absolute -bottom-2 left-[-3%] w-[106%] text-mint" />
                 </span>
               </h1>
-              <p className="mt-7 max-w-[28rem] text-lg leading-relaxed text-muted">
-                Commission artists, adopt original characters and follow the people behind the art — every piece
-                here is made by hand.
+              <p className="mt-4 max-w-[34rem] text-[0.9375rem] text-muted max-sm:hidden">
+                Art, characters, adoptables and commissions from every studio, each hung at its own size. Nothing
+                cropped, nothing generated.
               </p>
-              <div className="relative z-30 mt-8 max-w-xl">
-                <ExploreSearch index={index} popular={POPULAR_SEARCHES} />
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-hand text-xl text-muted">try</span>
-                {POPULAR_SEARCHES.slice(0, 4).map((q) => (
+            </div>
+
+            <div className="w-full lg:max-w-[30rem]">
+              <Suspense fallback={<SearchBox />}>
+                <WallSearch searchParams={props.searchParams} />
+              </Suspense>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="font-hand text-lg text-muted">try</span>
+                {TRY.map((q) => (
                   <Link
                     key={q}
-                    href={`/explore/search?q=${encodeURIComponent(q)}`}
-                    className="rounded-full border border-border bg-surface/70 px-3 py-1 text-ink backdrop-blur-sm transition-colors hover:border-ocean/40 hover:bg-surface"
+                    href={`/explore?q=${encodeURIComponent(q)}`}
+                    prefetch={false}
+                    className="rounded-full border border-border bg-surface/70 px-2.5 py-0.5 text-[0.8125rem] text-ink transition-colors hover:border-ocean/40 hover:bg-surface"
                   >
                     {q}
                   </Link>
                 ))}
-                <Link href="/explore/popular" className="ml-1 font-semibold text-accent-strong underline-offset-4 hover:underline">
-                  or see what&apos;s trending →
-                </Link>
               </div>
             </div>
-
-            <HeroCollage pieces={data.hero} />
           </div>
         </section>
 
-        <section aria-labelledby="categories-heading" className={`${container} mt-6 sm:mt-10`}>
-          <SectionHeading
-            id="categories-heading"
-            kicker="Browse by craft"
-            title="Find your kind of art"
-            note="peel one off ✂"
-            action={{ href: "/explore/search", label: "Search everything" }}
-          />
-          <div className="mt-8">
-            <StickerSheet categories={CATEGORIES} />
-          </div>
-        </section>
-
-        <section id="studios" aria-labelledby="studios-heading" className={`${container} mt-24 scroll-mt-20 sm:mt-28`}>
-          <SectionHeading
-            id="studios-heading"
-            kicker={`${PULSE.openedToday} opened today`}
-            title="Open studios"
-            note="first come, first served!"
-            action={{ href: "/explore/commissions", label: "All open commissions" }}
-          />
-          <div className="mt-8">
-            <StudioBoard
-              label="Commission openings"
-              tabs={BOARD.map(({ status, label }) => ({
-                key: status,
-                label,
-                sheets: data.studios
-                  .filter((s) => s.status === status)
-                  .map((studio) => ({ id: studio.id, draws: studio.draws, node: <StudioSheet studio={studio} /> })),
-              }))}
-            />
-          </div>
-        </section>
-
-        {data.resident && (
-          <section aria-labelledby="resident-heading" className="grain relative mt-24 overflow-hidden bg-ice py-16 sm:mt-28 sm:py-24">
-            <Wash id="resident-wash" className="-top-1/4 -left-1/4 h-[150%] w-[80%] opacity-80" />
-            <div className={`${container} relative`}>
-              <ResidentFeature resident={data.resident} />
-            </div>
-          </section>
-        )}
-
-        <section aria-labelledby="adopts-heading" className={`${container} mt-24 sm:mt-28`}>
-          <SectionHeading
-            id="adopts-heading"
-            kicker={`${formatCompact(PULSE.adoptsThisWeek)} adopted this week`}
-            title="Characters looking for a home"
-            note="each one comes with its ref sheet ♡"
-            action={{ href: "/explore/adoptables", label: "Browse adoptables" }}
-          />
-          <div className="mt-12 grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-5 lg:grid-cols-4">
-            <DropCard drop={data.drop} className="col-span-2 lg:col-span-1 lg:row-span-2" />
-            {data.adopts.map((adopt) => (
-              <AdoptCard key={adopt.id} adopt={adopt} />
-            ))}
-          </div>
-        </section>
-
-        <section aria-labelledby="wall-heading" className={`${container} mt-24 sm:mt-28`}>
-          <SectionHeading id="wall-heading" kicker="The wall" title="Browse by palette" note="pick a color, any color">
-            <p className="mt-3 max-w-xl text-[0.9375rem] text-muted">
-              Every piece, sorted by the colors it&apos;s made of. Pick a mood, then narrow it down.
-            </p>
-          </SectionHeading>
-          <div className="mt-8">
-            <SalonWall pieces={data.wall} moods={MOODS} counts={data.moodCounts} />
-          </div>
-        </section>
-
-        <div className={`${container} mt-24 sm:mt-28`}>
-          <Manifesto artists={data.crowd} />
-        </div>
+        <Suspense fallback={<WallSkeleton />}>
+          <Wall searchParams={props.searchParams} />
+        </Suspense>
       </main>
     </>
+  );
+}
+
+async function WallSearch({ searchParams }: Pick<PageProps<"/explore">, "searchParams">) {
+  return <SearchBox params={parseWall(await searchParams)} />;
+}
+
+/** A plain GET form: the rest of the wall's filters ride along. */
+function SearchBox({ params }: { params?: WallParams }) {
+  const rest = params ? [...new URLSearchParams(wallQuery(params, { q: "" }))] : [];
+  return (
+    <Form action="/explore" role="search" className="relative">
+      {rest.map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-[1.125rem] -translate-y-1/2 text-muted" />
+      <input
+        key={params?.q}
+        type="search"
+        name="q"
+        defaultValue={params?.q}
+        aria-label="Search the wall"
+        placeholder="Search art, characters, @artists…"
+        className="h-12 w-full rounded-full border border-border bg-surface pr-4 pl-11 text-[0.9375rem] text-ink shadow-soft outline-none transition-colors placeholder:text-muted/80 focus:border-ocean"
+      />
+    </Form>
+  );
+}
+
+async function Wall({ searchParams }: Pick<PageProps<"/explore">, "searchParams">) {
+  const params = parseWall(await searchParams);
+  const { entries, now } = await getWallCatalog();
+  const found = runWall(entries, params, now);
+  const query = wallQuery(params);
+
+  return (
+    <>
+      <WallRail params={params} counts={wallCounts(entries, params)} />
+      <div className={wallWidth}>
+        <ActiveFilters params={params} total={found.length} />
+        {found.length === 0 ? (
+          <EmptyWall params={params} />
+        ) : (
+          <Salon
+            key={query}
+            query={query}
+            initial={found.slice(0, WALL_PAGE).map((entry) => entry.item)}
+            more={found.length > WALL_PAGE}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+const LOOSEN: Record<ReturnType<typeof wallFilters>[number], { label: string; changes: Partial<WallParams> }> = {
+  q: { label: "Drop the search", changes: { q: "" } },
+  show: { label: "Show everything", changes: { show: "all" } },
+  color: { label: "Any colors", changes: { color: undefined } },
+  open: { label: "Every artist", changes: { open: false } },
+};
+
+function EmptyWall({ params }: { params: WallParams }) {
+  const narrowed = wallFilters(params);
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center py-20 text-center">
+      <HandNote className="-rotate-2 text-[1.75rem]">a bare wall…</HandNote>
+      <p className="mt-3 font-display text-2xl font-extrabold tracking-tight text-ink">Nothing hanging here yet</p>
+      <p className="mt-2 text-[0.9375rem] text-muted">Loosen a filter and the wall fills back up.</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {narrowed.map((key) => (
+          <Link key={key} href={wallHref(params, LOOSEN[key].changes)} scroll={false} className={buttonClasses({ variant: "secondary" })}>
+            {LOOSEN[key].label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Tile shapes for the placeholder wall: a mix of portrait, square and landscape. */
+const GHOSTS = [0.75, 1, 1.5, 0.7, 1.33, 0.8, 1, 1.78, 0.66, 1.2, 0.75, 1, 1.5, 0.8, 0.7, 1.33, 1, 0.75, 2, 0.9, 1.25, 0.7, 1, 1.5];
+
+function WallSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="sticky top-16 z-30 border-b border-border/70 bg-canvas/90">
+        <div className={`${wide} flex h-[3.3125rem] items-center gap-2`}>
+          {[7, 4, 7, 7].map((w, i) => (
+            <span key={i} className="skeleton h-9 rounded-full bg-ice" style={{ width: `${w}rem` }} />
+          ))}
+        </div>
+      </div>
+      <div className={wallWidth}>
+        <div className="h-[3.25rem]" />
+        <ul className="salon-rows flex flex-wrap gap-1 after:grow-[999] after:content-[''] sm:gap-1.5">
+          {GHOSTS.map((ratio, i) => (
+            <li
+              key={i}
+              className="skeleton rounded-[10px] bg-ice"
+              style={{ flexGrow: ratio, flexBasis: `calc(var(--row) * ${ratio})`, aspectRatio: ratio } as CSSProperties}
+            />
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

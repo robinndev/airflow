@@ -57,5 +57,6 @@ export function artistLabels(draws: readonly DrawTag[]): { tag: DrawTag | "all";
   return [...who, ...specialties.map((s) => ({ tag: s.id, label: s.artist }))];
 }
 
-/** Explore's open studios, filtered to one tag (profile labels link here). */
-export const exploreDrawsHref = (tag: DrawTag | "all") => (tag === "all" ? "/explore#studios" : `/explore?draws=${tag}#studios`);
+/** The open studios board, filtered to one tag (profile labels link here). */
+export const exploreDrawsHref = (tag: DrawTag | "all") =>
+  tag === "all" ? "/explore/studios#studios" : `/explore/studios?draws=${tag}#studios`;

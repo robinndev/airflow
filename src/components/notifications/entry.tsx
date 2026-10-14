@@ -261,6 +261,7 @@ function Sentence({ note }: { note: AppNotification }) {
       if (status === "in_progress") return <>{who} started your {service}</>;
       if (status === "delivered") return <>{who} delivered your {service}</>;
       if (status === "expired") return <>Your quote for {service} from {who} expired</>;
+      if (note.commission?.declinedQuote) return <>{who} declined your quote for {service}</>;
       return <>{who} cancelled their request for {service}</>;
     }
     case "welcome":

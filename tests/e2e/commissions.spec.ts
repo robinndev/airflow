@@ -18,8 +18,10 @@ function admin() {
 
 const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 const artist = { handle: `e2e_${id}`, email: `e2e+${id}@artiflow.test`, password: `Teal-brush-${id}!` };
-const client = { handle: `e2e_c${id.slice(1)}`, email: `e2e+c${id}@artiflow.test`, password: `Teal-brush-${id}!`, name: `Juniper ${id.slice(0, 4)}` };
+// "k" never appears in the hex id, so the client's handle can't equal the artist's.
+const client = { handle: `e2e_k${id.slice(1)}`, email: `e2e+c${id}@artiflow.test`, password: `Teal-brush-${id}!`, name: `Juniper ${id.slice(0, 4)}` };
 const ids: string[] = [];
+let quotedId = "";
 
 test.describe.configure({ mode: "serial" });
 
@@ -40,14 +42,14 @@ test.afterAll(async () => {
   for (const userId of ids) await admin().auth.admin.deleteUser(userId);
 });
 
-async function signIn(page: Page) {
+async function signIn(page: Page, as: { handle: string; password: string } = artist) {
   await page.goto("/sign-in");
   await page.waitForFunction(() => {
     const form = document.querySelector("main form");
     return !!form && Object.keys(form).some((key) => key.startsWith("__reactProps"));
   });
-  await page.getByLabel("Email or handle").fill(artist.handle);
-  await page.getByLabel("Password", { exact: true }).fill(artist.password);
+  await page.getByLabel("Email or handle").fill(as.handle);
+  await page.getByLabel("Password", { exact: true }).fill(as.password);
   await page.getByRole("button", { name: "Enter the studio" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 }
@@ -85,6 +87,7 @@ test("a real request lands as a ticket, in the board and the ledger, and is answ
     .select("id")
     .single();
   if (error) throw error;
+  quotedId = request.id;
   const ticket = `[data-order="${request.id}"]`;
 
   await signIn(page);
@@ -124,6 +127,38 @@ test("a real request lands as a ticket, in the board and the ledger, and is answ
   await expect(lane(page, "proposal").locator(ticket)).toBeVisible();
   await page.getByRole("tab", { name: /Client's turn/ }).click();
   await expect(page.locator(ticket)).toBeVisible();
+});
+
+test("a buyer who says no to the quote says why, and the artist reads it", async ({ browser }) => {
+  // The client declines the quote from the previous test, with a reason and a note.
+  const buyer = await browser.newPage();
+  await signIn(buyer, client);
+  await buyer.goto("/requests");
+  const postcard = buyer.locator(`[data-request="${quotedId}"]`);
+  await postcard.getByRole("button", { name: "Decline the quote" }).click();
+  const why = buyer.getByRole("dialog", { name: "Why are you declining this quote?" });
+  await why.getByText("The price is more than I can pay").click();
+  await why.getByLabel(/A note for/).fill("I'm saving up, I'd love to ask again next month.");
+  await why.getByRole("button", { name: "Decline the quote" }).click();
+  await expect(why).toBeHidden();
+  await expect(postcard).toContainText("You told");
+  await buyer.close();
+
+  // The artist's notification says what happened and why, and opens the order.
+  const page = await browser.newPage();
+  await signIn(page);
+  await page.goto("/notifications");
+  const note = page.getByRole("link", { name: /declined your quote for Custom piece/ });
+  await expect(note).toBeVisible();
+  await expect(page.getByText("It's more than they can spend right now · I'm saving up, I'd love to ask again next month.")).toBeVisible();
+  await expect(note).toHaveAttribute("href", `/commissions?tab=archived&order=${quotedId}`);
+  await note.click();
+  await expect(page).toHaveURL(/tab=archived/);
+  const drawer = page.getByRole("dialog");
+  await expect(drawer).toContainText(`${client.name} cancelled: it's more than they can spend right now.`);
+  await expect(drawer).toContainText("“I'm saving up, I'd love to ask again next month.”");
+  await expect(page.locator(`[data-order="${quotedId}"]`)).toContainText("Cancelled");
+  await page.close();
 });
 
 test("visitors are asked to sign in", async ({ page }) => {

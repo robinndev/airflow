@@ -452,6 +452,39 @@ html:has(dialog[open]:modal) {
   }
 }
 
+/*
+ * Explore's salon wall: the height of a row (--row), by screen and by the
+ * viewer's tile size (`data-wall-size` on <html>, s | l, set before paint;
+ * medium when absent). Tiles take `--row × their shape` as flex-basis.
+ */
+@utility salon-rows {
+  --row: 5.75rem;
+  @media (width >= 40rem) {
+    --row: 9.5rem;
+  }
+  @media (width >= 80rem) {
+    --row: 11rem;
+  }
+  :root[data-wall-size="s"] & {
+    --row: 4.25rem;
+    @media (width >= 40rem) {
+      --row: 6.5rem;
+    }
+    @media (width >= 80rem) {
+      --row: 7.5rem;
+    }
+  }
+  :root[data-wall-size="l"] & {
+    --row: 8.5rem;
+    @media (width >= 40rem) {
+      --row: 14rem;
+    }
+    @media (width >= 80rem) {
+      --row: 17rem;
+    }
+  }
+}
+
 /* Sketchbook paper: a faint dot grid printed on the page. */
 @utility dot-paper {
   background-color: var(--paper);

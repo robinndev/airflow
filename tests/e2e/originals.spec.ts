@@ -75,6 +75,7 @@ async function filesIn(bucket: string) {
 }
 
 test("a gallery upload keeps a private, clean original and a thumb; deleting the piece takes all three", async ({ page }) => {
+  test.setTimeout(90_000); // A 6-megapixel photo: made, uploaded three ways, then compared pixel by pixel.
   const photo = await phonePhoto();
   await signIn(page);
   await page.goto(`/${artist.handle}/gallery`);

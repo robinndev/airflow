@@ -18,6 +18,8 @@ export type ImageAsset = {
    * swatches and the placeholder tint while the image loads.
    */
   palette?: string[];
+  /** Animated GIFs: a still frame (their thumb), for walls that play GIFs only on screen. */
+  still?: string;
 };
 
 export type AccentColor = "ocean" | "sky" | "mint" | "lilac";

@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import type { ServiceCategory, StyleTag } from "./listings/catalog";
 import { fetchAllAdoptables, fetchAllServices } from "./listings/server";
-import { MOODS, moodsOf, type MoodSlug } from "./palette";
+import { moodsOf, type MoodSlug } from "./palette";
 import { demoImages as art, demoPool, type PoolTheme } from "./profile/demo-images";
 import type { DrawTag } from "./profile/draws";
 import { db } from "./profile/mock-db";
@@ -651,7 +651,6 @@ export type ExploreData = {
   adopts: Adopt[];
   drop: Drop;
   wall: WallPiece[];
-  moodCounts: Record<MoodSlug, number>;
   /** Faces for the "made by humans" note. */
   crowd: ArtistRef[];
 };
@@ -687,10 +686,6 @@ export async function getExploreData(): Promise<ExploreData> {
     heroPiece("12160940", "Ice fairy", "pixiebit"),
   ];
 
-  const moodCounts = Object.fromEntries(
-    MOODS.map((m) => [m.slug, pieces.filter((p) => p.moods.includes(m.slug)).length]),
-  ) as Record<MoodSlug, number>;
-
   return {
     hero,
     studios,
@@ -705,7 +700,6 @@ export async function getExploreData(): Promise<ExploreData> {
       href: "/explore/adoptables",
     },
     wall: pieces,
-    moodCounts,
     crowd: [
       realArtist("mira"),
       poolArtist("bramblefox"),

@@ -22,12 +22,14 @@ type SiteHeaderProps = {
   handle?: string;
   /** Translucent once solid, so the page's color shows through. */
   frosted?: boolean;
+  /** Spans a wide page (Explore's wall) instead of the usual column. */
+  wide?: boolean;
 };
 
-export function SiteHeader({ overlay = false, handle, frosted = false }: SiteHeaderProps) {
+export function SiteHeader({ overlay = false, handle, frosted = false, wide = false }: SiteHeaderProps) {
   return (
     <HeaderShell overlay={overlay} frosted={frosted}>
-      <div className="mx-auto flex h-16 max-w-[1184px] items-center gap-2 px-4 sm:px-6">
+      <div className={`mx-auto flex h-16 items-center gap-2 px-4 ${wide ? "max-w-[1800px] lg:px-6" : "max-w-[1184px] sm:px-6"}`}>
         {/* Over a banner the wordmark turns white; the scrim keeps it legible. */}
         <div
           className={`flex min-w-0 items-center ${

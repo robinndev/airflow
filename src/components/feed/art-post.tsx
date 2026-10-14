@@ -104,7 +104,7 @@ export function ArtPost({
                   <PaletteChips colors={palette} />
                   {mood && (
                     <Link
-                      href="/explore#wall-heading"
+                      href={`/explore?color=${mood.slug}`}
                       title={`More ${mood.name.toLowerCase()} art`}
                       className="truncate text-xs text-muted transition-colors hover:text-ink"
                     >

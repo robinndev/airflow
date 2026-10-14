@@ -1,4 +1,5 @@
 import "server-only";
+import { CANCEL_READS, isCancelReason } from "@/lib/commissions/cancel";
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { ACCOUNT_COLUMNS, configured, toPostAuthor, type AccountRow } from "@/lib/profile/accounts";
 import { db } from "@/lib/profile/mock-db";
@@ -43,6 +44,7 @@ type Row = {
   updated_at: string;
   read_at: string | null;
   demo_post_id: string | null;
+  request_id: string | null;
   actor: AccountRow | null;
   post: PostRow | null;
   source: PostRow | null;
@@ -51,7 +53,7 @@ type Row = {
 
 const POST = "id, body, images, image_path, image_width, image_height, image_palette, author:profiles(handle, display_name)";
 const COLUMNS = [
-  "id, kind, tally, data, updated_at, read_at, demo_post_id",
+  "id, kind, tally, data, updated_at, read_at, demo_post_id, request_id",
   `actor:profiles!notifications_actor_id_fkey(${ACCOUNT_COLUMNS})`,
   `post:posts!notifications_post_id_fkey(${POST})`,
   `source:posts!notifications_source_post_id_fkey(${POST})`,
@@ -141,15 +143,27 @@ function toNotification(row: Row): AppNotification | null {
       const estimate = Number(row.data?.estimate_usd);
       // The artist hears about new, cancelled and paid requests; the buyer about everything the artist does.
       const toArtist = row.kind === "commission_request" || status === "cancelled" || status === "paid";
+      // A cancel says why (the buyer's reason and note), and opens that order in the artist's archive.
+      const reason = status === "cancelled" ? text(row.data?.cancel_reason) : "";
+      const why = isCancelReason(reason)
+        ? [CANCEL_READS[reason].replace(/^./, (c) => c.toUpperCase()), text(row.data?.cancel_note)].filter(Boolean).join(" · ")
+        : "";
       return {
         ...base,
         commission: {
           service: text(row.data?.service) || "a custom piece",
           status,
           ...(Number.isFinite(estimate) && estimate > 0 && { estimateUsd: estimate }),
+          ...(status === "cancelled" && row.data?.was_quoted === true && { declinedQuote: true }),
         },
         ...(row.kind === "commission_request" && text(row.data?.brief) && { quote: text(row.data?.brief) }),
-        href: toArtist ? "/commissions?tab=attention" : "/requests",
+        ...(why && { quote: why }),
+        href:
+          status === "cancelled" && row.request_id
+            ? `/commissions?tab=archived&order=${row.request_id}`
+            : toArtist
+              ? "/commissions?tab=attention"
+              : "/requests",
       };
     }
   }

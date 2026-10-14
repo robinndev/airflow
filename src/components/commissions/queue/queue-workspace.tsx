@@ -50,7 +50,14 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
   const tab: Tab = isTab(params.get("tab")) ? (params.get("tab") as Tab) : "all";
   const view: View = params.get("view") === "ledger" ? "ledger" : "board";
   const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?order=<id> opens that order (a notification's link); it leaves the URL when the drawer closes.
+  const linked = params.get("order");
+  const [openId, setOpenId] = useState<string | null>(linked);
+  const [seenLink, setSeenLink] = useState(linked);
+  if (linked !== seenLink) {
+    setSeenLink(linked);
+    if (linked) setOpenId(linked);
+  }
 
   useEffect(() => {
     const open = (event: Event) => setOpenId((event as CustomEvent<string>).detail);
@@ -60,7 +67,7 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
 
   // Shallow URL update: Next keeps useSearchParams in sync with history.replaceState
   // (state must be null; Next ignores calls that carry its own history state).
-  function setParam(key: "tab" | "view", value: string, fallback: string) {
+  function setParam(key: "tab" | "view" | "order", value: string, fallback: string) {
     const url = new URL(window.location.href);
     if (value === fallback) url.searchParams.delete(key);
     else url.searchParams.set(key, value);
@@ -160,7 +167,10 @@ export function QueueWorkspace({ queue }: { queue: ViewerQueue }) {
       <OrderDrawer
         order={opened}
         today={queue.today}
-        onClose={() => setOpenId(null)}
+        onClose={() => {
+          setOpenId(null);
+          if (linked) setParam("order", "", "");
+        }}
         onStep={step}
         onPatch={change}
       />

@@ -149,8 +149,10 @@ test("an artist builds a character page from their gallery", async ({ page, brow
     if ((await save.getAttribute("aria-pressed")) !== "true") await save.click();
     await expect(page.getByRole("button", { name: "Saved", pressed: true })).toBeVisible({ timeout: 1500 });
   }).toPass();
-  const { data: saved } = await admin().from("favorites").select("kind, character_id").eq("user_id", artist.id);
-  expect(saved).toEqual([expect.objectContaining({ kind: "character" })]);
+  // The button flips before the save lands: wait for the row.
+  await expect
+    .poll(async () => (await admin().from("favorites").select("kind, character_id").eq("user_id", artist.id)).data)
+    .toEqual([expect.objectContaining({ kind: "character" })]);
   await page.goto("/favorites");
   await expect(page.getByRole("link", { name: /Luna/ }).first()).toBeVisible();
 

@@ -32,7 +32,7 @@ type Tab = { key: string; label: string; sheets: Sheet[] };
 export function StudioBoard({ label, tabs }: { label: string; tabs: Tab[] }) {
   const id = useId();
   const [active, setActive] = useState(tabs[0]?.key);
-  // The URL is the state: profile labels arrive as /explore?draws=feral#studios.
+  // The URL is the state: profile labels arrive as /explore/studios?draws=feral#studios.
   const want = useSyncExternalStore(subscribe, wantedTag, () => null);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const chipsRef = useRef<HTMLDivElement>(null);

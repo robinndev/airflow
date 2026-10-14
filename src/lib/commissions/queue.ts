@@ -1,4 +1,5 @@
 import type { ImageAsset } from "@/lib/profile/types";
+import type { CancelReason } from "./cancel.ts";
 
 /*
  * The artist's commission queue (/commissions): every order from the first
@@ -59,6 +60,9 @@ export type QueueOrder = {
   orderStatus?: OrderStatus;
   /** The artist's note on the quote they sent. */
   quoteNote?: string;
+  /** Why the buyer cancelled (a real order), and what they added. */
+  cancelReason?: CancelReason;
+  cancelNote?: string;
   /** What the artist delivered. */
   delivery?: { images: ImageAsset[]; note?: string };
 };

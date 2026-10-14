@@ -35,16 +35,22 @@ export function artUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/${ART_BUCKET}/${path}`;
 }
 
-/** GIF thumbs are still frames: until walls play GIFs only on screen, GIFs are always shown whole. */
-const thumbFor = (image: StoredImage) => (image.path.endsWith(".gif") ? null : image.thumb);
+/**
+ * GIF thumbs are still frames, so the loader never swaps them in: a GIF's
+ * `src` is always the moving file, and the still rides along as `still` for
+ * walls that play GIFs only on screen (Explore).
+ */
+const isGifPath = (path: string) => path.endsWith(".gif");
 
 export function toImageAsset(image: StoredImage, alt: string): ImageAsset {
+  const gif = isGifPath(image.path);
   return {
-    src: withThumb(artUrl(image.path), thumbFor(image)),
+    src: withThumb(artUrl(image.path), gif ? null : image.thumb),
     alt,
     width: image.width,
     height: image.height,
     palette: image.palette ?? undefined,
+    ...(gif && image.thumb && { still: artUrl(thumbPathOf(image.path, image.thumb)) }),
   };
 }
 

@@ -16,6 +16,7 @@ import {
   Tag,
   type LucideIcon,
 } from "lucide-react";
+import { MOODS } from "@/lib/palette";
 import { HeaderMenu } from "./header-menu";
 
 type ExploreItem = { href: string; label: string; hint: string; icon: LucideIcon };
@@ -33,7 +34,7 @@ const SECTIONS: { title: string; items: ExploreItem[] }[] = [
   {
     title: "Shop",
     items: [
-      { href: "/explore/commissions", label: "Open commissions", hint: "Made to order", icon: Brush },
+      { href: "/explore/studios", label: "Open studios", hint: "Commissions, made to order", icon: Brush },
       { href: "/explore/adoptables", label: "Adoptables", hint: "Ready-made characters", icon: Tag },
       { href: "/explore/literatures", label: "Literatures", hint: "Stories and lore", icon: BookOpen },
       { href: "/explore/worlds", label: "Worlds", hint: "Shared universes", icon: Earth },
@@ -85,10 +86,14 @@ export function ExploreMenu() {
 
         <Link
           href="/explore"
-          className="mt-3 flex items-center justify-between rounded-[12px] bg-gradient-to-r from-ice to-ice-lilac px-3.5 py-2.5 text-sm font-semibold text-ink transition hover:brightness-[0.98]"
+          className="group/wall mt-3 flex items-center gap-3 rounded-[14px] bg-gradient-to-r from-ice to-ice-lilac p-2.5 pr-3.5 text-ink transition hover:brightness-[0.98]"
         >
-          Explore everything
-          <ArrowRight aria-hidden className="size-4 text-accent-strong" />
+          <WallThumb />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Explore the wall</span>
+            <span className="block truncate text-xs text-muted">Every piece, each at its own size</span>
+          </span>
+          <ArrowRight aria-hidden className="size-4 shrink-0 text-accent-strong transition-transform group-hover/wall:translate-x-0.5" />
         </Link>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-2">
@@ -121,5 +126,30 @@ export function ExploreMenu() {
         </div>
       </div>
     </HeaderMenu>
+  );
+}
+
+/** A tiny salon wall in paint colors: rows of pieces, each its own shape. */
+const THUMB_ROWS = [
+  [1.4, 0.8, 1],
+  [0.9, 1.6],
+  [1, 1.2, 0.7],
+];
+
+function WallThumb() {
+  return (
+    <span aria-hidden className="grid h-12 w-16 shrink-0 grid-rows-3 gap-0.5 rounded-[8px] bg-surface p-1 shadow-soft">
+      {THUMB_ROWS.map((row, r) => (
+        <span key={r} className="flex gap-0.5">
+          {row.map((grow, j) => (
+            <span
+              key={j}
+              className="rounded-[2px]"
+              style={{ flexGrow: grow, backgroundColor: MOODS[(r * 3 + j) % MOODS.length].swatches[2] }}
+            />
+          ))}
+        </span>
+      ))}
+    </span>
   );
 }

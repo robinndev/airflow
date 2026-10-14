@@ -2,7 +2,9 @@
  * Downloads the third-party demo artwork into public/demo-art/ (git-ignored),
  * and makes a `.thumb.webp` beside each file for walls and cards: the image
  * loader asks for it at small widths (src/lib/images/variants.ts).
- * Run with: npm run demo:art
+ * Runs before `npm run dev` and `npm run build` (so Vercel's builds from Git
+ * have it too; a failed download fails the build, which keeps the last good
+ * deployment live). By hand: npm run demo:art
  */
 import { mkdir, writeFile, access } from "node:fs/promises";
 import path from "node:path";

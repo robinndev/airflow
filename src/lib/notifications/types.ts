@@ -45,7 +45,8 @@ export type AppNotification = {
   piece?: { excerpt: string; image?: ImageAsset };
   /** What they wrote: a comment, a mention, a repost's note, a request's brief. */
   quote?: string;
-  commission?: { service: string; status: RequestStatus; estimateUsd?: number };
+  /** `declinedQuote`: the buyer cancelled after the artist's quote (said no to it). */
+  commission?: { service: string; status: RequestStatus; estimateUsd?: number; declinedQuote?: boolean };
   href: string;
   /** Opens this post's comments on arrival (comments, replies, mentions in comments). */
   thread?: { postId: string; authorName: string; excerpt: string };

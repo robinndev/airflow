@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import type { StoredImage } from "@/lib/art-storage";
+import { checkCancel } from "@/lib/commissions/cancel";
 import { variantFields } from "@/lib/images/schema";
 import { verifyUploads } from "@/lib/images/verify";
 import { originalUrl } from "@/lib/images/originals";
@@ -18,7 +19,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
  * waitlist) and notify the other side.
  *
  *   artist: quote, waitlist, decline · start, step, deliver · pause, archive, note
- *   buyer:  take a request back, or decline a quote
+ *   buyer:  take a request back, or decline a quote (with a reason the artist sees)
  *   team:   mark paid (`npm run orders`), until checkout exists
  */
 
@@ -63,7 +64,8 @@ async function advance(
     .maybeSingle();
   if (error) return { ok: false, error: "Couldn't save that. Try again in a moment." };
   if (!data) return { ok: false, error: "This order already moved on. Refresh to see where it stands." };
-  if (listings) await refreshListings(data.artist_id);
+  // Demo artists (no account, no artist_id) have no listings to refresh.
+  if (listings && data.artist_id) await refreshListings(data.artist_id);
   return { ok: true, viewer };
 }
 
@@ -203,7 +205,21 @@ export async function saveOrderNote(id: string, note: string): Promise<RequestRe
 
 /* -------------------------------------------------------------- the buyer */
 
-/** Takes back a request the artist hasn't answered, or declines a quote. The slot goes back. */
-export async function cancelRequest(id: string): Promise<RequestResult> {
-  return done(await advance(id, "buyer", ["pending", "waitlisted", "quoted"], { status: "cancelled" }, { listings: true }));
+/**
+ * Takes back a request the artist hasn't answered, or declines a quote. A
+ * reason is required (and a note for "something else"); the artist sees both.
+ * The slot goes back.
+ */
+export async function cancelRequest(id: string, reason: string, note = ""): Promise<RequestResult> {
+  const why = checkCancel(reason, note);
+  if (!why.ok) return why;
+  return done(
+    await advance(
+      id,
+      "buyer",
+      ["pending", "waitlisted", "quoted"],
+      { status: "cancelled", cancel_reason: why.reason, cancel_note: why.note },
+      { listings: true },
+    ),
+  );
 }

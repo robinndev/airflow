@@ -74,7 +74,7 @@ export function EmptyWall() {
         ))}
       </ul>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Link href="/explore#wall-heading" className={buttonClasses()}>
+        <Link href="/explore" className={buttonClasses()}>
           Find art in Explore
         </Link>
         <Link href="/" className={paperButton}>

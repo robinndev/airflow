@@ -213,10 +213,17 @@ test("the whole order: quote, paid (team), start, steps, delivery; the buyer fol
   await drawer.getByLabel(/A note for/).fill("Here she is! Thank you 💙");
   await drawer.getByRole("button", { name: "Deliver", exact: true }).click();
   await expect.poll(async () => (await order()).status).toBe("delivered");
-  expect(((await order()).delivery as { images: unknown[] }).images).toHaveLength(1);
+  const delivered = (await order()).delivery as { images: { original?: { bytes: number } }[] };
+  expect(delivered.images).toHaveLength(1);
+  // The file as the artist uploaded it is kept (private bucket), for the buyer to download.
+  expect(delivered.images[0].original?.bytes).toBeGreaterThan(0);
 
   await buyerPage.goto("/requests");
   await expect(buyerPage.getByText(/Arrived/).first()).toBeVisible();
+  // Downloading signs a link to the original, for the buyer only.
+  const download = buyerPage.waitForEvent("download");
+  await buyerPage.getByRole("button", { name: "Download the files" }).first().click();
+  expect((await download).suggestedFilename()).toMatch(/^comet-headshot-.+\.png$/);
 });
 
 test("declining gives the slot back; adopted leaves search", async ({ browser }) => {

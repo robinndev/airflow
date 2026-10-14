@@ -16,6 +16,7 @@ import { showToast } from "@/components/favorites/toast-events";
 import { inputClass } from "@/components/studio/fields";
 import { ListingImages } from "@/components/studio/listing-images";
 import { buttonClasses } from "@/components/ui/button";
+import { CANCEL_READS } from "@/lib/commissions/cancel";
 import type { QueueOrder } from "@/lib/commissions/queue";
 import { formatDay, formatLongDate, formatUsdExact } from "@/lib/format";
 import type { EditableImage } from "@/lib/listings/editable";
@@ -52,8 +53,21 @@ export function LiveNextStep({ order, today }: { order: QueueOrder; today: strin
   const name = order.client.name;
   const status = order.orderStatus;
 
-  if (order.archived && (status === "declined" || status === "cancelled" || status === "expired")) {
-    const why = { declined: "You declined this request.", cancelled: `${name} withdrew it.`, expired: "The quote expired before it was paid." }[status];
+  if (status === "cancelled") {
+    return (
+      <div className="rounded-[18px] bg-ice p-4 text-sm">
+        <p className="font-semibold">
+          {name} cancelled
+          {order.cancelReason ? <span className="font-normal text-muted">: {CANCEL_READS[order.cancelReason]}.</span> : "."}
+        </p>
+        {order.cancelNote && <p className="mt-2 rounded-[10px] bg-surface px-3 py-2 text-ink/85">&ldquo;{order.cancelNote}&rdquo;</p>}
+        <p className="mt-2 text-muted">The slot went back to the service. Nothing was charged.</p>
+      </div>
+    );
+  }
+
+  if (order.archived && (status === "declined" || status === "expired")) {
+    const why = { declined: "You declined this request.", expired: "The quote expired before it was paid." }[status];
     return <p className="rounded-[18px] bg-ice p-4 text-sm text-muted">{why} The slot went back to the service.</p>;
   }
 
@@ -276,8 +290,12 @@ function Deliver({ order, pending, run }: { order: QueueOrder; pending: boolean;
         if (images.length === 0) return showToast({ message: "Add the finished piece first." });
         run(
           order,
-          // Everything but the preview URL: the thumb and the original go along, to be checked and kept.
-          () => deliverOrder(order.id, { images: images.map(({ src: _src, ...image }) => image), note }),
+          // The thumb and the original go along with each file, to be checked and kept (not the preview URL).
+          () =>
+            deliverOrder(order.id, {
+              images: images.map(({ path, width, height, palette, thumb, original }) => ({ path, width, height, palette, thumb, original })),
+              note,
+            }),
           { lane: "delivered", step: "render" },
           `Delivered ${name}'s piece ✓`,
           () => setOpen(false),
