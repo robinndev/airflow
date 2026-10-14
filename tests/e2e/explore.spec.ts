@@ -37,6 +37,7 @@ test("tabs, palette, open for commissions and search narrow the wall", async ({ 
   await page.waitForURL((url) => !url.search.includes("color="));
 
   await show.getByRole("link", { name: /^Everything/ }).click();
+  await expect(show.getByRole("link", { name: /^Everything/ })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Open for commissions" }).click();
   await page.waitForURL(/open=1/);
   await expect(tiles(page).first()).toBeVisible();
