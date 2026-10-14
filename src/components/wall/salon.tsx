@@ -44,7 +44,7 @@ export function Salon({ initial, more: initialMore, query }: { initial: WallItem
   useEffect(() => {
     const el = end.current;
     if (!el || !more || status === "failed") return;
-    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && loadMore(), { rootMargin: "1600px 0px" });
+    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && loadMore(), { rootMargin: "1200px 0px" });
     observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore, more, status]);

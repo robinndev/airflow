@@ -79,7 +79,7 @@ test("saves from the feed, Explore and commissions land on the moodboard", async
   await expect(page.getByText("Saved to favorites")).toBeVisible();
 
   // A piece on Explore's wall (the heart), and a commission service.
-  await page.goto("/explore");
+  await page.goto("/explore?q=golden+hour");
   await save(page.getByRole("button", { name: /^(Un)?favorite Golden Hour$/i }));
   await page.goto("/mira/commissions");
   await save(page.getByRole("button", { name: /^(Save|Remove) Half-body illustration (to|from) favorites$/ }).first());
