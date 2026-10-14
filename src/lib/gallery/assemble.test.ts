@@ -4,8 +4,9 @@
  */
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { assembleGallery, galleryIndex, type CharacterRecord } from "./assemble.ts";
-import { cleanList, sectionsOf, slugify, uniqueSlug, type Piece } from "./types.ts";
+import type { Post } from "@/lib/profile/types";
+import { assembleGallery, galleryIndex, postPieces, type CharacterRecord } from "./assemble.ts";
+import { captionTitle, cleanList, postPieceTitle, sectionsOf, slugify, uniqueSlug, type Piece } from "./types.ts";
 
 const piece = (id: string, createdAt: string, palette: string[] = ["#112233"]): Piece => ({
   id,
@@ -131,5 +132,54 @@ describe("assembleGallery", () => {
     const index = galleryIndex(g, { handle: "luna.art", ownerId: "u1", adoptables: [] });
     assert.deepEqual(index.places.new, { characters: [{ id: "chr_1", section: "outfits" }], collections: ["col_1"] });
     assert.equal(index.places.old, undefined);
+  });
+});
+
+describe("pictures from posts", () => {
+  test("titles come from the caption's first clause, without emoji", () => {
+    assert.equal(captionTitle("Kinako's winter coat! ✨ more text"), "Kinako's winter coat");
+    assert.equal(captionTitle("🦊🦊"), "Untitled");
+    assert.equal(captionTitle("Sketch dump — part 2"), "Sketch dump");
+    assert.ok(captionTitle("x".repeat(200)).length <= 72);
+    assert.equal(postPieceTitle("Sketch dump", 1, 3), "Sketch dump (2/3)");
+    assert.equal(postPieceTitle("Sketch dump", 0, 1), "Sketch dump");
+  });
+
+  const image = (src: string) => ({ src, alt: "", width: 10, height: 10 });
+  const post = (overrides: Partial<Post>): Post => ({
+    id: "pst_1",
+    authorHandle: "luna.art",
+    kind: "wip",
+    body: "Lineart, finally",
+    media: [image("/a.png"), image("/b.png")],
+    createdAt: "2026-10-01",
+    likes: 7,
+    comments: 0,
+    ...overrides,
+  });
+
+  test("every picture of the artist's own posts becomes a piece tied to its post", () => {
+    const pieces = postPieces([post({})], "luna.art", []);
+    assert.deepEqual(
+      pieces.map((p) => [p.id, p.title, p.image.src, p.post?.stage, p.post?.href]),
+      [
+        ["pst_1-0", "Lineart (1/2)", "/a.png", "wip", "/luna.art#pst_1"],
+        ["pst_1-1", "Lineart (2/2)", "/b.png", "wip", "/luna.art#pst_1"],
+      ],
+    );
+  });
+
+  test("text posts, reposts, other people's posts and pictures already hung stay out", () => {
+    const pieces = postPieces(
+      [
+        post({ id: "pst_2", media: [] }),
+        post({ id: "pst_3", quotePostId: "pst_9" }),
+        post({ id: "pst_4", authorHandle: "someone" }),
+        post({ id: "pst_5", media: [image("/hung.png"), image("/new.png")] }),
+      ],
+      "luna.art",
+      [{ ...piece("art_1", "2026-01-01"), image: image("/hung.png") }],
+    );
+    assert.deepEqual(pieces.map((p) => p.id), ["pst_5-1"]);
   });
 });

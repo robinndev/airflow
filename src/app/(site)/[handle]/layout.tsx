@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CodeStrip } from "@/components/artists/code-sheet";
 import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileShortcutsCompact, ProfileSidebar } from "@/components/profile/profile-sidebar";
 import { ProfileSkeleton } from "@/components/profile/skeletons";
@@ -11,6 +12,7 @@ import { customizationFor } from "@/lib/customization/model";
 import { canvasData, canvasStyle } from "@/lib/customization/style";
 import { appearanceStyle, resolveAppearance } from "@/lib/profile/appearance";
 import { getFeaturedHandles, getProfile, normalizeHandle } from "@/lib/profile/queries";
+import { getViewer } from "@/lib/session";
 
 /*
  * Rendering model (Cache Components + Partial Prefetching):
@@ -84,6 +86,11 @@ async function ProfileFrame({
       >
         {custom.css && <style>{scopeCustomCss(custom.css, profile.handle)}</style>}
         <ProfileHero profile={profile} appearance={appearance} custom={custom} />
+        {profile.artist === null && (
+          <Suspense>
+            <OwnerCodeStrip handle={profile.handle} />
+          </Suspense>
+        )}
 
         <div
           className={`mx-auto mt-8 grid max-w-[1184px] gap-6 px-4 sm:px-6 lg:px-8 ${
@@ -104,6 +111,17 @@ async function ProfileFrame({
           <main className="min-w-0">{children}</main>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Your own profile, while you're a collector: the strip that keeps asking for an artist code. */
+async function OwnerCodeStrip({ handle }: { handle: string }) {
+  const viewer = await getViewer();
+  if (viewer?.handle !== handle) return null;
+  return (
+    <div className="mx-auto mt-6 max-w-[1184px] px-4 sm:px-6 lg:px-8">
+      <CodeStrip />
     </div>
   );
 }

@@ -10,10 +10,12 @@ import { setDesk } from "./desk";
 import { FieldError, fieldClass } from "./form-ui";
 
 /**
- * "Got an invite from another artist?" — a sealed envelope that opens into a
- * code field. Codes are single-use (see src/lib/auth/invites.ts). A good code reveals who invited you, with their note, and
- * pins their polaroid on your canvas. Invite links (`/join?invite=CODE`)
- * arrive with the envelope already open and checked.
+ * "Got an artist code?" — a sealed envelope that opens into a code field.
+ * Codes are single-use and give artist access, the right to sell (see
+ * src/lib/auth/invites.ts and src/lib/artists/). It's optional: without one
+ * you join as a collector and can add a code later. A good code reveals whose
+ * it is and pins their polaroid on your canvas. Invite links
+ * (`/join?invite=CODE`) arrive with the envelope already open and checked.
  */
 export function InviteEnvelope({
   initialCode = "",
@@ -87,8 +89,8 @@ export function InviteEnvelope({
       >
         <Envelope open={false} />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-ink">Got an invite from another artist?</span>
-          <span className="mt-0.5 block text-xs text-muted">Open it to add their code. Totally optional.</span>
+          <span className="block text-sm font-semibold text-ink">Got an artist code?</span>
+          <span className="mt-0.5 block text-xs text-muted">It lets you sell commissions and adoptables. No code? Join anyway, and add one later.</span>
         </span>
         <ChevronDown aria-hidden className="size-4 shrink-0 text-muted transition-transform group-hover/env:translate-y-0.5" />
       </button>
@@ -102,16 +104,16 @@ export function InviteEnvelope({
         <Envelope open />
         <div className="min-w-0 flex-1 pt-1">
           <label htmlFor={`${id}-code`} className="block text-sm font-semibold text-ink">
-            {invite ? "You're invited!" : "Invite code"}
+            {invite ? "You're in as an artist!" : "Artist code"}
           </label>
           <p className="mt-0.5 text-xs text-muted">
-            {invite ? "Their code checks out." : "It's on the invite the artist sent you."}
+            {invite ? "Their code checks out: your studio opens when you join." : "From the artist who invited you."}
           </p>
         </div>
         <button
           type="button"
           onClick={close}
-          aria-label="Remove invite code"
+          aria-label="Remove artist code"
           className="-mt-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-ink [&_svg]:size-4"
         >
           <X aria-hidden />
@@ -170,7 +172,7 @@ function InviteCard({ invite, onChange }: { invite: Invite; onChange: () => void
           />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold tracking-[0.12em] text-muted uppercase">Invited by</p>
+          <p className="text-xs font-semibold tracking-[0.12em] text-muted uppercase">Artist code from</p>
           <p className="truncate font-display font-bold text-ink">
             {inviter.displayName} <span className="font-sans text-sm font-medium text-muted">@{inviter.handle}</span>
           </p>
@@ -178,7 +180,7 @@ function InviteCard({ invite, onChange }: { invite: Invite; onChange: () => void
         </div>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-muted">
-        Invites work once: this one becomes yours when you join.{" "}
+        Codes work once: this one becomes yours when you join.{" "}
         <button type="button" onClick={onChange} className="font-semibold text-ocean-ink hover:underline">
           Use a different code
         </button>
@@ -188,7 +190,7 @@ function InviteCard({ invite, onChange }: { invite: Invite; onChange: () => void
 }
 
 /** A little envelope: the flap flips up and the letter slides out when it opens. */
-function Envelope({ open }: { open: boolean }) {
+export function Envelope({ open }: { open: boolean }) {
   return (
     <span aria-hidden className="relative mt-1 block h-12 w-[4.5rem] shrink-0">
       <span className="absolute inset-0 z-0 rounded-[5px] bg-[color-mix(in_oklab,var(--paper)_84%,var(--paper-muted))]" />

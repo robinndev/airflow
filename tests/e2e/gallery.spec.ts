@@ -8,8 +8,9 @@ import { localSupabase } from "./support/local-supabase";
  * page; an artist adds art, gives their OC a page with that art as the
  * cover, adds more art straight onto the character, moves a piece to another
  * section, puts a piece in a collection, saves the character to their
- * moodboard and deletes the page (the art stays). Row level security keeps
- * other accounts out of it.
+ * moodboard and deletes the page (the art stays). Every picture an artist
+ * posts hangs in their gallery too, tied to the post. Row level security
+ * keeps other accounts out of it.
  */
 
 function admin() {
@@ -24,9 +25,10 @@ function newAccount() {
 
 const artist = newAccount();
 const stranger = newAccount();
+const poster = newAccount();
 
 test.beforeAll(async () => {
-  for (const account of [artist, stranger]) {
+  for (const account of [artist, stranger, poster]) {
     const { data, error } = await admin().auth.admin.createUser({
       email: account.email,
       password: account.password,
@@ -39,17 +41,17 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  for (const account of [artist, stranger]) if (account.id) await admin().auth.admin.deleteUser(account.id);
+  for (const account of [artist, stranger, poster]) if (account.id) await admin().auth.admin.deleteUser(account.id);
 });
 
-async function signIn(page: Page) {
+async function signIn(page: Page, account = artist) {
   await page.goto("/sign-in");
   await page.waitForFunction(() => {
     const form = document.querySelector("main form");
     return !!form && Object.keys(form).some((key) => key.startsWith("__reactProps"));
   });
-  await page.getByLabel("Email or handle").fill(artist.handle);
-  await page.getByLabel("Password", { exact: true }).fill(artist.password);
+  await page.getByLabel("Email or handle").fill(account.handle);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Enter the studio" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
 }
@@ -223,4 +225,54 @@ test("other accounts can't write to someone's gallery", async () => {
     .from("artworks")
     .insert({ title: "Not mine", image: { path: `${artist.id}/gallery/${crypto.randomUUID()}.png`, width: 10, height: 10 } });
   expect(foreignFile.error).not.toBeNull();
+});
+
+test("every picture an artist posts hangs in their gallery, tied to the post", async ({ page }) => {
+  const pieces = async () =>
+    (await admin().from("artworks").select("title, post_id, post_image").eq("owner_id", poster.id).order("post_image")).data ?? [];
+
+  await signIn(page, poster);
+  await page.goto(`/${poster.handle}`);
+  const composer = page.getByRole("form", { name: "Create a post" });
+  await expect(composer).toBeVisible();
+  await composer.getByLabel("Post text").fill("Night market, lineart pass");
+  await composer.getByText("WIP", { exact: true }).click();
+  await composer.locator('input[type="file"]').setInputFiles([
+    { name: "market-1.png", mimeType: "image/png", buffer: await picture(30, 60, 120) },
+    { name: "market-2.png", mimeType: "image/png", buffer: await picture(200, 90, 60, 800, 600) },
+  ]);
+  await expect(composer.getByRole("button", { name: "Remove image 2" })).toBeVisible();
+  await composer.getByRole("button", { name: "Post", exact: true }).click();
+
+  // One piece per picture, titled from the caption, tied to the post.
+  await expect.poll(async () => (await pieces()).map((p) => p.title)).toEqual(["Night market (1/2)", "Night market (2/2)"]);
+  const [{ post_id: postId }] = await pieces();
+  expect(postId).toBeTruthy();
+
+  await page.goto(`/${poster.handle}/gallery`);
+  const first = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "View Night market (1/2)" }) });
+  await expect(first).toBeVisible();
+  await expect(first.getByRole("link", { name: "From a post" })).toHaveAttribute("href", `/${poster.handle}#${postId}`);
+  await expect(first.getByText("WIP", { exact: true })).toBeVisible();
+
+  // The profile counts them.
+  await expect(page.getByRole("link", { name: "Gallery, 2 artworks" }).first()).toBeAttached();
+
+  // Taking one out of the gallery keeps the post.
+  await page.getByRole("button", { name: "Options for Night market (2/2)" }).click();
+  await page.getByRole("button", { name: "Take it out of the gallery" }).click();
+  await page.getByRole("button", { name: "Take it out", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View Night market (2/2)" })).toHaveCount(0);
+  await expect.poll(async () => (await pieces()).length).toBe(1);
+  const { count: posts } = await admin().from("posts").select("id", { count: "exact", head: true }).eq("id", postId!);
+  expect(posts).toBe(1);
+
+  // Deleting the post takes its pictures off the gallery.
+  await page.goto(`/${poster.handle}`);
+  await page.getByRole("button", { name: "Post options" }).first().click();
+  await page.getByRole("button", { name: "Delete post" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect.poll(async () => (await pieces()).length).toBe(0);
+  await page.goto(`/${poster.handle}/gallery`);
+  await expect(page.getByText("No artworks yet")).toBeVisible();
 });

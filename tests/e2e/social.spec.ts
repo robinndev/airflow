@@ -113,9 +113,13 @@ test("following moves the count, survives a reload and fills the Following feed"
   await expect(page.getByRole("button", { name: `Unfollow @${artist.handle}` })).toHaveAttribute("aria-pressed", "true");
   await expect(stat(page, "Followers")).toHaveText("1");
 
-  // Their posts reach the Following feed, and the fan's own profile counts them.
-  await page.goto("/?feed=following");
-  await expect(post(page)).toBeVisible();
+  // Their posts reach the Following feed, and the fan's own profile counts them. The post was
+  // written straight to the database (no app action to refresh the feed's cache), so the first
+  // visit can serve the cached feed: look again until the refreshed one arrives.
+  await expect(async () => {
+    await page.goto("/?feed=following");
+    await expect(post(page)).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
   await page.goto(`/${fan.handle}`);
   await expect(stat(page, "Following")).toHaveText("1");
 

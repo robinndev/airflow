@@ -5,6 +5,7 @@ import type { StoredImage } from "@/lib/art-storage";
 import { removeFiles, verifyUploads } from "@/lib/images/verify";
 import { adoptableInput, serviceInput, type AdoptableInput, type ServiceInput } from "@/lib/listings/schema";
 import { LISTINGS_TAG, adoptablesTag, profileTag, servicesTag } from "@/lib/profile/queries";
+import { getViewerAccess } from "@/lib/artists/server";
 import { getViewer, type Viewer } from "@/lib/session";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -21,6 +22,8 @@ type ServiceStatus = "open" | "waitlist" | "closed";
 type AdoptStatus = "available" | "reserved" | "sold";
 
 const SIGN_IN = { ok: false, error: "Sign in to manage your studio." } as const;
+// Listing something new takes artist access (the database checks it too: services and adoptables policies).
+const NEEDS_CODE: StudioResult = { ok: false, error: "Selling takes an artist code. Add yours at the top of your studio." };
 const NOT_MIGRATED = new Set(["42P01", "PGRST205"]);
 
 function refresh(viewer: Viewer, what: "services" | "adoptables") {
@@ -56,6 +59,7 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
   const parsed = serviceInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   const s = parsed.data;
+  if (!s.id && !(await getViewerAccess())?.artist) return NEEDS_CODE;
 
   const supabase = await createSupabaseServer();
   const { data: before } = s.id
@@ -213,6 +217,7 @@ export async function saveAdoptable(input: AdoptableInput): Promise<StudioResult
   const parsed = adoptableInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   const a = parsed.data;
+  if (!a.id && !(await getViewerAccess())?.artist) return NEEDS_CODE;
 
   const supabase = await createSupabaseServer();
   const { data: before } = a.id

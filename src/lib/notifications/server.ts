@@ -111,6 +111,14 @@ function toNotification(row: Row): AppNotification | null {
     case "follow":
     case "invite_joined":
       return actor && { ...base, href: `/${actor.handle}` };
+    case "became_artist": {
+      const number = Number(row.data?.number);
+      return { ...base, ...(Number.isFinite(number) && number > 0 && { artist: { number } }), href: "/codes" };
+    }
+    case "artist_codes": {
+      const codes = Number(row.data?.count);
+      return { ...base, artist: { codes: Number.isFinite(codes) && codes > 0 ? codes : 1, weekly: row.data?.weekly === true }, href: "/codes" };
+    }
     case "repost": {
       if (!actor || !about) return null;
       const note = source?.body.trim();

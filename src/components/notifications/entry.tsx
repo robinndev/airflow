@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Sparkle } from "@/components/explore/doodles";
 import type { ReactNode } from "react";
 import { openCommentsAt } from "@/components/social/events";
 import { useFollow } from "@/components/social/store";
@@ -12,6 +13,7 @@ import {
   DateStamp,
   HeartStamps,
   KIND_INK,
+  PassStub,
   PenCircle,
   Print,
   RequestTicket,
@@ -125,6 +127,11 @@ function NoteEntry({
             <Avatar image={{ ...note.actor.avatar, alt: "" }} size={roomy ? 48 : 40} className={roomy ? "size-12" : "size-10"} />
             <PenCircle rotate={wobble * 20} />
           </span>
+        ) : note.kind === "became_artist" || note.kind === "artist_codes" ? (
+          // From the studio itself: a sparkle in the margin.
+          <span className={`grid place-items-center rounded-full bg-lilac/15 ${roomy ? "size-12" : "size-10"}`}>
+            <Sparkle className="size-5" />
+          </span>
         ) : null}
       </span>
 
@@ -189,6 +196,19 @@ function Keepsake({ note, wobble, box }: { note: AppNotification; wobble: number
   switch (note.kind) {
     case "invite_joined":
       return <AdmitOne rotate={wobble * 1.5} />;
+    case "became_artist":
+      return <PassStub number={note.artist?.number} rotate={wobble * 2} />;
+    case "artist_codes":
+      return (
+        <span className="relative">
+          <AdmitOne rotate={wobble * 1.5} />
+          {(note.artist?.codes ?? 1) > 1 && (
+            <span className="absolute -top-2 -right-2 grid size-5 place-items-center rounded-full bg-lilac text-[0.625rem] font-bold text-white shadow-soft">
+              {note.artist?.codes}
+            </span>
+          )}
+        </span>
+      );
     case "commission_request":
       return note.commission && <RequestTicket estimateUsd={note.commission.estimateUsd} status={note.commission.status} rotate={wobble} />;
     case "request_update":
@@ -240,7 +260,27 @@ function Sentence({ note }: { note: AppNotification }) {
         </>
       );
     case "invite_joined":
-      return <>{who} joined Artiflow with your invite</>;
+      return <>{who} used your artist code</>;
+    case "became_artist":
+      return who ? (
+        <>
+          <b className="font-semibold text-on-paper">You&apos;re an Artiflow artist now ✦</b> thanks to {who}&apos;s artist code
+        </>
+      ) : (
+        <b className="font-semibold text-on-paper">You&apos;re an Artiflow artist now ✦</b>
+      );
+    case "artist_codes": {
+      const n = note.artist?.codes ?? 1;
+      return note.artist?.weekly ? (
+        <>
+          <b className="font-semibold text-on-paper">Your weekly Flow+ artist code</b> is here, to let one more artist in
+        </>
+      ) : (
+        <>
+          <b className="font-semibold text-on-paper">{n === 1 ? "An artist code" : `${n} artist codes`}</b> arrived for you to hand on
+        </>
+      );
+    }
     case "commission_request":
       return note.commission?.status === "waitlisted" ? (
         <>

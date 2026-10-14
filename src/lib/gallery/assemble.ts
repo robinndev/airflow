@@ -1,9 +1,10 @@
-import type { Adoptable } from "@/lib/profile/types";
+import type { Adoptable, Post } from "@/lib/profile/types";
 import {
   characterHref,
   characterPalette,
   collectionHref,
   isSection,
+  postPieceTitle,
   type Character,
   type CharacterSection,
   type Collection,
@@ -52,6 +53,34 @@ const newestFirst = (a: Piece, b: Piece) => b.createdAt.localeCompare(a.createdA
 /** The cover first, then newest first. */
 const coverFirst = (coverId: string | undefined) => (a: Piece, b: Piece) =>
   Number(b.id === coverId) - Number(a.id === coverId) || newestFirst(a, b);
+
+/**
+ * The pictures of an artist's own posts as gallery pieces, for the demo
+ * artists (a real account's are rows, hung by a trigger). Reposts stay out,
+ * and so does a picture already hung as a piece of its own.
+ */
+export function postPieces(posts: Post[], handle: string, hung: Piece[]): Piece[] {
+  const taken = new Set(hung.map((p) => p.image.src));
+  return posts.flatMap((post) => {
+    if (post.authorHandle !== handle || post.quotePostId || post.media.length === 0) return [];
+    return post.media.flatMap((image, i): Piece[] =>
+      taken.has(image.src)
+        ? []
+        : [
+            {
+              id: `${post.id}-${i}`,
+              ownerHandle: handle,
+              title: postPieceTitle(post.body, i, post.media.length),
+              image,
+              kind: "personal",
+              likes: post.likes,
+              createdAt: post.createdAt,
+              post: { id: post.id, stage: post.kind, href: `/${handle}#${post.id}` },
+            },
+          ],
+    );
+  });
+}
 
 export function assembleGallery(input: {
   pieces: Piece[];

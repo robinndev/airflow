@@ -1,9 +1,11 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
+import { CodesGift } from "@/components/artists/codes-gift";
 import { FavoritesSession } from "@/components/favorites/favorites-session";
 import { MessagesMenu, MessagesSession } from "@/components/messages/messages-menu";
 import { SocialSession } from "@/components/social/social-session";
+import { getViewerCodeNews } from "@/lib/artists/server";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
 import { AccountMenu } from "./account-menu";
@@ -85,7 +87,7 @@ function CircleButton({
 
 async function ViewerNav() {
   const viewer = await getViewer();
-  const profile = viewer ? await getProfile(viewer.handle) : null;
+  const [profile, codes] = viewer ? await Promise.all([getProfile(viewer.handle), getViewerCodeNews()]) : [null, null];
 
   if (!viewer || !profile) {
     return (
@@ -129,8 +131,12 @@ async function ViewerNav() {
           displayName: profile.displayName,
           avatar: profile.avatar,
           isPro: profile.plan === "pro",
+          isArtist: profile.artist !== null,
+          codesLeft: codes?.toGive ?? 0,
         }}
       />
+      {/* New artist codes: a little gift, once. */}
+      {codes && codes.fresh > 0 && <CodesGift fresh={codes.fresh} weekly={codes.weekly} invitedBy={codes.invitedBy} />}
     </>
   );
 }

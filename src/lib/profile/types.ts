@@ -87,6 +87,12 @@ export type SocialLink = {
 export type ArtistProfile = {
   id: string;
   handle: string;
+  /**
+   * Artist access (an artist code): who can sell commissions and adoptables.
+   * `null` is a collector, who browses, collects and commissions. Absent when
+   * the read didn't ask (lists, a database without the column): treat as unknown.
+   */
+  artist?: { since: string; invitedBy?: string } | null;
   displayName: string;
   pronouns?: string;
   headline: string;
@@ -284,6 +290,8 @@ export type Post = {
   comments: number;
   /** Marketplace card attached to the post (a service or an adoptable). */
   embed?: PostEmbed;
+  /** A milestone the post celebrates, drawn by the app: the Artist Pass of someone who just became an artist. */
+  milestone?: { kind: "artist_pass"; since: string; number?: number; invitedBy?: string };
   /** Repost: the post this one pins (a real post's uuid or a demo `pst_` id). The note is optional. */
   quotePostId?: string;
   /** Demo data only: a made-up first comment, shown as the start of the thread. */

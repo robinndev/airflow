@@ -17,7 +17,8 @@ import { PreviewToggle } from "./preview-toggle";
  * per request inside <Suspense> while the rest of the profile stays static.
  */
 
-export async function ProfileActions({ handle }: { handle: string }) {
+/** `sells`: false for a collector (no artist access), who has no Commission button. */
+export async function ProfileActions({ handle, sells = true }: { handle: string; sells?: boolean }) {
   const viewer = await getViewer();
 
   if (viewer?.handle === handle) {
@@ -48,9 +49,11 @@ export async function ProfileActions({ handle }: { handle: string }) {
           <MessageCircle aria-hidden />
           Message
         </Link>
-        <Link href={`/${handle}/commissions`} className={buttonClasses({ variant: "soft" })}>
-          Commission
-        </Link>
+        {sells && (
+          <Link href={`/${handle}/commissions`} className={buttonClasses({ variant: "soft" })}>
+            Commission
+          </Link>
+        )}
       </>
     );
   }
@@ -62,12 +65,11 @@ export async function ProfileActions({ handle }: { handle: string }) {
     <>
       <FollowButton handle={handle} initial={following} />
       <MessageButton handle={handle} />
-      <Link
-        href={`/${handle}/commissions`}
-        className={buttonClasses({ variant: "soft" })}
-      >
-        Commission
-      </Link>
+      {sells && (
+        <Link href={`/${handle}/commissions`} className={buttonClasses({ variant: "soft" })}>
+          Commission
+        </Link>
+      )}
       {previewing && <PreviewToggle enabled />}
     </>
   );

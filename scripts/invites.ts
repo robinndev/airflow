@@ -1,8 +1,11 @@
 /**
- * Invites are granted by the team, to specific artists, who pass them on.
+ * Artist codes are granted by the team, to specific artists, who pass them on.
+ * Holding codes makes you an artist too (a founding artist).
  *
- *   npm run invites -- grant @handle [count] ["why"]   new single-use codes
+ *   npm run invites -- grant @handle [count] ["why"]   new single-use artist codes
  *   npm run invites -- list @handle                    what they hold, and who used each
+ *   npm run invites -- artist @handle                  give artist access by hand (no code)
+ *   npm run invites -- collector @handle               take it back (their listings stay; they can't add new ones)
  *
  * Uses the Supabase secret key from .env.local (`vercel env pull .env.local`).
  */
@@ -23,7 +26,7 @@ if (command === "grant" && handle) {
   const count = Number(rest[0] ?? 1);
   const { data, error } = await supabase.rpc("grant_invites", { handle, how_many: count, why: rest[1] ?? null });
   if (error) throw new Error(error.message);
-  console.log(`Granted ${data.length} invite${data.length === 1 ? "" : "s"} to @${handle}:`);
+  console.log(`Granted ${data.length} artist code${data.length === 1 ? "" : "s"} to @${handle} (now an artist):`);
   for (const code of data as string[]) console.log(`  ${code}`);
 } else if (command === "list" && handle) {
   const { data: profile } = await supabase.from("profiles").select("id").eq("handle", handle).maybeSingle();
@@ -35,12 +38,20 @@ if (command === "grant" && handle) {
     .order("created_at")
     .returns<Row[]>();
   if (error) throw new Error(error.message);
-  if (data.length === 0) console.log(`@${handle} holds no invites.`);
+  const { data: access } = await supabase.from("profiles").select("artist_since").eq("id", profile.id).maybeSingle();
+  console.log(`@${handle}: ${access?.artist_since ? `artist since ${String(access.artist_since).slice(0, 10)}` : "collector"}`);
+  if (data.length === 0) console.log(`@${handle} holds no artist codes.`);
   for (const row of data) {
     const status = row.redeemed ? `used by @${row.redeemed.handle}` : row.redeemed_at ? "used" : "unused";
     console.log(`  ${row.code}  ${status}${row.note ? `  (${row.note})` : ""}`);
   }
+} else if ((command === "artist" || command === "collector") && handle) {
+  const { data, error } = await supabase.rpc("set_artist_access", { handle, artist: command === "artist" });
+  if (error) throw new Error(error.message);
+  console.log(data ? `@${handle} is an artist (since ${String(data).slice(0, 10)}).` : `@${handle} is a collector now.`);
 } else {
-  console.log("Usage:\n  npm run invites -- grant @handle [count] [\"why\"]\n  npm run invites -- list @handle");
+  console.log(
+    "Usage:\n  npm run invites -- grant @handle [count] [\"why\"]\n  npm run invites -- list @handle\n  npm run invites -- artist @handle\n  npm run invites -- collector @handle",
+  );
   process.exitCode = 1;
 }

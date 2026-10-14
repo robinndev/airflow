@@ -9,7 +9,8 @@ import type { ArtistProfile } from "@/lib/profile/types";
 export function ProfileSidebar({ profile }: { profile: ArtistProfile }) {
   return (
     <div className="grid gap-4">
-      <CommissionsCard profile={profile} />
+      {/* A collector (no artist access) doesn't sell: no commissions card. */}
+      {profile.artist !== null && <CommissionsCard profile={profile} />}
       {profile.adopts && <AdoptsCard profile={profile} />}
       {profile.links.length > 0 && <LinksCard profile={profile} />}
       <GalleryCard profile={profile} />
@@ -250,18 +251,20 @@ export function ProfileShortcutsCompact({ profile }: { profile: ArtistProfile })
 
   return (
     <nav aria-label={`${profile.displayName}'s shortcuts`} className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <Link href={`/${handle}/commissions`} className={tile}>
-          <span className="grid size-10 shrink-0 place-items-center rounded-input bg-ice text-accent-strong">
-            <Brush aria-hidden className="size-[1.125rem]" />
-          </span>
-          <span className="min-w-0">
-            <span className="block font-display text-sm font-bold text-ink">Commissions</span>
-            <span className="block truncate text-xs text-muted">
-              {hasNoServices(profile) ? "Not open yet" : `${statusLabel} · from ${formatUsd(commissions.startingPriceUsd)}`}
+      <div className={`grid gap-3 ${profile.artist !== null ? "grid-cols-2" : ""}`}>
+        {profile.artist !== null && (
+          <Link href={`/${handle}/commissions`} className={tile}>
+            <span className="grid size-10 shrink-0 place-items-center rounded-input bg-ice text-accent-strong">
+              <Brush aria-hidden className="size-[1.125rem]" />
             </span>
-          </span>
-        </Link>
+            <span className="min-w-0">
+              <span className="block font-display text-sm font-bold text-ink">Commissions</span>
+              <span className="block truncate text-xs text-muted">
+                {hasNoServices(profile) ? "Not open yet" : `${statusLabel} · from ${formatUsd(commissions.startingPriceUsd)}`}
+              </span>
+            </span>
+          </Link>
+        )}
         <Link href={`/${handle}/gallery`} className={tile}>
           <span className="relative size-10 shrink-0 overflow-hidden rounded-input bg-ice">
             {gallery.preview[0] && (

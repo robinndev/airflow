@@ -40,6 +40,9 @@ test.beforeAll(async () => {
     if (error) throw error;
     ids.push(data.user.id);
   }
+  // Selling takes artist access (an artist code); the team can also give it by hand.
+  const { error } = await admin().rpc("set_artist_access", { handle: artist.handle, artist: true });
+  if (error) throw error;
 });
 
 test.afterAll(async () => {

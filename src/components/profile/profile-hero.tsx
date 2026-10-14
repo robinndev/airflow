@@ -10,6 +10,7 @@ import type { Customization } from "@/lib/customization/model";
 import { nameStyle } from "@/lib/customization/style";
 import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
+import { ArtistMark, CollectorMark } from "@/components/artists/artist-mark";
 import { AvailabilityBadge } from "./availability-badge";
 import { FollowerCount } from "./follow-button";
 import { CommissionStatusPill } from "./commission-status-pill";
@@ -79,6 +80,7 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
                 >
                   {profile.displayName}
                 </h1>
+                <ArtistMark profile={profile} />
               </div>
               <p data-part="handle" className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-muted">
                 <span className="font-medium text-ink/80">@{profile.handle}</span>
@@ -88,13 +90,14 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
                     <span>{profile.pronouns}</span>
                   </>
                 )}
+                <CollectorMark profile={profile} />
               </p>
             </div>
           </div>
 
           <div data-part="actions" className="flex flex-wrap items-center gap-2 md:pb-1">
             <Suspense fallback={<ActionsPlaceholder />}>
-              <ProfileActions handle={profile.handle} />
+              <ProfileActions handle={profile.handle} sells={profile.artist !== null} />
             </Suspense>
           </div>
         </div>
@@ -124,14 +127,17 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
               </ul>
             )}
             <ul data-part="meta" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
-              <li>
-                {/* Availability is the headline status; commission details live in the sidebar. */}
-                {profile.availability ? (
-                  <AvailabilityBadge handle={profile.handle} note={profile.availability.note} />
-                ) : (
-                  <CommissionStatusPill status={profile.commissions.status} />
-                )}
-              </li>
+              {/* Collectors don't sell, so they have no commission status. */}
+              {profile.artist !== null && (
+                <li>
+                  {/* Availability is the headline status; commission details live in the sidebar. */}
+                  {profile.availability ? (
+                    <AvailabilityBadge handle={profile.handle} note={profile.availability.note} />
+                  ) : (
+                    <CommissionStatusPill status={profile.commissions.status} />
+                  )}
+                </li>
+              )}
               {profile.location && (
                 <li className="inline-flex items-center gap-1.5">
                   <MapPin aria-hidden className="size-4" />

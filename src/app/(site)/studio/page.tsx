@@ -4,8 +4,10 @@ import { Caveat } from "next/font/google";
 import { Suspense } from "react";
 import { HandNote, Scribble } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
+import { CodeSheet } from "@/components/artists/code-sheet";
 import { StudioDesk } from "@/components/studio/studio-desk";
 import { getAdoptables, getProfile, getServices } from "@/lib/profile/queries";
+import { getViewerAccess } from "@/lib/artists/server";
 import { getViewer } from "@/lib/session";
 
 // The artist's handwriting, for the margin notes.
@@ -65,12 +67,29 @@ export default function StudioPage() {
 async function Desk() {
   const viewer = await getViewer();
   if (!viewer) redirect("/sign-in?next=/studio");
-  const [profile, services, adoptables] = await Promise.all([
+  const [profile, services, adoptables, access] = await Promise.all([
     getProfile(viewer.handle),
     getServices(viewer.handle),
     getAdoptables(viewer.handle),
+    getViewerAccess(),
   ]);
   if (!profile) redirect("/join/handle?next=/studio");
+
+  // Selling takes artist access: without it, the studio is the code sheet.
+  if (!access?.artist) {
+    return (
+      <div className="mt-8 space-y-6">
+        <CodeSheet handle={viewer.handle} />
+        {(services.length > 0 || adoptables.length > 0) && (
+          <StudioDesk
+            artist={{ handle: profile.handle, name: profile.displayName, avatar: profile.avatar }}
+            services={services}
+            adoptables={adoptables}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

@@ -1,5 +1,5 @@
 import type { AdoptStatus } from "@/lib/listings/catalog";
-import type { Artwork, ImageAsset } from "@/lib/profile/types";
+import type { Artwork, ImageAsset, PostKind } from "@/lib/profile/types";
 
 /*
  * The gallery: everything an artist shows, organized three ways.
@@ -52,7 +52,25 @@ export const LIMITS = {
 export type Piece = Artwork & {
   description?: string;
   tags?: string[];
+  /**
+   * A picture from one of the artist's posts: hung when the post went up,
+   * gone when it's deleted. Saving it saves the post.
+   */
+  post?: { id: string; stage: PostKind; href: string };
 };
+
+/**
+ * A post's title, as written on a print: the caption's first clause, without
+ * emoji. Mirrors `private.caption_title()` in *_post_pictures_in_gallery.sql.
+ */
+export function captionTitle(body: string) {
+  const title = (body.split(/[\n,.!?—]/)[0] ?? "").replace(/\p{Extended_Pictographic}|\uFE0F|\u200D/gu, "").trim().slice(0, 72).trim();
+  return title || "Untitled";
+}
+
+/** "Sketch dump" for a single picture, "Sketch dump (2/3)" for one of several. */
+export const postPieceTitle = (body: string, index: number, count: number) =>
+  count > 1 ? `${captionTitle(body)} (${index + 1}/${count})` : captionTitle(body);
 
 /** Where a character's adoption listing is, and how it stands. */
 export type AdoptLink = {

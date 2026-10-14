@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HandNote } from "@/components/explore/doodles";
+import { ArtistPass } from "@/components/artists/artist-pass";
 import { PostOwnerMenu } from "@/components/profile/post-owner-menu";
 import { commentsTarget, repostTarget } from "@/components/social/targets";
 import { Avatar } from "@/components/ui/avatar";
@@ -10,7 +11,9 @@ import { PostReactions } from "./post-reactions";
 import { STAGES } from "./stages";
 
 /** Palette of whatever a text-only post carries, for the room light and the like splash. */
-export function notePalette({ embed, quote }: FeedEntry): string[] {
+export function notePalette({ embed, quote, post, author }: FeedEntry): string[] {
+  // The pass is lit by the artist's own picture.
+  if (post.milestone) return author.avatar.palette ?? [];
   if (embed?.type === "service") return embed.service.examples[0]?.palette ?? [];
   if (embed?.type === "adoptable") return embed.artwork.image.palette ?? [];
   return quote?.post.media[0]?.palette ?? [];
@@ -24,8 +27,9 @@ export function notePalette({ embed, quote }: FeedEntry): string[] {
 export function StudioNote({ entry, canManage = false }: { entry: FeedEntry; canManage?: boolean }) {
   const { post, author, embed, quote } = entry;
   const { icon: Icon } = STAGES.update;
-  const attachment =
-    embed?.type === "service" ? (
+  const attachment = post.milestone?.kind === "artist_pass" ? (
+    <ArtistPass pass={{ handle: author.handle, name: author.displayName, avatar: author.avatar, ...post.milestone }} />
+  ) : embed?.type === "service" ? (
       <CommissionTicket embed={embed} />
     ) : embed?.type === "adoptable" ? (
       <AdoptableCard embed={embed} />
@@ -48,7 +52,7 @@ export function StudioNote({ entry, canManage = false }: { entry: FeedEntry; can
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[0.625rem] font-bold tracking-[0.18em] text-muted uppercase">
             <Icon aria-hidden className="size-3.5" />
-            {quote ? "Reposted" : "Studio note"}
+            {quote ? "Reposted" : post.milestone ? "New artist" : "Studio note"}
             <span aria-hidden>·</span>
             <time dateTime={post.createdAt} title={formatLongDate(post.createdAt)}>
               {formatShortDate(post.createdAt)}

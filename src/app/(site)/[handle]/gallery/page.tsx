@@ -53,7 +53,7 @@ async function Gallery({ params }: Pick<PageProps<"/[handle]/gallery">, "params"
   return (
     <section className={hand.variable}>
       <div className="flex flex-wrap items-end justify-between gap-x-4">
-        <SectionHeader handle={handle} title="Gallery" description="Characters, collections and every finished piece." />
+        <SectionHeader handle={handle} title="Gallery" description="Characters, collections and every piece, the pictures from posts included." />
         <div className="mb-5 flex flex-wrap gap-2">
           <OwnerButton ownerId={ownerId} dialog={{ type: "add-art" }} className={buttonClasses({ size: "sm" })}>
             <ImagePlus aria-hidden />
@@ -112,7 +112,7 @@ async function Gallery({ params }: Pick<PageProps<"/[handle]/gallery">, "params"
       </ShowFor>
 
       <section aria-labelledby="gallery-pieces" id="pieces" className="scroll-mt-24">
-        <SectionLabel id="gallery-pieces" title="Every piece" count={pieces.length} hint="Newest first. Click one to see it whole." />
+        <SectionLabel id="gallery-pieces" title="Every piece" count={pieces.length} hint="Newest first, pictures from posts included. Click one to see it whole." />
         <GalleryWall
           pieces={pieces}
           labels={labels}
@@ -121,7 +121,7 @@ async function Gallery({ params }: Pick<PageProps<"/[handle]/gallery">, "params"
           empty={
             <div className="rounded-card border border-dashed border-border bg-surface px-6 py-14 text-center">
               <p className="font-display text-lg font-bold text-ink">No artworks yet</p>
-              <p className="mt-1 text-sm text-muted">Finished pieces, characters and collections will show up here.</p>
+              <p className="mt-1 text-sm text-muted">Pictures from posts and pieces added here will show up here.</p>
               <OwnerButton ownerId={ownerId} dialog={{ type: "add-art" }} className={buttonClasses({ className: "mt-5" })}>
                 <ImagePlus aria-hidden />
                 Add your first piece

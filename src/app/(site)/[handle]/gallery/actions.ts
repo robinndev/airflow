@@ -162,16 +162,17 @@ export async function deleteArtwork(handle: string, id: string): Promise<Gallery
   if (!z.uuid().safeParse(id).success) return fail("That piece isn't there anymore.");
 
   const supabase = await createSupabaseServer();
-  // Takes it off its characters and collections too (on delete cascade).
+  // Takes it off its characters and collections too (on delete cascade). A
+  // post's picture only leaves the gallery: the post keeps it, files and all.
   const { data, error } = await supabase
     .from("artworks")
     .delete()
     .eq("id", id)
     .eq("owner_id", viewer.id)
-    .select("image")
-    .maybeSingle<{ image: StoredImage }>();
+    .select("*")
+    .maybeSingle<{ image: StoredImage; post_id?: string | null }>();
   if (error || !data) return fail("Couldn't delete that piece.");
-  await removeFiles([data.image]);
+  if (!data.post_id) await removeFiles([data.image]);
 
   updateTag(galleryTag(handle));
   updateTag(WALL_TAG);

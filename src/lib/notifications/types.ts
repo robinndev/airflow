@@ -17,7 +17,11 @@ export type NotificationKind =
   | "repost"
   | "invite_joined"
   | "commission_request"
-  | "request_update";
+  | "request_update"
+  /** You got artist access (from someone's artist code, or the team). */
+  | "became_artist"
+  /** Artist codes arrived to hand on (from the team, for joining, or Flow+'s weekly one). */
+  | "artist_codes";
 
 /** A commission request's state when the notice was written ("accepted" is from before quotes existed). */
 export type RequestStatus =
@@ -47,6 +51,8 @@ export type AppNotification = {
   quote?: string;
   /** `declinedQuote`: the buyer cancelled after the artist's quote (said no to it). */
   commission?: { service: string; status: RequestStatus; estimateUsd?: number; declinedQuote?: boolean };
+  /** Artist access and codes: your artist number, how many codes arrived, whether it's Flow+'s weekly one. */
+  artist?: { number?: number; codes?: number; weekly?: boolean };
   href: string;
   /** Opens this post's comments on arrival (comments, replies, mentions in comments). */
   thread?: { postId: string; authorName: string; excerpt: string };

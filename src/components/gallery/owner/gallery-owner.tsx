@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRightLeft, Ellipsis, LoaderCircle, Pencil, Star, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRightLeft, ArrowUpRight, Ellipsis, LoaderCircle, Pencil, Star, Trash2, X } from "lucide-react";
 import { useId, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { deleteArtwork, moveToSection, removeFrom, setCover } from "@/app/(site)/[handle]/gallery/actions";
 import { useViewerId } from "@/components/favorites/store";
@@ -165,17 +166,21 @@ function PieceMenu({ piece, handle, context }: { piece: Piece; handle: string; c
       >
         {confirming ? (
           <div className="p-2">
-            <p className="text-sm font-semibold">Delete “{piece.title}”?</p>
-            <p className="mt-0.5 text-xs text-muted">It leaves every character and collection. This can&apos;t be undone.</p>
+            <p className="text-sm font-semibold">{piece.post ? `Take “${piece.title}” out of the gallery?` : `Delete “${piece.title}”?`}</p>
+            <p className="mt-0.5 text-xs text-muted">
+              {piece.post
+                ? "It leaves every character and collection. The post stays on your profile."
+                : "It leaves every character and collection. This can't be undone."}
+            </p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => run(() => deleteArtwork(handle, piece.id), `Deleted “${piece.title}”`)}
+                onClick={() => run(() => deleteArtwork(handle, piece.id), piece.post ? `Took “${piece.title}” out of the gallery` : `Deleted “${piece.title}”`)}
                 className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-button bg-danger px-3 text-xs font-semibold text-white disabled:opacity-70 [&_svg]:size-3.5"
               >
                 {pending && <LoaderCircle aria-hidden className="animate-spin" />}
-                Delete
+                {piece.post ? "Take it out" : "Delete"}
               </button>
               <button type="button" onClick={() => setConfirming(false)} className="h-8 flex-1 rounded-button border border-border text-xs font-semibold text-ink hover:bg-ice">
                 Keep
@@ -244,9 +249,15 @@ function PieceMenu({ piece, handle, context }: { piece: Piece; handle: string; c
                 Take it off {context.type === "character" ? context.name : "this collection"}
               </button>
             )}
+            {piece.post && (
+              <Link href={piece.post.href} className={item} onClick={() => document.getElementById(menuId)?.hidePopover()}>
+                <ArrowUpRight aria-hidden />
+                Open the post
+              </Link>
+            )}
             <button type="button" className={`${item} text-danger hover:bg-danger/8`} onClick={() => setConfirming(true)}>
               <Trash2 aria-hidden />
-              Delete piece
+              {piece.post ? "Take it out of the gallery" : "Delete piece"}
             </button>
           </>
         )}

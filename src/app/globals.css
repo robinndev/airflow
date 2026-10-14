@@ -1149,3 +1149,40 @@ html:has(dialog[open]:modal) {
     animation: none;
   }
 }
+
+/* The artist welcome (artist-welcome.tsx): confetti falling through the
+   pass's table, and the pass swinging in on its lanyard. Both sit behind
+   motion-safe: in the markup. */
+@keyframes confetti {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 18px 34rem;
+    rotate: 600deg;
+  }
+}
+
+@keyframes pass-swing {
+  0% {
+    opacity: 0;
+    translate: 0 -3rem;
+    rotate: -16deg;
+  }
+  45% {
+    opacity: 1;
+    rotate: 7deg;
+  }
+  70% {
+    rotate: -3deg;
+  }
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Heart } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Heart } from "lucide-react";
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useFavorite } from "@/components/favorites/store";
 import { Lightbox } from "@/components/profile/post-media";
@@ -122,7 +123,9 @@ function Tile({
   menu?: ReactNode;
   priority: boolean;
 }) {
-  const { saved, toggle } = useFavorite({ kind: "art", id: piece.id, title: piece.title });
+  // A post's picture is the post: saving it here saves the post, as the feed's bookmark does.
+  const { saved, toggle } = useFavorite(piece.post ? { kind: "post", id: piece.post.id, title: piece.title } : { kind: "art", id: piece.id, title: piece.title });
+  const stage = piece.post && (piece.post.stage === "wip" || piece.post.stage === "sketch") ? piece.post.stage : null;
   const ratio = piece.image.width / piece.image.height;
   const note =
     piece.kind === "commission"
@@ -168,6 +171,15 @@ function Tile({
             </span>
           )}
         </span>
+        {piece.post && (
+          <Link
+            href={piece.post.href}
+            className="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-paper/95 px-2 py-0.5 text-[0.6875rem] font-bold text-on-paper shadow-soft transition-colors hover:bg-paper"
+          >
+            From a post
+            <ArrowUpRight aria-hidden className="size-3" />
+          </Link>
+        )}
       </span>
       <button
         type="button"
@@ -181,7 +193,16 @@ function Tile({
         <Heart aria-hidden className={`size-3.5 ${saved ? "animate-pop fill-current" : ""}`} />
         {piece.likes + (saved ? 1 : 0) > 0 && formatCompact(piece.likes + (saved ? 1 : 0))}
       </button>
-      {menu && <span className="absolute top-2 left-2">{menu}</span>}
+      {(menu || stage) && (
+        <span className="absolute top-2 left-2 flex items-center gap-1.5">
+          {menu}
+          {stage && (
+            <span className="pointer-events-none rotate-2 rounded-[2px] bg-paper px-1.5 py-0.5 font-hand text-[0.875rem] leading-none font-semibold text-on-paper shadow-soft">
+              {stage === "wip" ? "WIP" : "sketch"}
+            </span>
+          )}
+        </span>
+      )}
     </li>
   );
 }

@@ -250,8 +250,12 @@ export async function submitCommissionRequest(
   if (!viewer) return { ok: false, error: "Sign in to send a request, so the artist can answer you." };
   if (viewer.handle === handle) return { ok: false, error: "That's your own service." };
   const admin = createSupabaseAdmin();
-  const { data: artist } = isDemo ? { data: null } : await admin.from("profiles").select("id").eq("handle", handle).maybeSingle();
+  const { data: artist } = isDemo
+    ? { data: null }
+    : await admin.from("profiles").select("*").eq("handle", handle).maybeSingle<{ id: string; artist_since?: string | null }>();
   if (!isDemo && !artist) return { ok: false, error: "That artist doesn't exist anymore." };
+  // Only artists (artist access, from an artist code) take commissions; `undefined` is a database without the column.
+  if (artist?.artist_since === null) return { ok: false, error: `@${handle} doesn't take commissions on Artiflow.` };
 
   const { data: sent, error } = await admin.from("commission_requests").insert({
     buyer_id: viewer.id,

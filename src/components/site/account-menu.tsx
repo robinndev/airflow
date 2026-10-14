@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, Store, UserRound, Wallet } from "lucide-react";
+import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, Store, Ticket, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
 import { UnreadMessages } from "@/components/messages/messages-menu";
@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import type { ImageAsset } from "@/lib/profile/types";
 
 type AccountMenuProps = {
-  viewer: { handle: string; displayName: string; avatar: ImageAsset; isPro: boolean } | null;
+  viewer: { handle: string; displayName: string; avatar: ImageAsset; isPro: boolean; isArtist: boolean; codesLeft: number } | null;
 };
 
 const MENU_ID = "account-menu";
@@ -69,6 +69,19 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
               <Link href="/studio" className={item}>
                 <Store aria-hidden />
                 Your studio
+              </Link>
+              <Link href="/codes" className={item}>
+                <Ticket aria-hidden />
+                {viewer.isArtist ? "Artist codes" : "Have an artist code?"}
+                {viewer.isArtist ? (
+                  viewer.codesLeft > 0 && (
+                    <span className="ml-auto rounded-full bg-lilac/12 px-2 py-0.5 text-[0.6875rem] font-semibold text-lilac-ink tabular-nums">
+                      {viewer.codesLeft} to give
+                    </span>
+                  )
+                ) : (
+                  <span className="ml-auto rounded-full bg-lilac/12 px-2 py-0.5 text-[0.6875rem] font-semibold text-lilac-ink">Sell</span>
+                )}
               </Link>
               <Link href="/commissions" className={item}>
                 <Brush aria-hidden />

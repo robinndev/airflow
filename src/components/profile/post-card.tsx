@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { Ellipsis, Pin, Repeat2 } from "lucide-react";
+import { ArtistPass } from "@/components/artists/artist-pass";
 import { PinnedReference } from "@/components/feed/note-embeds";
 import { commentsTarget, repostTarget } from "@/components/social/targets";
 import { Avatar } from "@/components/ui/avatar";
@@ -96,6 +97,12 @@ export function PostCard({
       {post.quoted && (
         <div className="px-5 pt-5 pb-2">
           <PinnedReference quote={post.quoted} />
+        </div>
+      )}
+
+      {post.milestone?.kind === "artist_pass" && (
+        <div className="dot-paper mx-3 mt-4 rounded-[14px] bg-[size:14px_14px] py-6 sm:mx-5">
+          <ArtistPass pass={{ handle: author.handle, name: author.displayName, avatar: author.avatar, ...post.milestone }} />
         </div>
       )}
 

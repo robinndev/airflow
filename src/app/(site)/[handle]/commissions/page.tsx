@@ -28,6 +28,27 @@ async function Commissions({ params }: Pick<PageProps<"/[handle]/commissions">, 
   ]);
   if (!profile) return null;
   const { commissions } = profile;
+  const first = profile.displayName.split(" ")[0];
+
+  // A collector (no artist access) doesn't sell here: no services, no custom requests.
+  if (profile.artist === null) {
+    return (
+      <section aria-labelledby="services-heading">
+        <SectionHeader handle={handle} title="Commissions" description={`${first} collects and commissions art here.`} />
+        <Suspense>
+          <OwnerNote handle={handle} empty collector />
+        </Suspense>
+        <div className="rounded-card border border-dashed border-border bg-surface px-6 py-12 text-center">
+          <h3 id="services-heading" className="font-display text-lg font-bold text-ink">
+            {first} doesn&apos;t take commissions on Artiflow
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+            Selling here takes an artist code, which artists hand on to artists they trust.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="services-heading">
@@ -70,10 +91,20 @@ async function Commissions({ params }: Pick<PageProps<"/[handle]/commissions">, 
   );
 }
 
-/** The artist sees where to list and manage services. */
-async function OwnerNote({ handle, empty }: { handle: string; empty: boolean }) {
+/** The artist sees where to list and manage services; a collector, where to add an artist code. */
+async function OwnerNote({ handle, empty, collector = false }: { handle: string; empty: boolean; collector?: boolean }) {
   const viewer = await getViewer();
   if (viewer?.handle !== handle) return null;
+  if (collector) {
+    return (
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card bg-ice px-4 py-3 text-sm">
+        <span className="text-ink">Want to take commissions? Selling starts with an artist code.</span>
+        <Link href="/codes" className={buttonClasses({ size: "sm" })}>
+          Add your artist code
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-card bg-ice px-4 py-3 text-sm">
       <span className="text-ink">

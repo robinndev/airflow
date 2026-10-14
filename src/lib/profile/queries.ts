@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { fetchGallerySummary } from "@/lib/gallery/server";
 import { fetchAdoptablesByHandle, fetchServicesByHandle } from "@/lib/listings/server";
 import { summarizeServices } from "@/lib/listings/slots";
 import { withFollowCounts, withLikeCounts } from "@/lib/social";
@@ -25,6 +26,8 @@ export const profileTag = (handle: string) => `profile:${handle}`;
 export const userTag = (userId: string) => `user:${userId}`;
 export const postsTag = (handle: string) => `posts:${handle}`;
 export const artworksTag = (handle: string) => `artworks:${handle}`;
+/** A gallery (pieces, characters, collections); the gallery's Server Actions invalidate it. */
+export const galleryTag = (handle: string) => `gallery:${handle}`;
 export const servicesTag = (handle: string) => `services:${handle}`;
 export const adoptablesTag = (handle: string) => `adoptables:${handle}`;
 /** Everything discovery lists (search, Explore, trending): any listing change invalidates it. */
@@ -61,13 +64,23 @@ export function normalizeHandle(handle: string) {
 export async function getProfile(handle: string): Promise<ArtistProfile | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(profileTag(handle), servicesTag(handle), adoptablesTag(handle));
+  cacheTag(profileTag(handle), servicesTag(handle), adoptablesTag(handle), galleryTag(handle), postsTag(handle));
 
-  const demo = db.profiles.find((p) => p.handle === handle);
-  const profile = demo ?? (await withListings(await fetchAccount(handle)));
+  const found = db.profiles.find((p) => p.handle === handle);
+  // The demo artists all have artist access (since they "joined").
+  const demo = found && { ...found, artist: found.artist ?? { since: found.joinedAt } };
+  const profile = demo ?? (await withGallery(await withListings(await fetchAccount(handle))));
   if (!profile) return null;
   const adopts = demo ? db.adoptables.filter((a) => a.ownerHandle === handle) : await fetchAdoptablesByHandle(handle);
   return (await withFollowCounts([{ ...profile, adopts: adoptSummary(adopts) }]))[0];
+}
+
+/** A real account's gallery shortcut and "Artworks" count come from its gallery (posts' pictures included). */
+async function withGallery(profile: ArtistProfile | null): Promise<ArtistProfile | null> {
+  if (!profile) return null;
+  const summary = await fetchGallerySummary(profile.handle).catch(() => null);
+  if (!summary) return profile;
+  return { ...profile, gallery: summary, stats: { ...profile.stats, artworks: summary.total } };
 }
 
 /** A real account's commission card comes from its services: most open status, slots, cheapest price. */

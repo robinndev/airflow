@@ -1,3 +1,4 @@
+import { ArtistWelcomeHost } from "@/components/artists/artist-welcome";
 import { FavoritesToast } from "@/components/favorites/favorites-toast";
 import { ChatWindow } from "@/components/messages/chat-window";
 
@@ -10,6 +11,8 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
       <FavoritesToast />
       {/* Messages open over any page and stay open across pages (the header and "Message" buttons open it). */}
       <ChatWindow />
+      {/* "Welcome to the artists!": raised when an artist code goes through, wherever it was typed. */}
+      <ArtistWelcomeHost />
     </div>
   );
 }

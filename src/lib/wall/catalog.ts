@@ -243,7 +243,37 @@ export async function getWallCatalog(): Promise<{ entries: WallEntry[]; now: num
 
   /* Real accounts. */
   const realArt = new Map(artworks.map((row) => [row.id, row]));
+  // Posts' pictures hang in galleries too: on the wall they stay one post
+  // tile. The feed's own list has the recent posts; older ones come from here.
+  const inFeed = new Set(feed.map(({ post }) => post.id));
+  const postPictures = new Map<string, { row: (typeof artworks)[number]; images: ImageAsset[] }>();
+  for (const row of artworks.toSorted((a, b) => (a.post_image ?? 0) - (b.post_image ?? 0))) {
+    if (!row.post_id || inFeed.has(row.post_id)) continue;
+    const entry = postPictures.get(row.post_id) ?? { row, images: [] };
+    entry.images.push(toImageAsset(row.image, row.title));
+    postPictures.set(row.post_id, entry);
+  }
+  for (const [postId, { row, images }] of postPictures) {
+    const owner = toArtistProfile(row.owner);
+    const stage = row.post?.kind;
+    add(
+      {
+        id: `post:${postId}`,
+        kind: "post",
+        title: row.title.replace(/ \(\d+\/\d+\)$/, ""),
+        images,
+        artist: artistOf(owner),
+        href: `/${owner.handle}#${postId}`,
+        likes: 0,
+        createdAt: row.created_at,
+        ...((stage === "wip" || stage === "sketch") && { stage }),
+        save: { kind: "post", id: postId },
+      },
+      stage ?? "",
+    );
+  }
   for (const row of artworks) {
+    if (row.post_id) continue;
     const owner = toArtistProfile(row.owner);
     const piece = toPiece(row, owner.handle);
     add(

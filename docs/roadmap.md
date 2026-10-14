@@ -56,7 +56,7 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | ↳ **Artist invite codes** | "Got an invite from another artist?" at sign-up; invite links; who brought whom | **Prototype (UI)** | Request, 2026-10-10. Code entry, invite links and the inviter reveal are built on mock codes. Where codes come from and what they unlock are open. See the [brief](#brief-artist-invite-codes). |
 | Artist profile | Banner, identity, links, post feed + composer, free vs Pro appearance | Prototype | `/[handle]`. Pro gating in `resolveAppearance()`. |
 | ↳ **What you draw: artist categories** | Sign-up asks "What do you draw?" (Humans, Anthro / furry, Humanoids, Ferals, Ponies; several or all); Edit profile adds what you make (OC design, concept art, backgrounds, chibi, pixel art, emotes, ref sheets, animation). The profile shows them as labels ("Furry artist", "OC designer", "Draws it all"); Explore's open studios filter by them, and each label opens that filter | **Built** | Request (Sabrina), 2026-10-11. `profiles.draws` (enum `draw_tag`), list in `src/lib/profile/draws.ts`. Explore's studios are demo data, so the filter runs over them until real services exist. See the [brief](#brief-what-you-draw-artist-categories). |
-| Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | **Built (real)**, partly | Request, 2026-10-12. `/{handle}/gallery` with characters, collections and every piece (Supabase `artworks`, `characters`, `collections`). Upload up to 12 at once (AI check), titles, personal / commission for @client, tags. **Not yet:** content tags (their own [brief](#brief-content-rating-mature-art-hidden-until-you-click)), visibility, reordering, "add from your posts". See the [brief](#brief-the-gallery-characters-and-collections). |
+| Portfolio & gallery | Upload, tags, credits, content warnings, visibility, ordering | **Built (real)**, partly | Request, 2026-10-12. `/{handle}/gallery` with characters, collections and every piece (Supabase `artworks`, `characters`, `collections`). Upload up to 12 at once (AI check), titles, personal / commission for @client, tags. **Every picture you post hangs in your gallery too** (2026-10-14), tied to its post. **Not yet:** content tags (their own [brief](#brief-content-rating-mature-art-hidden-until-you-click)), visibility, reordering. See the [brief](#brief-the-gallery-characters-and-collections). |
 | Characters (OCs) | Character page: lore, refs, gallery, creator, credits | **Built (first pass)** | 2026-10-12. `/{handle}/characters/{slug}`: a reference sheet (cover, colors, species, pronouns, designed by / kept by, personality, tags), story, art in sections; saved on their own to favorites; linked to their adoption listing. **Not yet:** art by other artists on your OC, ownership transfer and history (needs the license decision), characters in Explore and search. See the [brief](#brief-the-gallery-characters-and-collections). |
 | Adoptable listings | Create/edit listing; flatsale, auction, offer; available / reserved / adopted | **Built (real)**; checkout waits | Request, 2026-10-12. Artists list ready-made characters from `/studio` (pictures, name, species, fixed price, what comes with it) and set Available / On hold / Adopted in one click. Buyers see them on `/{handle}/adoptables` with a ready-made sheet ("pay and it's yours", no request) whose buy button says checkout opens soon. Fixed price only; auctions and offers stay in Phase 3. See the [brief](#brief-listings-and-discovery). |
 | Commission services | Services with examples, price, turnaround, ToS; request form | **Built (real)**; payment waits | Request, 2026-10-12. Artists create and edit services from `/studio` with a live preview of the sheet buyers see: examples (up to 6, AI check), category, styles, description, **packages** (e.g. Sketch / Lineart / Full color, each with a price and what it adds), turnaround in days, **slots**, licenses and add-ons. Buyers pick a package in the request dialog; the request stores it. Per-artist terms of service for real accounts aren't editable yet. See the [brief](#brief-listings-and-discovery). |
@@ -641,6 +641,20 @@ This matches the blueprint (§2 "OC sheets: name, lore, species, personality, re
 - **Demo:** Pebble's fox OC **Kinako** (13 pieces across every section), Kai's adoptables **Pip** and **Marsh** as characters linked to their listings, and Mira's collections "Quiet Worlds" and "After dark".
 - Tests: `tests/e2e/gallery.spec.ts` (visitor; artist builds a character page; other accounts can't write) and `src/lib/gallery/assemble.test.ts`.
 
+### Pictures from posts (2026-10-14)
+
+The project lead: the gallery is the showcase, so every image you post must be in the gallery too, tied to its post.
+
+- When an image post goes up, a database trigger hangs **one piece per picture**, titled from the caption ("Night market (1/2)"). Older image posts were hung by the same migration (`*_post_pictures_in_gallery.sql`).
+- The piece **shares the post's files** and keeps its date and stage. A WIP or sketch gets a pencilled "WIP" / "sketch" tag, and every such piece links back with "From a post". It's a full piece: it can go on characters and in collections, and become a cover.
+- **Deleting the post** removes its pieces. **Taking a piece out of the gallery** keeps the post and its files.
+- **Every stage** goes in, as asked ("every image post"): finished, WIP, sketch, update. **Reposts** stay out: they're someone else's art.
+- Saving one of these pieces saves **the post**, so a picture has one heart whether you meet it in the feed or in the gallery.
+- On Explore's wall a post stays **one tile**. Older posts that the feed no longer lists now reach the wall through their pieces.
+- Real accounts' **profile count and gallery preview** now come from their gallery, these pieces included.
+- Demo artists' posts hang in their galleries at read time (`postPieces()`).
+- A full gallery (2,000 pieces) never blocks a post: its pictures just stay off the gallery.
+
 ### Decisions taken while building (open to change)
 
 | Question | What we did |
@@ -654,12 +668,12 @@ This matches the blueprint (§2 "OC sheets: name, lore, species, personality, re
 
 - **Art by other artists on your character:** a delivered commission shown on the buyer's OC, credited to the artist. This comes with the [commission flow](#brief-commission-flow-request--proposal--payment--delivery) (its step 6 already plans it).
 - **Ownership transfer and history:** when an adoptable sells, the character moves to the buyer. Blocked on the license, ownership and transfer decision.
-- **Arranging and filling:** drag to reorder pieces and characters, and "add from your posts", so you don't upload again.
+- **Arranging:** drag to reorder pieces and characters.
 - **Content tags on pieces:** see the content rating brief.
 - **Discovery:** characters in Explore and search.
 - **Notifications:** "someone saved your character" (the notifications session offered to add the kind).
-- **Profile count:** the profile's gallery count and preview from real pieces (those files belong to the listings work right now).
-- **Needs:** the `gallery` migration applied to production.
+- **Opting a post out:** a "Keep this one off my gallery" switch in the composer, if artists ask (today you take it out afterwards).
+- **Needs:** the `post_pictures_in_gallery` migration applied to production (the `gallery` one is there).
 
 ---
 
@@ -987,6 +1001,7 @@ Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead c
 | 2026-10-14 | Project lead: "in production the old images stopped showing on sign-in and elsewhere, only the alt text. Fix it." | **Fixed.** Production had been deployed from a Git push, and Git builds never had the demo art (it isn't in the repo). Redeployed with it, then made every build fetch it (`prebuild`, checked on a preview build): 0 broken images on sign-in, Explore, a real profile and the feed. Artists' own uploads were fine (served straight from Supabase). |
 | 2026-10-13 | Is the commission working, does a request reach the artist's board? Integrate the board for real ("make it work properly"); allow choosing add-ons when creating a service; the ticks show a stray dot and feel slow. | **Built:** the whole order on real data, from the artist's board and the buyer's postcards: request → quote (price, date, note, expiry) → paid → sketch → lineart → flats → render → delivered (files + note), plus waitlist, decline, cancel, expiry; notifications at each step. The board shows only real orders once there are any. **Decided:** with no payments provider, orders stop at "Awaiting payment"; the team marks test orders paid (`npm run orders`). Add-ons were already editable in the service editor (Add-ons block). Fixed the ticks: no more dot (a round line cap showing under the hidden cross), and the cross draws in 150ms instead of ~450ms. **Needs:** the `listings` and `commission_orders` migrations applied to production. |
 | 2026-10-13 | Make My requests real; remove the mocked requests and the mocked commissions from the boards. Note what's still missing: checkout, email, revision rounds, editable terms for real artists, and the open decision on whether a delivery frees its slot. | **Done:** `/requests` and `/commissions` show real data only (the sample requests and sample orders were removed, with empty states pointing at search and at the studio). Requests to the demo artists are stored too, so everything a buyer sends is real; visitors are sent to sign in before filling in a request. Unpriced custom pieces show "Quote" instead of $0. **Noted** in the commission flow brief ("Still to build") and in Pending decisions (the slot on delivery). **Needs:** the `requests_to_demo_artists` migration applied to production. |
+| 2026-10-14 | Project lead: the gallery is the showcase; every image post I make must also hang in the gallery, tied to the post. | **Built:** [pictures from posts](#pictures-from-posts-2026-10-14). A trigger hangs one piece per picture (old posts included), titled from the caption and linked "From a post", with a WIP / sketch tag. Deleting the post removes them; taking one out of the gallery keeps the post. The profile's gallery count and preview are real now. **Needs:** the `post_pictures_in_gallery` migration applied to production. |
 
 ## Pending decisions
 

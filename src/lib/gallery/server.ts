@@ -1,6 +1,7 @@
 import "server-only";
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
 import { ACCOUNT_COLUMNS, configured, type AccountRow } from "@/lib/profile/accounts";
+import type { PostKind } from "@/lib/profile/types";
 import { createSupabasePublic } from "@/lib/supabase/server";
 import type { CharacterRecord, CollectionRecord } from "./assemble";
 import { isSection, type Piece } from "./types";
@@ -22,6 +23,10 @@ export type ArtworkRow = {
   tags: string[];
   image: StoredImage;
   created_at: string;
+  /** Pictures hung by a post (absent on a database without that migration). */
+  post_id?: string | null;
+  post_image?: number | null;
+  post?: { kind: PostKind } | null;
 };
 
 type CharacterRow = {
@@ -53,6 +58,18 @@ type CollectionRow = {
 };
 
 export const ARTWORK_COLUMNS = "id, owner_id, title, description, kind, client, tags, image, created_at";
+const POST_COLUMNS = "post_id, post_image, post:posts!artworks_post_id_fkey(kind)";
+
+/**
+ * Artwork reads with the post a piece came from. A database without the
+ * post-pictures migration (no `post_id`, Postgres 42703, or no relationship,
+ * PGRST200) reads without it instead of failing.
+ */
+async function withPostColumns<R extends { error: { code: string } | null }>(run: (columns: string) => PromiseLike<R>): Promise<R> {
+  const result = await run(`${ARTWORK_COLUMNS}, ${POST_COLUMNS}`);
+  if (result.error?.code === "42703" || result.error?.code === "PGRST200") return run(ARTWORK_COLUMNS);
+  return result;
+}
 const CHARACTER_COLUMNS =
   "id, slug, name, tagline, species, pronouns, story, traits, tags, palette, designer, cover_artwork_id, adoptable_id, created_at, character_art(artwork_id, section)";
 const COLLECTION_COLUMNS = "id, slug, title, description, cover_artwork_id, created_at, collection_art(artwork_id)";
@@ -73,6 +90,7 @@ export function toPiece(row: ArtworkRow, ownerHandle: string): Piece {
     tags: row.tags,
     likes: 0,
     createdAt: row.created_at,
+    ...(row.post_id && { post: { id: row.post_id, stage: row.post?.kind ?? "finished", href: `/${ownerHandle}#${row.post_id}` } }),
   };
 }
 
@@ -82,13 +100,15 @@ export async function fetchGalleryByHandle(handle: string) {
   if (!configured()) return empty;
   const supabase = createSupabasePublic();
   const [artworks, characters, collections] = await Promise.all([
-    supabase
-      .from("artworks")
-      .select(`${ARTWORK_COLUMNS}, ${OWNER}`)
-      .eq("owner.handle", handle)
-      .order("created_at", { ascending: false })
-      .limit(2000)
-      .returns<ArtworkRow[]>(),
+    withPostColumns((columns) =>
+      supabase
+        .from("artworks")
+        .select(`${columns}, ${OWNER}`)
+        .eq("owner.handle", handle)
+        .order("created_at", { ascending: false })
+        .limit(2000)
+        .returns<ArtworkRow[]>(),
+    ),
     supabase
       .from("characters")
       .select(`${CHARACTER_COLUMNS}, ${OWNER}`)
@@ -144,6 +164,20 @@ export async function fetchGalleryByHandle(handle: string) {
   };
 }
 
+/** How many pieces a real account's gallery has, and the newest three: the profile's shortcut. */
+export async function fetchGallerySummary(handle: string) {
+  if (!configured()) return null;
+  const { data, count, error } = await createSupabasePublic()
+    .from("artworks")
+    .select(`image, title, ${OWNER}`, { count: "exact" })
+    .eq("owner.handle", handle)
+    .order("created_at", { ascending: false })
+    .limit(3)
+    .returns<{ image: StoredImage; title: string }[]>();
+  if (error) return null;
+  return { total: count ?? data.length, preview: data.map((row) => toImageAsset(row.image, row.title)) };
+}
+
 /** Real characters by id, with their owner and cover: for favorites. */
 export async function fetchCharactersByIds(ids: string[]) {
   if (!configured() || ids.length === 0) return [];
@@ -172,11 +206,13 @@ export async function fetchCharactersByIds(ids: string[]) {
 /** Real artworks by id, with their owner: for favorites. */
 export async function fetchArtworksByIds(ids: string[]) {
   if (!configured() || ids.length === 0) return [];
-  const { data, error } = await createSupabasePublic()
-    .from("artworks")
-    .select(`${ARTWORK_COLUMNS}, owner:profiles!inner(${ACCOUNT_COLUMNS})`)
-    .in("id", ids)
-    .returns<(ArtworkRow & { owner: AccountRow })[]>();
+  const { data, error } = await withPostColumns((columns) =>
+    createSupabasePublic()
+      .from("artworks")
+      .select(`${columns}, owner:profiles!inner(${ACCOUNT_COLUMNS})`)
+      .in("id", ids)
+      .returns<(ArtworkRow & { owner: AccountRow })[]>(),
+  );
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load artworks: ${error.message}`);
   return data;
@@ -185,12 +221,14 @@ export async function fetchArtworksByIds(ids: string[]) {
 /** The newest pieces from every gallery, with their owner: Explore's wall. */
 export async function fetchRecentArtworks(limit = 500) {
   if (!configured()) return [];
-  const { data, error } = await createSupabasePublic()
-    .from("artworks")
-    .select(`${ARTWORK_COLUMNS}, owner:profiles!inner(${ACCOUNT_COLUMNS})`)
-    .order("created_at", { ascending: false })
-    .limit(limit)
-    .returns<(ArtworkRow & { owner: AccountRow })[]>();
+  const { data, error } = await withPostColumns((columns) =>
+    createSupabasePublic()
+      .from("artworks")
+      .select(`${columns}, owner:profiles!inner(${ACCOUNT_COLUMNS})`)
+      .order("created_at", { ascending: false })
+      .limit(limit)
+      .returns<(ArtworkRow & { owner: AccountRow })[]>(),
+  );
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load recent art: ${error.message}`);
   return data;
