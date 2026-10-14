@@ -58,15 +58,16 @@ export function Tile({ item, onOpen, priority }: { item: WallItem; onOpen: () =>
         className="relative block overflow-hidden rounded-[8px] outline-none focus-visible:ring-2 focus-visible:ring-ocean focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:rounded-[10px]"
         style={{ aspectRatio: ratio, backgroundColor: matOf(cover.palette) }}
       >
+        {/* Read first: what it is and who made it, then the picture's own description (its alt). */}
+        <span className="sr-only">
+          {item.title} by {item.artist.name}
+          {note && `. ${note}`}
+          {item.images.length > 1 && `. ${item.images.length} pictures`}.
+        </span>
         <span className="absolute inset-0 transition-transform duration-500 ease-out group-hover/tile:scale-[1.03]">
           {/* A GIF waits as its still frame and plays on top of it, so the swap never blinks. */}
           {gif && cover.still && <ListingArt image={{ ...cover, src: cover.still }} alt={cover.alt} sizes={sizes} priority={priority} />}
           {(!gif || playing) && <ListingArt image={cover} alt={gif && cover.still ? "" : cover.alt} sizes={sizes} priority={priority && !gif} />}
-        </span>
-        <span className="sr-only">
-          {item.title} by {item.artist.name}
-          {note && `. ${note}`}
-          {item.images.length > 1 && `. ${item.images.length} pictures`}
         </span>
         <span
           aria-hidden

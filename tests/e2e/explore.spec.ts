@@ -97,6 +97,6 @@ test("the tile size sticks across visits", async ({ page }) => {
 test("the open studios board moved to /explore/studios", async ({ page }) => {
   await page.goto("/explore/studios");
   await expect(page.getByRole("heading", { name: "Open studios" })).toBeVisible();
-  await page.getByRole("link", { name: "Explore the wall" }).first().click();
+  await page.getByRole("main").getByRole("link", { name: "Explore the wall" }).first().click();
   await page.waitForURL(/\/explore$/);
 });
