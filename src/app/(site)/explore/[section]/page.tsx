@@ -5,8 +5,8 @@ import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
 
 // Placeholders for what's still to come (blueprint §7). Search, trending,
-// open commissions, adoptables and recent have their own routes, which win
-// over this one.
+// open studios, open commissions, adoptables and recent have their own
+// routes, which win over this one.
 const SECTIONS: Record<string, { title: string; description: string }> = {
   literatures: { title: "Literatures", description: "Stories, lore and worldbuilding docs." },
   worlds: { title: "Worlds", description: "Shared universes and the characters who live there." },
