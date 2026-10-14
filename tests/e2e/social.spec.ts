@@ -114,12 +114,14 @@ test("following moves the count, survives a reload and fills the Following feed"
   await expect(stat(page, "Followers")).toHaveText("1");
 
   // Their posts reach the Following feed, and the fan's own profile counts them. The post was
-  // written straight to the database (no app action to refresh the feed's cache), so the first
-  // visit can serve the cached feed: look again until the refreshed one arrives.
+  // written straight to the database (no app action refreshes the feed's cache, which the build
+  // already filled), so the cached feed can be served until its revalidate window (60s, the
+  // "minutes" profile) passes: look again until the refreshed one arrives.
+  test.setTimeout(150_000);
   await expect(async () => {
     await page.goto("/?feed=following");
-    await expect(post(page)).toBeVisible({ timeout: 2000 });
-  }).toPass({ timeout: 30_000 });
+    await expect(post(page)).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 100_000, intervals: [2000] });
   await page.goto(`/${fan.handle}`);
   await expect(stat(page, "Following")).toHaveText("1");
 
