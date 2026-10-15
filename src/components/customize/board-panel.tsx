@@ -1,6 +1,7 @@
 "use client";
 
-import { Code2, ImagePlus, List, LoaderCircle, Scaling, Smile, Type } from "lucide-react";
+import Link from "next/link";
+import { Code2, ImagePlus, List, LoaderCircle, Scaling, ShoppingBag, Smile, Type } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Sticker } from "@/components/about/stickers";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
@@ -43,6 +44,7 @@ export function BoardPanel({
   board,
   selected,
   isPaid,
+  stickers,
   onAdd,
   onUpdate,
   onBoardChange,
@@ -50,6 +52,8 @@ export function BoardPanel({
   board: Board;
   selected: Block | null;
   isPaid: boolean;
+  /** Built-in stickers plus the shop's packs this account has. */
+  stickers: StickerId[];
   onAdd: (block: NewBlock) => void;
   onUpdate: (patch: Partial<Block>) => void;
   onBoardChange: (patch: Partial<Board>) => void;
@@ -146,7 +150,7 @@ export function BoardPanel({
 
         {showStickers && (
           <div className="mt-3 grid grid-cols-8 gap-1.5 rounded-card bg-ice/60 p-2">
-            {STICKERS.map((id, i) => (
+            {stickers.map((id, i) => (
               <button
                 key={id}
                 type="button"
@@ -157,6 +161,15 @@ export function BoardPanel({
                 <Sticker id={id} color={STICKER_COLORS[i % STICKER_COLORS.length]} />
               </button>
             ))}
+            {stickers.length < STICKERS.length && (
+              <Link
+                href="/shop#aisle-stickers"
+                className="col-span-8 mt-1 inline-flex items-center justify-center gap-1.5 rounded-input py-1.5 text-xs font-semibold text-ocean-ink hover:bg-surface dark:text-ocean"
+              >
+                <ShoppingBag aria-hidden className="size-3.5" />
+                More sticker packs in the shop
+              </Link>
+            )}
           </div>
         )}
 
@@ -177,7 +190,7 @@ export function BoardPanel({
       </Section>
 
       {selected ? (
-        <Inspector block={selected} isPaid={isPaid} onUpdate={onUpdate} />
+        <Inspector block={selected} isPaid={isPaid} stickers={stickers} onUpdate={onUpdate} />
       ) : (
         <Section title="Board" hint="Click a block on the board to edit it. Hold Alt while dragging to place freely.">
           <ColorField
@@ -207,7 +220,17 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 const input =
   "w-full rounded-input border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-ocean";
 
-function Inspector({ block, isPaid, onUpdate }: { block: Block; isPaid: boolean; onUpdate: (patch: Partial<Block>) => void }) {
+function Inspector({
+  block,
+  isPaid,
+  stickers,
+  onUpdate,
+}: {
+  block: Block;
+  isPaid: boolean;
+  stickers: StickerId[];
+  onUpdate: (patch: Partial<Block>) => void;
+}) {
   const title = { text: "Text", list: "List", image: "Image", sticker: "Sticker", html: "HTML" }[block.type];
   return (
     <Section title={`Selected: ${title}`} paid={block.type === "html" && !isPaid}>
@@ -310,7 +333,7 @@ function Inspector({ block, isPaid, onUpdate }: { block: Block; isPaid: boolean;
         {block.type === "sticker" && (
           <>
             <div className="grid grid-cols-8 gap-1.5">
-              {STICKERS.map((id) => (
+              {stickers.map((id) => (
                 <button
                   key={id}
                   type="button"

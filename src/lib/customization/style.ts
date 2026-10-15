@@ -92,7 +92,8 @@ export function nameStyle(c: Customization): { style: CSSProperties; className: 
 
   const className = [
     c.name.gradient ? "name-gradient" : "",
-    c.name.effect !== "none" ? `name-${c.name.effect}` : "",
+    // An animated name from the shop takes the effect's place.
+    c.name.effect !== "none" && !c.nameFx ? `name-${c.name.effect}` : "",
   ]
     .filter(Boolean)
     .join(" ");

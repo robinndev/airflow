@@ -39,6 +39,7 @@ export function Studio({
   initialBoard,
   isPaid,
   owned,
+  stickers,
   initialTab,
 }: {
   profile: PreviewProfile;
@@ -46,6 +47,8 @@ export function Studio({
   initialBoard: Board;
   isPaid: boolean;
   owned: string[];
+  /** Stickers this account can put on the board (built-ins + owned packs). */
+  stickers: StickerId[];
   initialTab: TabId;
 }) {
   const [custom, setCustom] = useState(initialCustom);
@@ -259,6 +262,7 @@ export function Studio({
               board={board}
               selected={selected}
               isPaid={isPaid}
+              stickers={stickers}
               onAdd={addBlock}
               onUpdate={updateSelected}
               onBoardChange={(patch) => changeBoard({ ...board, ...patch }, true)}

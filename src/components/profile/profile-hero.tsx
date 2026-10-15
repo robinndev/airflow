@@ -13,6 +13,10 @@ import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
 import { ArtistMark, CollectorMark } from "@/components/artists/artist-mark";
 import { LocalTime } from "@/components/settings/local-time";
+import { CoverEffect } from "@/components/shop/fx/cover-effect";
+import { NameFx } from "@/components/shop/fx/name-fx";
+import { Pin } from "@/components/shop/fx/pin";
+import { ProfileEffect } from "@/components/shop/fx/profile-effect";
 import { AvailabilityBadge } from "./availability-badge";
 import { FollowerCount } from "./follow-button";
 import { CommissionStatusPill } from "./commission-status-pill";
@@ -52,6 +56,8 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
           className="object-cover"
           style={{ objectPosition: `50% ${appearance.bannerFocusY}%` }}
         />
+        {/* An animated cover from the shop, over the image. */}
+        <CoverEffect id={custom.coverFx} />
         <BannerScrims />
         <Suspense>
           <OwnerImageControls handle={profile.handle} slot="banner" />
@@ -83,8 +89,9 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
                   style={name.style}
                   className={`font-display text-[calc(1.75rem*var(--name-scale,1))] leading-tight font-extrabold tracking-tight text-ink sm:text-[calc(2rem*var(--name-scale,1))] ${name.className}`}
                 >
-                  {profile.displayName}
+                  <NameFx fx={custom.nameFx} text={profile.displayName} />
                 </h1>
+                <Pin id={custom.pin} size={28} labelled />
                 <ArtistMark profile={profile} />
               </div>
               <p data-part="handle" className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-muted">
@@ -174,6 +181,8 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
           </dl>
         </div>
       </div>
+      {/* A profile effect from the shop, falling or drifting over the top of the profile. */}
+      <ProfileEffect id={custom.effect} count={22} />
     </section>
   );
 }
