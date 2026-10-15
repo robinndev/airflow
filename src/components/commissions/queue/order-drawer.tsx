@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { saveOrderNote } from "@/app/(site)/request-actions";
 import { Tape } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
+import { Linkified } from "@/components/ui/linkified";
 import {
   LANE_INFO,
   LANES,
@@ -20,6 +21,10 @@ import { LiveNextStep } from "./live-order";
 import { DueLabel, LANE_TONE, tapeOf } from "./parts";
 import { StepTrack } from "./step-track";
 import { updateOrder } from "./store";
+
+/** Links the buyer typed: in the theme's link ink, or the paper's own ink on the request slip. */
+const LINK = "font-medium text-ocean-ink underline underline-offset-2 break-all dark:text-ocean";
+const PAPER_LINK = "font-medium underline underline-offset-2 break-all";
 
 /**
  * One commission, opened like its job folder: the next thing to do, where it
@@ -170,15 +175,18 @@ function Folder({
           {/* The buyer's words on a slip of paper, taped in. */}
           <figure className="relative mt-1 rotate-[-0.6deg] rounded-[4px] bg-paper px-5 pt-5 pb-4 text-on-paper shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.12),0_10px_24px_-12px_rgb(var(--shadow-rgb)/0.35)]">
             <Tape color={tapeOf(order)} className="-top-3 left-6 h-5 w-16 -rotate-6" />
-            <blockquote className="text-[0.9375rem] leading-relaxed text-pretty">{order.brief}</blockquote>
+            <blockquote className="text-[0.9375rem] leading-relaxed text-pretty">
+              <Linkified text={order.brief} className={PAPER_LINK} />
+            </blockquote>
             <figcaption className="mt-3 text-xs text-paper-muted">
               {order.client.name} · {formatLongDate(order.requestedAt)}
             </figcaption>
           </figure>
           {order.referenceLinks && (
-            <p className="mt-3 text-sm break-words text-muted">
+            <p className="mt-3 text-sm break-words whitespace-pre-line text-muted">
               <span className="font-semibold text-ink">References: </span>
-              {order.referenceLinks}
+              {/* Links open straight from here (a new tab), no copying into the address bar. */}
+              <Linkified text={order.referenceLinks} className={LINK} />
             </p>
           )}
           <ul className="mt-4 flex flex-wrap gap-1.5 text-xs font-medium">

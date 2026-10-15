@@ -6,6 +6,7 @@ import { ArrowUpRight, CalendarDays, MapPin, Star } from "lucide-react";
 import { Stamp } from "@/components/explore/stamp";
 import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { SocialIcon } from "@/components/icons/social-icon";
+import { LocalTime } from "@/components/settings/local-time";
 import { formatMonthYear, formatUsd } from "@/lib/format";
 import type { StudioCard as Card } from "@/lib/messages/types";
 
@@ -163,6 +164,11 @@ export function StudioCard({ card, onNavigate }: { card: Card; onNavigate: () =>
             <li className="flex items-center gap-1.5">
               <MapPin aria-hidden className="size-3.5" />
               {card.location}
+            </li>
+          )}
+          {card.timeZone && (
+            <li>
+              <LocalTime zone={card.timeZone} name={card.displayName} iconClassName="size-3.5" />
             </li>
           )}
           <li className="flex items-center gap-1.5">

@@ -31,6 +31,8 @@ export type AccountRow = {
   headline?: string;
   pronouns?: string;
   location?: string;
+  /** Set only while they show their local time (Settings → Privacy). */
+  time_zone?: string | null;
   links?: { url: string; label?: string }[];
   draws?: string[];
   /** Only on full profile reads: when they got artist access (null: a collector), and whose code it was. */
@@ -66,6 +68,7 @@ const COLUMNS = ACCOUNT_COLUMNS;
  * falls back to the next set instead of failing the page.
  */
 const PROFILE_COLUMN_SETS = [
+  `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, time_zone, links, draws, artist_since, verified_at, inviter:invited_by(handle)`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws, artist_since, verified_at, inviter:invited_by(handle)`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws, artist_since, inviter:invited_by(handle)`,
   `${ACCOUNT_COLUMNS}, customization, about, headline, pronouns, location, links, draws`,
@@ -224,6 +227,7 @@ export function toArtistProfile(row: AccountRow): ArtistProfile {
     headline: row.headline ?? "",
     ...(row.pronouns && { pronouns: row.pronouns }),
     ...(row.location && { location: row.location }),
+    ...(row.time_zone && { timeZone: row.time_zone }),
     bio: row.bio,
     joinedAt: row.created_at.slice(0, 10),
     // Flow+ is still `pro` in the app's types (see docs/roadmap.md).

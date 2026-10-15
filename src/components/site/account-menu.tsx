@@ -127,10 +127,10 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 <Wallet aria-hidden />
                 Orders & earnings
               </button>
-              <button type="button" className={item}>
+              <Link href="/settings" className={item}>
                 <Settings aria-hidden />
                 Settings
-              </button>
+              </Link>
             </div>
             <form action={signOut} className="mt-2 border-t border-border pt-2">
               <button type="submit" className={item}>

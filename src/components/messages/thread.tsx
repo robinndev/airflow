@@ -4,28 +4,13 @@ import Image from "next/image";
 import { Check, LoaderCircle, RotateCw } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { HandNote } from "@/components/explore/doodles";
+import { Linkified } from "@/components/ui/linkified";
 import type { ChatMessage, ChatPerson, StudioCard } from "@/lib/messages/types";
 import { clockTime, postmarkDay, sameDay } from "@/lib/messages/time";
 import { PostageStamp, Postmark, PostmarkRing } from "./postage";
 
 /** Messages closer together than this (same sender, same day) share one timestamp. */
 const GROUP_GAP = 5 * 60_000;
-
-const URL_PATTERN = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
-
-/** Plain text with web links made clickable. */
-function Linkified({ text }: { text: string }) {
-  const parts = text.split(URL_PATTERN);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer nofollow ugc" className="underline underline-offset-2 break-all">
-        {part}
-      </a>
-    ) : (
-      <Fragment key={i}>{part}</Fragment>
-    ),
-  );
-}
 
 /**
  * One conversation, oldest first: the postcard that opens it, a postmark for

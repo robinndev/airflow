@@ -42,7 +42,7 @@ export function FavoritesToast() {
             aria-hidden
             className="absolute top-1/2 -left-2.5 h-5 w-7 -translate-y-1/2 -rotate-[8deg] bg-mint/45 [clip-path:polygon(0_8%,100%_0,96%_50%,100%_100%,0_92%,4%_50%)]"
           />
-          <span className="min-w-0 truncate font-medium">{toast.message}</span>
+          <span className="min-w-0 line-clamp-2 font-medium">{toast.message}</span>
           {toast.link && (
             <Link
               href={toast.link.href}

@@ -1186,3 +1186,8 @@ html:has(dialog[open]:modal) {
     rotate: 0deg;
   }
 }
+
+/* Settings → Privacy, "Show like counts" off: the numbers go, the hearts stay. */
+:root[data-hide-likes] [data-like-count] {
+  display: none;
+}

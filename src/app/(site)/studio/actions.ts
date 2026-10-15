@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import type { StoredImage } from "@/lib/art-storage";
 import { removeFiles, verifyUploads } from "@/lib/images/verify";
+import { closeBlocked, OPEN_ORDER_STATUSES } from "@/lib/listings/closing";
 import { adoptableInput, serviceInput, type AdoptableInput, type ServiceInput } from "@/lib/listings/schema";
 import { LISTINGS_TAG, adoptablesTag, profileTag, servicesTag } from "@/lib/profile/queries";
 import { getViewerAccess } from "@/lib/artists/server";
@@ -16,7 +17,8 @@ import { createSupabaseServer } from "@/lib/supabase/server";
  * refreshes the artist's profile and discovery (search, Explore, trending).
  */
 
-export type StudioResult = { ok: true; id?: string } | { ok: false; error: string };
+/** `note`: something to tell the artist about a change that went through. `blocked`: the close-or-delete rule said no. */
+export type StudioResult = { ok: true; id?: string; note?: string } | { ok: false; error: string; blocked?: true };
 
 type ServiceStatus = "open" | "waitlist" | "closed";
 type AdoptStatus = "available" | "reserved" | "sold";
@@ -51,6 +53,32 @@ async function dropFiles(before: StoredImage[] | null, after: StoredImage[] = []
 
 const firstIssue = (error: { issues: { message: string }[] }) => error.issues[0]?.message ?? "Something's missing.";
 
+type Supabase = Awaited<ReturnType<typeof createSupabaseServer>>;
+
+/**
+ * The statuses of each service's unfinished commissions. A service can only
+ * be closed or deleted by hand once it has none (src/lib/listings/closing.ts).
+ */
+async function openOrders(supabase: Supabase, serviceIds: string[]): Promise<Map<string, string[]>> {
+  const open = new Map<string, string[]>();
+  if (serviceIds.length === 0) return open;
+  const { data } = await supabase
+    .from("commission_requests")
+    .select("service_id, status")
+    .in("service_id", serviceIds)
+    .in("status", [...OPEN_ORDER_STATUSES]);
+  for (const row of (data ?? []) as { service_id: string; status: string }[]) {
+    open.set(row.service_id, [...(open.get(row.service_id) ?? []), row.status]);
+  }
+  return open;
+}
+
+/** Null when the service can close (or go); otherwise the refusal, in the artist's words. */
+async function mustStayOpen(supabase: Supabase, id: string, title: string, action: "close" | "delete"): Promise<StudioResult | null> {
+  const why = closeBlocked(title, (await openOrders(supabase, [id])).get(id) ?? [], action);
+  return why ? { ok: false, error: why, blocked: true } : null;
+}
+
 /* ---------------------------------------------------------------- services */
 
 export async function saveService(input: ServiceInput): Promise<StudioResult> {
@@ -66,6 +94,10 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
     ? await supabase.from("services").select("examples, status, slots_total, slots_taken").eq("id", s.id).eq("owner_id", viewer.id).maybeSingle()
     : { data: null };
   if (s.id && !before) return { ok: false, error: "That service doesn't exist anymore." };
+  if (s.id && before && before.status !== "closed" && s.status === "closed") {
+    const refusal = await mustStayOpen(supabase, s.id, s.title, "close");
+    if (refusal) return refusal;
+  }
   // New pictures are checked (verify.ts); ones already on the listing keep their thumb and original.
   const examples = await verifyUploads(s.examples, { userId: viewer.id, folder: "listings", known: before?.examples ?? [] });
   if (!examples.ok) return examples;
@@ -109,10 +141,15 @@ export async function saveService(input: ServiceInput): Promise<StudioResult> {
   return { ok: true, id: s.id };
 }
 
+/** Only once every commission on it is done (delivered or ended): until then it stays, and this says why. */
 export async function deleteService(id: string): Promise<StudioResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGN_IN;
   const supabase = await createSupabaseServer();
+  const { data: service } = await supabase.from("services").select("title").eq("id", id).eq("owner_id", viewer.id).maybeSingle();
+  if (!service) return { ok: false, error: "That service doesn't exist anymore." };
+  const refusal = await mustStayOpen(supabase, id, service.title, "delete");
+  if (refusal) return refusal;
   const { data, error } = await supabase
     .from("services")
     .delete()
@@ -127,12 +164,21 @@ export async function deleteService(id: string): Promise<StudioResult> {
   return { ok: true };
 }
 
-/** One click: Open, Waitlist or Closed. Requests already sent aren't affected. */
+/**
+ * One click: Open, Waitlist or Closed. Requests already sent aren't affected.
+ * Closed only once every commission on the service is done.
+ */
 export async function setServiceStatus(id: string, status: ServiceStatus): Promise<StudioResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGN_IN;
   if (!["open", "waitlist", "closed"].includes(status)) return { ok: false, error: "Unknown status." };
   const supabase = await createSupabaseServer();
+  if (status === "closed") {
+    const { data: service } = await supabase.from("services").select("title, status").eq("id", id).eq("owner_id", viewer.id).maybeSingle();
+    if (!service) return { ok: false, error: "That service doesn't exist anymore." };
+    const refusal = service.status === "closed" ? null : await mustStayOpen(supabase, id, service.title, "close");
+    if (refusal) return refusal;
+  }
   const { data, error } = await supabase
     .from("services")
     .update({ status, filled_at: null, paused_status: null })
@@ -181,15 +227,22 @@ export async function adjustServiceSlots(id: string, delta: 1 | -1): Promise<Stu
   return { ok: true };
 }
 
-/** Pause all closes every service and remembers each one's status; resume restores them exactly. */
+/**
+ * Pause all closes every service and remembers each one's status; resume
+ * restores them exactly. Services with commissions still open stay as they
+ * are (they can only close once those are done), and the note says which.
+ */
 export async function pauseAllServices(pause: boolean): Promise<StudioResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGN_IN;
   const supabase = await createSupabaseServer();
-  const { data: rows, error } = await supabase.from("services").select("id, status, paused_status").eq("owner_id", viewer.id);
+  const { data: rows, error } = await supabase.from("services").select("id, title, status, paused_status").eq("owner_id", viewer.id);
   if (error) return failure(error, "Couldn't reach your services.");
 
+  const open = pause ? await openOrders(supabase, (rows ?? []).filter((row) => row.status !== "closed").map((row) => row.id)) : new Map();
+  const kept = (rows ?? []).filter((row) => pause && row.paused_status === null && row.status !== "closed" && open.has(row.id));
   const changes = (rows ?? []).flatMap((row) => {
+    if (pause && row.paused_status === null && kept.includes(row)) return [];
     if (pause && row.paused_status === null) return [{ id: row.id, status: "closed", paused_status: row.status }];
     if (!pause && row.paused_status !== null) return [{ id: row.id, status: row.paused_status, paused_status: null }];
     return [];
@@ -199,7 +252,15 @@ export async function pauseAllServices(pause: boolean): Promise<StudioResult> {
     if (updateError) return failure(updateError, "Couldn't update every service. Try again.");
   }
   refresh(viewer, "services");
-  return { ok: true };
+  if (kept.length === 0) return { ok: true };
+  const names = kept.map((row) => `“${row.title}”`);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+  return {
+    ok: true,
+    note: `${list} ${kept.length > 1 ? "stay" : "stays"} open until ${kept.length > 1 ? "their" : "its"} commissions are done${
+      changes.length > 0 ? "; the rest are paused." : "."
+    }`,
+  };
 }
 
 /** Moves a service one place up or down on the profile. */

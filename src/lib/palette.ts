@@ -161,3 +161,24 @@ export function blendPalettes(palettes: string[][], count = 6): string[] {
     .toSorted((a, b) => b.lab[0] - a.lab[0])
     .map((p) => p.hex);
 }
+
+/**
+ * The color a picture reads as from across the room: its swatches mixed by
+ * rank, in linear light. A stand-in while it loads that keeps the picture's
+ * overall lightness, where the single most prominent swatch can be a dark
+ * corner of a light picture (leaves under pale tulips).
+ */
+export function averageOf(palette: string[] = []): string | undefined {
+  const swatches = palette.slice(0, RANK_WEIGHT.length).filter((hex) => HEX.test(hex));
+  if (swatches.length === 0) return undefined;
+  const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const toSrgb = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+  const mix = [0, 0, 0];
+  let total = 0;
+  swatches.forEach((hex, i) => {
+    const n = Number.parseInt(hex.slice(1), 16);
+    [n >> 16, (n >> 8) & 255, n & 255].forEach((c, k) => (mix[k] += toLinear(c / 255) * RANK_WEIGHT[i]));
+    total += RANK_WEIGHT[i];
+  });
+  return `#${mix.map((c) => Math.round(toSrgb(c / total) * 255).toString(16).padStart(2, "0")).join("")}`;
+}

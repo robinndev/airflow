@@ -72,9 +72,21 @@ type PasswordFieldProps = {
   aside?: ReactNode;
   /** Sign-up: show the strength stroke. */
   meter?: boolean;
+  /** Settings asks for the current one and a new one. */
+  label?: string;
+  name?: string;
 };
 
-export function PasswordField({ autoComplete, value, onChange, error, aside, meter = false }: PasswordFieldProps) {
+export function PasswordField({
+  autoComplete,
+  value,
+  onChange,
+  error,
+  aside,
+  meter = false,
+  label = "Password",
+  name = "password",
+}: PasswordFieldProps) {
   const id = useId();
   const [visible, setVisible] = useState(false);
   const describedBy = [error && `${id}-error`, meter && `${id}-meter`].filter(Boolean).join(" ") || undefined;
@@ -83,14 +95,14 @@ export function PasswordField({ autoComplete, value, onChange, error, aside, met
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <label htmlFor={id} className={labelClass}>
-          Password
+          {label}
         </label>
         {aside}
       </div>
       <div className="relative mt-2">
         <input
           id={id}
-          name="password"
+          name={name}
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
           value={value}

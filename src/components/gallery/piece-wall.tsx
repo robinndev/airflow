@@ -191,7 +191,7 @@ function Tile({
         }`}
       >
         <Heart aria-hidden className={`size-3.5 ${saved ? "animate-pop fill-current" : ""}`} />
-        {piece.likes + (saved ? 1 : 0) > 0 && formatCompact(piece.likes + (saved ? 1 : 0))}
+        {piece.likes + (saved ? 1 : 0) > 0 && <span data-like-count>{formatCompact(piece.likes + (saved ? 1 : 0))}</span>}
       </button>
       {(menu || stage) && (
         <span className="absolute top-2 left-2 flex items-center gap-1.5">

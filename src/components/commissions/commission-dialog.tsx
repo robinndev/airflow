@@ -24,6 +24,7 @@ import { openChat } from "@/components/messages/store";
 import { FollowButton } from "@/components/profile/follow-button";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
+import { matOf } from "@/components/wall/mat";
 import { formatShortDate, formatUsd } from "@/lib/format";
 import type {
   CommissionService,
@@ -39,6 +40,9 @@ import { OptionsPicker, OptionsTotal, PackagePicker } from "./addon-picker";
 import { CommissionRequestForm } from "./commission-request-form";
 import { CUSTOM_SERVICE_ID, OPEN_SERVICE_EVENT, openService } from "./events";
 import { ExampleCarousel } from "./example-carousel";
+
+/** Examples narrower than this (px) won't fill the art column, so they get room on their mat. */
+const SMALL_EXAMPLE = 480;
 
 type CommissionDialogProps = {
   artist: { handle: string; displayName: string; avatar: ImageAsset; isPro: boolean };
@@ -137,15 +141,25 @@ export function CommissionDialog(props: CommissionDialogProps) {
             {service ? (
               <div className="mx-auto grid max-w-[38rem] gap-5 px-10 py-20">
                 {service.examples.map((image, i) => (
-                  <Image
+                  // Each example on a mat in its own color, at no more than its own
+                  // pixels: a 128px pixel doll hangs small instead of stretching.
+                  <div
                     key={`${image.src}-${i}`}
-                    src={image.src}
-                    alt={image.alt}
-                    width={image.width}
-                    height={image.height}
-                    sizes="(min-width: 1280px) 608px, 45vw"
-                    className="h-auto w-full rounded-[20px] bg-ice shadow-soft"
-                  />
+                    className={`grid place-items-center overflow-hidden rounded-[20px] shadow-soft ${
+                      image.width < SMALL_EXAMPLE ? "p-10" : ""
+                    }`}
+                    style={{ backgroundColor: matOf(image.palette) }}
+                  >
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={image.width}
+                      height={image.height}
+                      sizes="(min-width: 1280px) 608px, 45vw"
+                      style={{ maxWidth: image.width }}
+                      className="h-auto w-full"
+                    />
+                  </div>
                 ))}
               </div>
             ) : (

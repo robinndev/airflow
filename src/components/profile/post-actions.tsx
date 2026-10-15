@@ -49,7 +49,7 @@ export function PostActions({ postId, handle, likes, comments, reposts = 0, conv
           aria-hidden
           className={`transition-transform duration-200 ${liked ? "scale-110 fill-current" : ""}`}
         />
-        <span className="tabular-nums">{formatCompact(likeCount)}</span>
+        <span data-like-count className="tabular-nums">{formatCompact(likeCount)}</span>
       </button>
 
       <button type="button" aria-label={`Comments (${comments})`} onClick={() => openComments(conversation)} className={action}>

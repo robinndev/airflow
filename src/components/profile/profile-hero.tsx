@@ -4,13 +4,15 @@ import { Suspense, type ReactNode } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { Avatar } from "@/components/ui/avatar";
-import { HEADER_SENTINEL_ID } from "@/components/site/header-shell";
+import { HeaderSentinel } from "@/components/site/header-shell";
 import { formatCompact, formatMonthYear } from "@/lib/format";
 import type { Customization } from "@/lib/customization/model";
 import { nameStyle } from "@/lib/customization/style";
+import { averageOf } from "@/lib/palette";
 import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
 import { ArtistMark, CollectorMark } from "@/components/artists/artist-mark";
+import { LocalTime } from "@/components/settings/local-time";
 import { AvailabilityBadge } from "./availability-badge";
 import { FollowerCount } from "./follow-button";
 import { CommissionStatusPill } from "./commission-status-pill";
@@ -32,11 +34,14 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
         around it is pulled up by -mt-16).
         It's the LCP element, so it loads eagerly with high priority.
       */}
-      {/* Painted in the banner's own dominant color while it loads, so a reload never flashes light. */}
+      {/*
+        Painted in the banner's overall color while it loads, so it never
+        flashes light before a dark banner, nor dark before a light one.
+      */}
       <div
         data-part="banner"
         className="relative h-[clamp(15rem,30vw,24rem)] overflow-hidden bg-ice"
-        style={{ backgroundColor: profile.banner.palette?.[0] }}
+        style={{ backgroundColor: averageOf(profile.banner.palette) }}
       >
         <Image
           src={profile.banner.src}
@@ -102,8 +107,11 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
           </div>
         </div>
 
-        {/* The stats column is the sidebar's width, so the card lines up with the cards below it. */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
+        {/*
+          The stats column is the sidebar's width, so the card lines up with the
+          cards below it; it sits level with the middle of the bio and tags.
+        */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
           <div className="max-w-2xl">
             {profile.headline && (
               <p data-part="headline" className="font-display text-[1.0625rem] font-semibold text-ink">
@@ -144,6 +152,12 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
                   {profile.location}
                 </li>
               )}
+              {/* Their clock, if they chose to show it (Settings → Privacy); only in the browser. */}
+              {profile.timeZone && (
+                <li>
+                  <LocalTime zone={profile.timeZone} name={profile.displayName} />
+                </li>
+              )}
               <li className="inline-flex items-center gap-1.5">
                 <CalendarDays aria-hidden className="size-4" />
                 Joined {formatMonthYear(profile.joinedAt)}
@@ -176,7 +190,7 @@ export function BannerScrims() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-scrim/20 to-transparent"
       />
-      <div id={HEADER_SENTINEL_ID} aria-hidden className="absolute inset-x-0 bottom-0 h-px" />
+      <HeaderSentinel />
     </>
   );
 }

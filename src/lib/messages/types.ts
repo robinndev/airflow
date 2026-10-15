@@ -55,6 +55,8 @@ export type StudioCard = {
   pronouns?: string;
   headline: string;
   location?: string;
+  /** Their local time zone, if they show it. */
+  timeZone?: string;
   joinedAt: string;
   plan: Plan;
   avatar: ImageAsset;

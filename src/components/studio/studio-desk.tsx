@@ -44,14 +44,20 @@ const STATUS_OPTIONS = [
 const STATUS_WORD: Record<CommissionStatus, string> = { open: "open", waitlist: "on waitlist", closed: "closed" };
 const ADOPT_WORD: Record<AdoptStatus, string> = { available: "available", reserved: "on hold", sold: "adopted" };
 
-/** Runs a studio action, then says how it went (with Undo when there is one). */
-function useStudioAction() {
+/**
+ * Runs a studio action, then says how it went (with Undo when there is one).
+ * A close or delete the rule refused goes to `onBlocked` (shown on the sheet)
+ * instead of a toast; a note from the server replaces the success message.
+ */
+function useStudioAction(onBlocked?: (why: string) => void) {
   const [pending, start] = useTransition();
   function run(action: () => Promise<StudioResult>, message?: string, undo?: () => Promise<StudioResult>) {
     start(async () => {
       const result = await action();
-      if (!result.ok) showToast({ message: result.error });
-      else if (message) showToast({ message, undo: undo && (() => void undo()) });
+      if (!result.ok) {
+        if (result.blocked && onBlocked) onBlocked(result.error);
+        else showToast({ message: result.error });
+      } else if (result.note || message) showToast({ message: result.note ?? message!, undo: undo && (() => void undo()) });
     });
   }
   return [pending, run] as const;
@@ -217,7 +223,9 @@ function ServiceOnShelf({
   last: boolean;
   onEdit: () => void;
 }) {
-  const [pending, run] = useStudioAction();
+  // Closing or deleting is refused while commissions on it are still open: say so right here, on the sheet.
+  const [blocked, setBlocked] = useState<string | null>(null);
+  const [pending, run] = useStudioAction(setBlocked);
   const [status, setOptimistic] = useOptimistic(service.status ?? "open");
   const slots = service.slots ?? null;
 
@@ -272,6 +280,7 @@ function ServiceOnShelf({
             )}
           </div>
           {service.paused && <p className="text-xs font-semibold text-lilac-ink">Paused. It comes back as it was when you resume.</p>}
+          {blocked && <StaysOpen why={blocked} onDismiss={() => setBlocked(null)} />}
           <ItemTools
             name={service.title}
             first={first}
@@ -285,6 +294,25 @@ function ServiceOnShelf({
         </div>
       }
     />
+  );
+}
+
+/** Why the sheet can't close or go yet, pinned to it like a note, with the way to its open commissions. */
+function StaysOpen({ why, onDismiss }: { why: string; onDismiss: () => void }) {
+  return (
+    <div role="alert" className="relative -rotate-[0.6deg] rounded-[4px] bg-paper px-3.5 pt-3 pb-2.5 text-sm text-on-paper shadow-[0_1px_2px_rgb(var(--shadow-rgb)/0.12),0_8px_18px_-10px_rgb(var(--shadow-rgb)/0.4)]">
+      <span aria-hidden className="absolute -top-2 left-4 h-4 w-10 -rotate-6 bg-star/50 [clip-path:polygon(0_8%,100%_0,96%_50%,100%_100%,0_92%,4%_50%)]" />
+      <p className="font-semibold">Still in the works</p>
+      <p className="mt-0.5 leading-snug text-paper-muted">{why}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] font-semibold">
+        <Link href="/commissions?tab=attention" className="text-ocean-ink underline-offset-4 hover:underline dark:text-ocean">
+          See them in My commissions
+        </Link>
+        <button type="button" onClick={onDismiss} className="text-paper-muted hover:text-on-paper">
+          Got it
+        </button>
+      </div>
+    </div>
   );
 }
 

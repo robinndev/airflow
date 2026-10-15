@@ -51,6 +51,11 @@ export async function generateMetadata({
 export default function ProfileLayout({ params, children }: LayoutProps<"/[handle]">) {
   return (
     <div>
+      {/*
+        One header for the skeleton and the profile: it stays mounted while
+        the profile streams in, instead of remounting (and blinking) with it.
+      */}
+      <SiteHeader overlay handle={params.then(({ handle }) => normalizeHandle(handle))} />
       <Suspense fallback={<ProfileSkeleton />}>
         <ProfileFrame params={params}>{children}</ProfileFrame>
       </Suspense>
@@ -72,11 +77,10 @@ async function ProfileFrame({
 
   return (
     <div style={appearanceStyle(appearance)} className={profileFontVariables}>
-      <SiteHeader overlay handle={profile.handle} />
       {/*
         The canvas: the artist's palette, background and custom CSS apply
-        only in here, never to the header. It slides under the floating
-        header (-mt-16) so the banner stays full-bleed.
+        only in here, never to the header (the layout's). It slides under the
+        floating header (-mt-16) so the banner stays full-bleed.
       */}
       <div
         data-profile-canvas={profile.handle}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { viewerPrefsScript } from "@/lib/settings/prefs";
 import { themeScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -42,6 +43,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Account settings that change how pages look (hidden like counts), before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: viewerPrefsScript }} />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

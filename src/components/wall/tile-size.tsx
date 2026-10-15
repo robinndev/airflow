@@ -11,7 +11,7 @@ import { useLayoutEffect, useSyncExternalStore } from "react";
  * client-side navigation, where inline scripts don't run.
  */
 
-type Size = "s" | "m" | "l";
+export type Size = "s" | "m" | "l";
 
 const KEY = "artiflow:wall-size";
 
@@ -36,7 +36,8 @@ function apply(size: Size) {
   for (const listener of listeners) listener();
 }
 
-export function TileSize() {
+/** The saved size, applied to <html> (also used by Settings → Appearance). */
+export function useTileSize() {
   const size = useSyncExternalStore(subscribe, current, () => "m" as Size);
 
   useLayoutEffect(() => {
@@ -48,15 +49,22 @@ export function TileSize() {
     }
   }, []);
 
-  function choose(next: Size) {
-    apply(next);
-    try {
-      if (next === "m") localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, next);
-    } catch {
-      // Storage blocked: the choice lasts until the page closes.
-    }
+  return size;
+}
+
+export function chooseTileSize(next: Size) {
+  apply(next);
+  try {
+    if (next === "m") localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, next);
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
   }
+}
+
+export function TileSize() {
+  const size = useTileSize();
+  const choose = chooseTileSize;
 
   return (
     <div role="group" aria-label="Tile size" className="flex shrink-0 items-center rounded-full border border-border bg-surface p-0.5">

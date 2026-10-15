@@ -98,6 +98,8 @@ export type ArtistProfile = {
   headline: string;
   bio: string;
   location?: string;
+  /** Shown as their local time, if they chose to (Settings → Privacy). */
+  timeZone?: string;
   joinedAt: string;
   plan: Plan;
   avatar: ImageAsset;

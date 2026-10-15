@@ -40,7 +40,7 @@ export function ArtworkCard({ artwork, priority }: { artwork: Artwork; priority?
           <p className="truncate font-display text-[0.9375rem] font-bold text-ink">{title}</p>
           <p className="mt-0.5 flex items-center gap-2 text-xs text-muted">
             {artwork.client && <span className="truncate">for @{artwork.client}</span>}
-            <span className="inline-flex shrink-0 items-center gap-1">
+            <span data-like-count className="inline-flex shrink-0 items-center gap-1">
               <Heart aria-hidden className="size-3" />
               <span className="tabular-nums">{formatCompact(artwork.likes)}</span>
               <span className="sr-only">favorites</span>

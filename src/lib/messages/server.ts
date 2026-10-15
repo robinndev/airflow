@@ -78,6 +78,7 @@ export async function studioCard(profile: ArtistProfile): Promise<StudioCard> {
     pronouns: profile.pronouns,
     headline: profile.headline,
     location: profile.location,
+    timeZone: profile.timeZone,
     joinedAt: profile.joinedAt,
     plan: profile.plan,
     avatar: profile.avatar,

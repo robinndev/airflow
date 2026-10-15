@@ -208,7 +208,7 @@ function Prize({ piece, place }: { piece: TrendingPiece; place: 1 | 2 | 3 }) {
             </Link>
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 text-sm font-semibold text-like">
+        <span data-like-count className="inline-flex items-center gap-1 text-sm font-semibold text-like">
           <Heart aria-hidden className="size-4 fill-current" />
           {formatCompact(piece.likes)}
         </span>
@@ -227,7 +227,7 @@ function Mention({ piece, rank }: { piece: TrendingPiece; rank: number }) {
       <p className="mt-2 truncate text-sm font-semibold text-ink">{piece.title}</p>
       <p className="flex items-center justify-between gap-2 text-xs text-muted">
         <span className="truncate">{piece.artist.name}</span>
-        <span className="inline-flex shrink-0 items-center gap-0.5">
+        <span data-like-count className="inline-flex shrink-0 items-center gap-0.5">
           <Heart aria-hidden className="size-3 fill-current text-like" />
           {formatCompact(piece.likes)}
         </span>

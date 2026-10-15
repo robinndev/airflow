@@ -237,8 +237,8 @@ function WallLabel({ item, items, onIndex }: { item: WallItem; items: WallItem[]
           )}
           {item.likes > 0 && (
             <>
-              <dt className={term}>Loved</dt>
-              <dd>{formatCompact(item.likes)} likes</dd>
+              <dt data-like-count className={term}>Loved</dt>
+              <dd data-like-count>{formatCompact(item.likes)} likes</dd>
             </>
           )}
         </dl>

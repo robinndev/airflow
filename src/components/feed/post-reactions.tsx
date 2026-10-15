@@ -101,7 +101,7 @@ export function PostReactions({
           <Heart key={String(liked)} aria-hidden className={liked ? "animate-pop fill-current" : ""} />
           {liked && splashes > 0 && <Splat key={splashes} colors={colors} />}
         </span>
-        <span className="tabular-nums">{formatCompact(likeCount)}</span>
+        <span data-like-count className="tabular-nums">{formatCompact(likeCount)}</span>
       </button>
 
       <button type="button" onClick={() => openComments(conversation)} className={pill}>

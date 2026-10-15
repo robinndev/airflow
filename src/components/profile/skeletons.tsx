@@ -1,4 +1,3 @@
-import { SiteHeader } from "@/components/site/site-header";
 import { BannerScrims } from "./profile-hero";
 
 /*
@@ -10,8 +9,8 @@ const pulse = "skeleton bg-ice";
 
 export function ProfileSkeleton() {
   return (
+    // The header above it is the layout's, shared with the profile once it arrives.
     <div aria-busy aria-label="Loading profile">
-      <SiteHeader overlay />
       <div className={`relative -mt-16 h-[clamp(15rem,30vw,24rem)] ${pulse}`}>
         <BannerScrims />
       </div>

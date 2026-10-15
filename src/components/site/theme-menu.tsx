@@ -23,7 +23,10 @@ function subscribe(onChange: () => void) {
 const readPreference = () =>
   (document.documentElement.dataset.themePreference as ThemePreference | undefined) ?? DEFAULT_THEME_PREFERENCE;
 
-function applyPreference(preference: ThemePreference, origin: { x: number; y: number }) {
+/** The stored theme preference (null on the server). Also used by Settings → Appearance. */
+export const useThemePreference = () => useSyncExternalStore(subscribe, readPreference, () => null);
+
+export function applyPreference(preference: ThemePreference, origin: { x: number; y: number }) {
   const root = document.documentElement;
   const next = resolveTheme(preference);
   try {
@@ -53,7 +56,7 @@ const trigger =
   "relative grid size-10 place-items-center rounded-full bg-surface/75 text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface aria-expanded:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice [&_svg]:size-[1.125rem]";
 
 export function ThemeMenu() {
-  const preference = useSyncExternalStore(subscribe, readPreference, () => null);
+  const preference = useThemePreference();
 
   function onChange(event: ChangeEvent<HTMLInputElement>) {
     const rect = event.currentTarget.parentElement!.getBoundingClientRect();
@@ -145,7 +148,7 @@ function ThemeOption({
  * attribute re-scopes every token), so the preview can never drift from the
  * real palette.
  */
-function ThemePreview({ theme }: { theme: Theme }) {
+export function ThemePreview({ theme }: { theme: Theme }) {
   const info = THEMES[theme];
   return (
     <span

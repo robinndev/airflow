@@ -1,8 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-export const HEADER_SENTINEL_ID = "header-sentinel";
+/*
+ * The banner's bottom edge registers itself here, so an overlay header that
+ * mounted before it (over a profile's skeleton) follows the banner that
+ * streams in after it, and the next one after a navigation.
+ */
+let bannerEdge: HTMLElement | null = null;
+const edgeListeners = new Set<() => void>();
+
+function setBannerEdge(element: HTMLElement | null) {
+  bannerEdge = element;
+  edgeListeners.forEach((listener) => listener());
+}
+
+function subscribeBannerEdge(listener: () => void) {
+  edgeListeners.add(listener);
+  return () => edgeListeners.delete(listener);
+}
+
+/** Goes at the bottom of a full-bleed banner: overlay headers turn solid once it passes under them. */
+export function HeaderSentinel() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    setBannerEdge(element);
+    return () => {
+      if (bannerEdge === element) setBannerEdge(null);
+    };
+  }, []);
+  return <div ref={ref} aria-hidden className="absolute inset-x-0 bottom-0 h-px" />;
+}
 
 /**
  * Headers start transparent, without the bottom border, and turn solid once
@@ -22,9 +51,10 @@ export function HeaderShell({
 }) {
   const [solid, setSolid] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const edge = useSyncExternalStore(subscribeBannerEdge, () => bannerEdge, () => null);
 
   useEffect(() => {
-    const banner = overlay ? document.getElementById(HEADER_SENTINEL_ID) : null;
+    const banner = overlay ? edge : null;
     const sentinel = banner ?? topRef.current;
     if (!sentinel) return;
     const observer = banner
@@ -38,7 +68,7 @@ export function HeaderShell({
         });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [overlay]);
+  }, [overlay, edge]);
 
   return (
     <>

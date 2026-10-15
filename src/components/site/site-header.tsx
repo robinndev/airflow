@@ -9,6 +9,8 @@ import { SocialSession } from "@/components/social/social-session";
 import { getViewerCodeNews, getViewerProgress } from "@/lib/artists/server";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
+import { getViewerSettings } from "@/lib/settings/server";
+import { ViewerPrefs } from "@/components/settings/viewer-prefs";
 import { AccountMenu } from "./account-menu";
 import { CopyLinkButton } from "./copy-link-button";
 import { ExploreMenu } from "./explore-menu";
@@ -21,8 +23,8 @@ import { Logo } from "./logo";
 type SiteHeaderProps = {
   /** Float over a full-bleed banner (profile pages). */
   overlay?: boolean;
-  /** Shows `/handle` + copy-link next to the logo. */
-  handle?: string;
+  /** Shows `/handle` + copy-link next to the logo; a promise (the route's params) streams in on its own. */
+  handle?: string | Promise<string>;
   /** Translucent once solid, so the page's color shows through. */
   frosted?: boolean;
   /** Spans a wide page (Explore's wall) instead of the usual column. */
@@ -43,12 +45,9 @@ export function SiteHeader({ overlay = false, handle, frosted = false, wide = fa
         >
           <Logo />
           {handle && (
-            <>
-              <span className="truncate pl-1 font-display text-xl font-extrabold tracking-tight opacity-90">
-                /{handle}
-              </span>
-              <CopyLinkButton handle={handle} />
-            </>
+            <Suspense>
+              <HandleCrumb handle={handle} />
+            </Suspense>
           )}
         </div>
 
@@ -62,6 +61,18 @@ export function SiteHeader({ overlay = false, handle, frosted = false, wide = fa
         </nav>
       </div>
     </HeaderShell>
+  );
+}
+
+async function HandleCrumb({ handle }: { handle: string | Promise<string> }) {
+  const resolved = await handle;
+  return (
+    <>
+      <span className="truncate pl-1 font-display text-xl font-extrabold tracking-tight opacity-90">
+        /{resolved}
+      </span>
+      <CopyLinkButton handle={resolved} />
+    </>
   );
 }
 
@@ -88,7 +99,9 @@ function CircleButton({
 
 async function ViewerNav() {
   const viewer = await getViewer();
-  const [profile, codes] = viewer ? await Promise.all([getProfile(viewer.handle), getViewerCodeNews()]) : [null, null];
+  const [profile, codes, settings] = viewer
+    ? await Promise.all([getProfile(viewer.handle), getViewerCodeNews(), getViewerSettings()])
+    : [null, null, null];
   // Artists on their way to verification get their missions in the corner.
   const progress = profile?.artist && !profile.artist.verifiedAt ? await getViewerProgress() : null;
 
@@ -98,6 +111,7 @@ async function ViewerNav() {
         <FavoritesSession viewer={null} />
         <SocialSession viewer={null} />
         <MessagesSession viewer={null} />
+        <ViewerPrefs hideLikes={false} />
         <Link
           href="/sign-in"
           className="hidden h-10 items-center rounded-full bg-surface/75 px-4 text-sm font-semibold text-ink shadow-soft backdrop-blur-md transition-colors hover:bg-surface group-data-[solid=true]/header:bg-ice/80 group-data-[solid=true]/header:shadow-none group-data-[solid=true]/header:hover:bg-ice sm:flex"
@@ -120,6 +134,7 @@ async function ViewerNav() {
       <FavoritesSession viewer={viewer.id} />
       <SocialSession viewer={viewer.id} />
       <MessagesSession viewer={viewer} />
+      <ViewerPrefs hideLikes={settings?.hideLikeCounts ?? false} />
       <CircleButton label="Cart" className="hidden sm:grid">
         <ShoppingBag aria-hidden />
       </CircleButton>

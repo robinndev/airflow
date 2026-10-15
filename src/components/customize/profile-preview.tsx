@@ -88,7 +88,7 @@ export function ProfilePreview({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p data-part="headline" className="font-display font-semibold text-ink">
               {profile.headline || "Your headline"}
