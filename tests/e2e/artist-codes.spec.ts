@@ -188,6 +188,17 @@ test("a code works once", async ({ browser }) => {
   // The codes page is theirs now: the pass, and the way to verification.
   await expect(page.getByRole("heading", { name: "Your Artist Pass" })).toBeVisible();
   await expect(page.locator('[data-part="verify-goals"]')).toContainText("0 of 10");
+
+  // Their missions sit in the corner on every page: small, and open into how far along they are.
+  await page.goto("/");
+  const missions = page.locator('[data-part="missions"]');
+  await expect(missions.getByRole("button", { name: "Missions: 0 of 2 done" })).toBeVisible();
+  await missions.getByRole("button", { name: "Missions: 0 of 2 done" }).click();
+  await expect(missions.getByRole("heading", { name: "Get verified" })).toBeVisible();
+  await expect(missions.locator('[data-mission="followers"]')).toContainText("0 / 10");
+  await expect(missions.locator('[data-mission="sales"]')).toContainText("$0 / $100");
+  await page.keyboard.press("Escape");
+  await expect(missions.getByRole("heading", { name: "Get verified" })).toHaveCount(0);
   await page.close();
 });
 
@@ -252,6 +263,8 @@ test("reaching the goals makes an artist verified, with 2 codes", async ({ brows
     await gift.getByRole("button", { name: "Later" }).click();
     await page.goto(`/${collector.handle}`);
     await expect(page.locator('[data-part="artist-mark"][data-verified]:visible')).toContainText("Verified artist");
+    // Missions done: they leave the corner.
+    await expect(page.locator('[data-part="missions"]')).toHaveCount(0);
     await page.close();
   } finally {
     for (const fan of fans) await admin().auth.admin.deleteUser(fan);

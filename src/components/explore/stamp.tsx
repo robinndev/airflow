@@ -20,7 +20,11 @@ const ON_PAPER: Partial<Record<keyof typeof TONES, string>> = {
   ocean: "dark:text-ocean",
 };
 
-/** Rubber-stamp label for statuses ("Comms open", "Adopted"). Set `onPaper` when it's printed on a paper object. */
+/**
+ * Rubber-stamp label for statuses ("Comms open", "Adopted"). Set `onPaper` when it's printed on a paper object.
+ * The ink (border, outer ring, letters) is speckled; the stamp's own background stays whole, so the page
+ * never shows through it (a light paper stamp on Ember's dark page used to look washed out).
+ */
 export function Stamp({
   children,
   tone = "mint",
@@ -32,12 +36,21 @@ export function Stamp({
   onPaper?: boolean;
   className?: string;
 }) {
+  const ink = { maskImage: INK, WebkitMaskImage: INK };
+  // The ink layer is positioned against the stamp; callers that place it themselves already make it a container.
+  const positioned = /(^|\s)(absolute|fixed|sticky)(\s|$)/.test(className);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-[7px] border-2 border-current px-2 py-[3px] font-display text-[0.6875rem] leading-none font-extrabold tracking-[0.14em] whitespace-nowrap uppercase outline-1 outline-offset-2 outline-current ${TONES[tone]} ${onPaper ? (ON_PAPER[tone] ?? "") : ""} ${className}`}
-      style={{ maskImage: INK, WebkitMaskImage: INK }}
+      className={`${positioned ? "" : "relative"} inline-flex items-center rounded-[7px] border-2 border-transparent px-2 py-[3px] font-display text-[0.6875rem] leading-none font-extrabold tracking-[0.14em] whitespace-nowrap uppercase ${TONES[tone]} ${onPaper ? (ON_PAPER[tone] ?? "") : ""} ${className}`}
     >
-      {children}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -inset-[2px] rounded-[7px] border-2 border-current outline-1 outline-offset-2 outline-current"
+        style={ink}
+      />
+      <span className="inline-flex items-center gap-1.5" style={ink}>
+        {children}
+      </span>
     </span>
   );
 }

@@ -66,6 +66,8 @@ export function CanvasComposer({ handle, displayName, avatar }: CanvasComposerPr
         type="button"
         onClick={() => setDialogKind("finished")}
         inert={!docked}
+        // Lets other corner widgets (the artist's missions) step up while it's out.
+        data-floating-post={docked || undefined}
         className={`fixed right-4 bottom-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-ocean pr-5 pl-4 text-sm font-bold text-white shadow-lift transition duration-300 ease-out hover:brightness-95 sm:right-6 sm:bottom-6 [&_svg]:size-5 ${
           docked ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
         }`}
