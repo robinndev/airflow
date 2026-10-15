@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { saveCustomization, type SaveResult } from "@/app/(site)/customize/actions";
 import { buttonClasses } from "@/components/ui/button";
 import { FREE, paidFieldsUsed, type Customization } from "@/lib/customization/model";
-import { boardPaidFeatures, type Block, type Board, type NewBlock } from "@/lib/customization/about";
+import { boardPaidFeatures, type Block, type Board, type NewBlock, type StickerId } from "@/lib/customization/about";
 import { canvasData, canvasStyle } from "@/lib/customization/style";
 import { BoardEditor } from "./board-editor";
 import { BoardPanel } from "./board-panel";

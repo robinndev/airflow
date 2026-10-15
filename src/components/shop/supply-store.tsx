@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Check, Gift, LoaderCircle, Lock, RotateCcw, Sparkles } from "lucide-react";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
-import { claimFreeItem, claimMonthlyPick, wearItem } from "@/app/(site)/shop/actions";
+import { claimMonthlyPick, wearItem } from "@/app/(site)/shop/actions";
 import { HandNote } from "@/components/explore/doodles";
 import { buttonClasses } from "@/components/ui/button";
 import {
@@ -130,19 +130,12 @@ export function SupplyStore({ viewer, owned: initialOwned, worn: initialWorn, fl
     }
 
     if (item.kind === "stickers") {
-      if (owned.has(itemKey(item))) {
+      // Free packs are everyone's; owned ones too. Either way they're on the board's sticker shelf.
+      if (has(item)) {
         return (
           <Link href="/customize?tab=about" className={buttonClasses({ variant: "secondary", size, className: wide })}>
             On your board&apos;s sticker shelf
           </Link>
-        );
-      }
-      if (item.priceUsd === 0) {
-        return (
-          <button type="button" disabled={pending} onClick={() => run(() => claimFreeItem(item.kind, item.id), take(item), "Added to your board's stickers.")} className={buttonClasses({ size, className: wide })}>
-            {spinner ?? <Sparkles aria-hidden />}
-            Add to my stickers
-          </button>
         );
       }
     } else if (has(item)) {

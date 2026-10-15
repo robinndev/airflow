@@ -32,17 +32,6 @@ async function claim(userId: string, kind: ItemKind, id: string, source: "claim"
   return "Couldn't add it. Try again in a moment.";
 }
 
-/** Free items: yours to keep (sticker packs land on your board's sticker shelf). */
-export async function claimFreeItem(kind: unknown, id: unknown): Promise<ShopResult> {
-  const viewer = await getViewer();
-  if (!viewer) return { ok: false, error: "Sign in to collect supplies." };
-  const item = isItemKind(kind) && typeof id === "string" ? itemOf(kind, id) : undefined;
-  if (!item) return { ok: false, error: "That isn't on the shelves anymore." };
-  if (item.priceUsd > 0) return { ok: false, error: "Checkout opens soon." };
-  const problem = await claim(viewer.id, item.kind, item.id, "claim");
-  return problem ? { ok: false, error: problem } : { ok: true };
-}
-
 /** Puts an owned (or free) item on your profile, or takes that kind off with null. */
 export async function wearItem(kind: unknown, id: unknown): Promise<ShopResult> {
   const viewer = await getViewer();

@@ -3,10 +3,11 @@ import { Suspense } from "react";
 import { Studio } from "@/components/customize/studio";
 import { TABS, type TabId } from "@/components/customize/tabs";
 import { SiteHeader } from "@/components/site/site-header";
-import { EMPTY_BOARD } from "@/lib/customization/about";
+import { BUILT_IN_STICKERS, EMPTY_BOARD } from "@/lib/customization/about";
 import { profileFontVariables } from "@/lib/customization/fonts";
 import { savedCustomization } from "@/lib/customization/model";
-import { fetchOwnedFrames } from "@/lib/customization/queries";
+import { packStickersOwned } from "@/lib/shop/catalog";
+import { fetchOwnedItems, ownedSet } from "@/lib/shop/server";
 import { fetchPlanForUser } from "@/lib/profile/accounts";
 import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
@@ -31,10 +32,10 @@ async function StudioLoader({ searchParams }: Pick<PageProps<"/customize">, "sea
   const viewer = await getViewer();
   if (!viewer) redirect("/sign-in?next=/customize");
 
-  const [profile, plan, owned, params] = await Promise.all([
+  const [profile, plan, rows, params] = await Promise.all([
     getProfile(viewer.handle),
     fetchPlanForUser(viewer.id),
-    fetchOwnedFrames(viewer.id),
+    fetchOwnedItems(viewer.id),
     searchParams,
   ]);
   if (!profile) redirect("/join/handle?next=/customize");
@@ -54,7 +55,8 @@ async function StudioLoader({ searchParams }: Pick<PageProps<"/customize">, "sea
       initialCustom={savedCustomization(profile)}
       initialBoard={profile.about ?? EMPTY_BOARD}
       isPaid={plan === "flow_plus"}
-      owned={owned}
+      owned={rows.filter((row) => row.kind === "frame").map((row) => row.id)}
+      stickers={[...BUILT_IN_STICKERS, ...packStickersOwned(ownedSet(rows))]}
       initialTab={tab}
     />
   );

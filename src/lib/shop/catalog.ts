@@ -109,6 +109,10 @@ export type Owned = ReadonlySet<string>;
 
 export const ownsItem = (owned: Owned, item: ShopItem) => item.priceUsd === 0 || owned.has(itemKey(item));
 
+/** The stickers an account's packs add to the board (free packs included). */
+export const packStickersOwned = (owned: Owned): PackSticker[] =>
+  PACKS.filter((pack) => ownsItem(owned, pack)).flatMap((pack) => STICKER_PACKS[pack.id as PackId]);
+
 /** Flow+'s monthly pick: the first day of the month a date falls in (UTC), as stored. */
 export const pickMonth = (date: Date) => `${date.toISOString().slice(0, 7)}-01`;
 
