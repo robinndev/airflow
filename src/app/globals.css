@@ -937,6 +937,19 @@ html:has(dialog[open]:modal) {
  * (src/lib/customization/text-fx.ts). `--fx-color` is the effect's own color
  * when the artist picks one; each rule falls back to its default.
  */
+/*
+ * Text painted by its background (gradients, shimmer, the rainbow name) shows
+ * only inside its own box, and slanted or swashy faces (the hand font) reach
+ * past it: the first and last letters lost their tips. Room on both sides,
+ * given back by the margin, so the layout stays where it was.
+ */
+.name-gradient,
+.name-shimmer,
+.name-fx-rainbow {
+  padding-inline: 0.15em;
+  margin-inline: -0.15em;
+}
+
 .name-gradient {
   background-image: var(--name-gradient);
   background-size: 200% 100%;
