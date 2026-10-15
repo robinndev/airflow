@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 import { loadFollowList } from "@/app/(site)/social-actions";
 import { useSocialViewer } from "@/components/social/store";
@@ -31,7 +31,7 @@ import { PersonCard } from "./person-card";
 
 type View = FollowPage & { loading: boolean };
 
-const EMPTY: View = { people: [], total: 0, loading: true };
+const EMPTY: View = { people: [], total: 0, loading: false };
 
 export function FollowBinder({
   handle,
@@ -56,24 +56,26 @@ export function FollowBinder({
 
   // The plain list keeps everything loaded so far (switching filters and back costs nothing).
   const [all, setAll] = useState<View>({ ...initial, loading: false });
-  const [mutual, setMutual] = useState<View | null>(null);
+  // Answers remember what they answer (which viewer, which words), so a stale one is never shown.
+  const [mutual, setMutual] = useState<{ viewer: string; view: View } | null>(null);
   const [showMutual, setShowMutual] = useState(false);
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<View | null>(null);
-  const latest = useRef(0);
+  const [found, setFound] = useState<{ words: string; mutual: boolean; view: View } | null>(null);
 
+  const mutualView = viewer && mutual?.viewer === viewer ? mutual.view : null;
+  const onlyMutual = showMutual && mutualView !== null;
   const words = cleanFollowQuery(query);
-  const view = words ? (found ?? EMPTY) : showMutual && mutual ? mutual : all;
-  const filtered = Boolean(words) || showMutual;
+  // While a search is on its way, the last answer stays up, faded.
+  const searching = Boolean(words) && !(found && found.words === words && found.mutual === onlyMutual);
+  const view = words ? (found?.view ?? EMPTY) : (onlyMutual && mutualView) || all;
+  const filtered = Boolean(words) || onlyMutual;
 
   // Who on this list also follows the viewer: counted as soon as the viewer is known.
   useEffect(() => {
-    setMutual(null);
-    setShowMutual(false);
     if (!viewer || !mutualFilterLabel(list, viewer === ownerId)) return;
     let live = true;
     loadFollowList(handle, list, { mutual: true })
-      .then((page) => live && setMutual({ ...page, loading: false }))
+      .then((page) => live && setMutual({ viewer, view: { ...page, loading: false } }))
       .catch(() => {});
     return () => {
       live = false;
@@ -82,28 +84,31 @@ export function FollowBinder({
 
   // Searching: a moment after typing stops, through the whole list (or the mutual part of it).
   useEffect(() => {
-    if (!words) return setFound(null);
-    const id = ++latest.current;
-    setFound((current) => (current ? { ...current, loading: true } : null));
+    if (!words) return;
+    let live = true;
+    const answer = (page: FollowPage) => live && setFound({ words, mutual: onlyMutual, view: { ...page, loading: false } });
     const timer = setTimeout(() => {
-      loadFollowList(handle, list, { query: words, mutual: showMutual })
-        .then((page) => latest.current === id && setFound({ ...page, loading: false }))
-        .catch(() => latest.current === id && setFound({ people: [], total: 0, loading: false }));
+      loadFollowList(handle, list, { query: words, mutual: onlyMutual })
+        .then(answer)
+        .catch(() => answer({ people: [], total: 0 }));
     }, 250);
-    return () => clearTimeout(timer);
-  }, [words, showMutual, handle, list]);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [words, onlyMutual, handle, list]);
 
   async function more() {
     // The view the button was on, even if the filter changes while the page loads.
     const searching = words;
-    const onlyMutual = showMutual;
+    const mutualOnly = onlyMutual;
     const patch = (change: (current: View) => View) => {
-      if (searching) setFound((current) => current && change(current));
-      else if (onlyMutual) setMutual((current) => current && change(current));
+      if (searching) setFound((current) => current && { ...current, view: change(current.view) });
+      else if (mutualOnly) setMutual((current) => current && { ...current, view: change(current.view) });
       else setAll(change);
     };
     patch((current) => ({ ...current, loading: true }));
-    const page = await loadFollowList(handle, list, { offset: view.people.length, query: searching, mutual: onlyMutual }).catch(() => null);
+    const page = await loadFollowList(handle, list, { offset: view.people.length, query: searching, mutual: mutualOnly }).catch(() => null);
     patch((current) => {
       if (!page) return { ...current, loading: false };
       const seen = new Set(current.people.map((p) => p.handle));
@@ -111,11 +116,11 @@ export function FollowBinder({
     });
   }
 
-  const filters = Boolean(mutualLabel && mutual && mutual.total > 0);
+  const filters = Boolean(mutualLabel && mutualView && mutualView.total > 0);
   const searchable = all.total > FOLLOW_PAGE || Boolean(query);
   const left = view.total - view.people.length;
   // Everyone on a filtered view follows the viewer; so does everyone on your own followers list.
-  const followsYouKnown = showMutual || (own && list === "followers") ? true : undefined;
+  const followsYouKnown = onlyMutual || (own && list === "followers") ? true : undefined;
 
   if (all.total === 0) return <EmptyPage list={list} own={own} viewerKnown={viewer !== undefined} name={name} sample={sample} />;
 
@@ -124,16 +129,16 @@ export function FollowBinder({
       {(filters || searchable) && (
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 sm:px-6">
           <div role="group" aria-label="Show" className="flex flex-wrap gap-1.5">
-            {filters && mutual && (
+            {filters && mutualView && (
               <>
-                <FilterChip pressed={!showMutual} onClick={() => setShowMutual(false)}>
+                <FilterChip pressed={!onlyMutual} onClick={() => setShowMutual(false)}>
                   Everyone
                   <span className="tabular-nums opacity-70">{formatCompact(all.total)}</span>
                 </FilterChip>
-                <FilterChip pressed={showMutual} onClick={() => setShowMutual(true)}>
-                  <Faces people={mutual.people} />
+                <FilterChip pressed={onlyMutual} onClick={() => setShowMutual(true)}>
+                  <Faces people={mutualView.people} />
                   {mutualLabel}
-                  <span className="tabular-nums opacity-70">{formatCompact(mutual.total)}</span>
+                  <span className="tabular-nums opacity-70">{formatCompact(mutualView.total)}</span>
                 </FilterChip>
               </>
             )}
@@ -165,7 +170,7 @@ export function FollowBinder({
         </div>
       )}
 
-      <div aria-busy={view.loading} className={`px-4 pt-4 pb-5 transition-opacity sm:px-6 ${view.loading && view.people.length === 0 ? "opacity-60" : ""}`}>
+      <div aria-busy={searching || view.loading} className={`px-4 pt-4 pb-5 transition-opacity sm:px-6 ${searching ? "opacity-60" : ""}`}>
         {view.people.length > 0 ? (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
             {view.people.map((person, index) => (
@@ -182,11 +187,11 @@ export function FollowBinder({
           </ul>
         ) : (
           <p role="status" className="py-10 text-center text-sm text-muted">
-            {view.loading ? "Looking…" : words ? <>No one called &ldquo;{words}&rdquo; here.</> : "No one yet."}
+            {searching ? "Looking…" : words ? <>No one called &ldquo;{words}&rdquo; here.</> : "No one yet."}
           </p>
         )}
 
-        {left > 0 && view.people.length > 0 && (
+        {left > 0 && view.people.length > 0 && !searching && (
           <div className="mt-5 flex flex-col items-center gap-2">
             <button type="button" onClick={more} disabled={view.loading} className={buttonClasses({ variant: "secondary" })}>
               {view.loading ? "Turning the page…" : `Show ${Math.min(left, FOLLOW_PAGE)} more`}

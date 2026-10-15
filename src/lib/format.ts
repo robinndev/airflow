@@ -31,6 +31,8 @@ const monthYear = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const monthYearShort = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+
 const usdCents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
 
 export const formatCompact = (n: number) => compact.format(n);
@@ -40,6 +42,8 @@ export const formatUsdExact = (n: number) => (Number.isInteger(n) ? usd.format(n
 export const formatShortDate = (iso: string) => shortDate.format(new Date(iso));
 export const formatLongDate = (iso: string) => longDate.format(new Date(iso));
 export const formatMonthYear = (iso: string) => monthYear.format(new Date(iso));
+/** "Oct 2026" */
+export const formatMonthYearShort = (iso: string) => monthYearShort.format(new Date(iso));
 /** "October 10, 2026" */
 export const formatDay = (iso: string) => day.format(new Date(iso));
 /** "Oct 10, 2026" */

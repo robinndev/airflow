@@ -6,10 +6,10 @@ import { Check, Plus } from "lucide-react";
 import { Sparkle } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
 import { showToast } from "@/components/favorites/toast-events";
-import { useFollow, useFollowsYou } from "@/components/social/store";
+import { useFollow, useFollowsReady, useFollowsYou } from "@/components/social/store";
 import { buttonClasses } from "@/components/ui/button";
 import { followLabel, type FollowPerson } from "@/lib/follows/list";
-import { formatMonthYear } from "@/lib/format";
+import { formatMonthYearShort } from "@/lib/format";
 import { averageOf } from "@/lib/palette";
 import { artistLabels } from "@/lib/profile/draws";
 
@@ -92,9 +92,9 @@ export function PersonCard({
           {markFollowsYou && !you && <FollowsYouStamp handle={person.handle} known={followsYouKnown} />}
         </div>
 
-        <p className="mx-2.5 mt-2 flex items-center justify-between gap-2 border-b border-on-paper/10 pb-1 text-[0.5625rem] font-extrabold tracking-[0.14em] text-paper-muted uppercase">
-          <span className="truncate">{role}</span>
-          {draws && <span className="truncate text-right">{draws}</span>}
+        <p className="mx-2.5 mt-2 flex items-center justify-between gap-2 border-b border-on-paper/10 pb-1 text-[0.5625rem] font-extrabold tracking-[0.1em] text-paper-muted uppercase">
+          <span className="shrink-0">{role}</span>
+          {draws && <span className="min-w-0 truncate text-right">{draws}</span>}
         </p>
         <p className="mx-2.5 mt-1 truncate text-xs text-paper-muted">@{person.handle}</p>
 
@@ -109,7 +109,7 @@ export function PersonCard({
         </div>
 
         <footer className="flex items-center justify-between gap-2 border-t border-on-paper/10 px-2.5 py-1 text-[0.5625rem] font-semibold tracking-wide text-paper-muted">
-          <span className="truncate">since {formatMonthYear(person.followedAt)}</span>
+          <span className="truncate">since {formatMonthYearShort(person.followedAt)}</span>
           {number !== undefined && <span className="shrink-0 tabular-nums">No. {number}</span>}
         </footer>
       </div>
@@ -134,7 +134,13 @@ function FollowsYouStamp({ handle, known }: { handle: string; known?: boolean })
 function CardFollowButton({ handle, followsYouKnown }: { handle: string; followsYouKnown?: boolean }) {
   const { following, toggle, set } = useFollow(handle);
   const followsYou = useFollowsYou(handle, followsYouKnown) ?? false;
+  const ready = useFollowsReady();
   const label = followLabel({ following, followsYou });
+
+  // A page of buttons flipping from Follow to Following looks broken: wait for the viewer's follows.
+  if (!ready) {
+    return <span aria-hidden data-follow-pending className="skeleton block h-8 w-full rounded-action bg-on-paper/8" />;
+  }
 
   function press() {
     toggle();

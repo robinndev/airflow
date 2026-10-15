@@ -216,11 +216,16 @@ export function BannerScrims() {
 function Stat({ label, href, children }: { label: string; href: string; children: ReactNode }) {
   return (
     <div className="relative flex min-w-0 flex-1 flex-col-reverse items-center rounded-input px-2 py-2 text-center transition-colors has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ocean has-[a:hover]:bg-ice/70">
-      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dt id={`stat-${label.toLowerCase()}`} className="text-xs font-medium text-muted">
+        {label}
+      </dt>
       <dd className="font-display text-lg font-bold text-ink tabular-nums">
-        <Link href={href} className="outline-none after:absolute after:inset-0 after:rounded-input">
+        <Link
+          href={href}
+          aria-describedby={`stat-${label.toLowerCase()}`}
+          className="outline-none after:absolute after:inset-0 after:rounded-input"
+        >
           {children}
-          <span className="sr-only"> {label.toLowerCase()}</span>
         </Link>
       </dd>
     </div>

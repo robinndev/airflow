@@ -47,7 +47,9 @@
     ".next-art/types/**/*.ts",
     ".next-art/dev/types/**/*.ts",
     ".next-admin/types/**/*.ts",
-    ".next-admin/dev/types/**/*.ts"
+    ".next-admin/dev/types/**/*.ts",
+    ".next-follows/types/**/*.ts",
+    ".next-follows/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

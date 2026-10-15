@@ -60,9 +60,11 @@ async function FollowListView({ params, list }: { params: Params; list: FollowLi
             {formatCompact(profile.stats.following)}
           </IndexTab>
         </nav>
-        <HandNote tone="lilac" className="mr-2 mb-1.5 hidden -rotate-3 text-xl sm:inline-block">
-          newest first
-        </HandNote>
+        <span className="mr-2 mb-1.5 hidden sm:block">
+          <HandNote tone="lilac" className="-rotate-3 text-xl">
+            newest first
+          </HandNote>
+        </span>
       </div>
 
       <BinderSheet>

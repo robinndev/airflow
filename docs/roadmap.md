@@ -29,7 +29,7 @@ The roadmap owner's order of work. The goal is the blueprint's closed beta (§13
 **Build, before the beta opens (trust & safety minimum):**
 
 1. [Content tags](#brief-content-rating-mature-art-hidden-until-you-click): artists will post adult art from day one.
-2. [Reporting, block and mute](#brief-reporting-and-keeping-artiflow-human-made), with the minimal `/admin/reports` queue.
+2. [Reporting, block and mute](#brief-reporting-and-keeping-artiflow-human-made), with the minimal `/admin/reports` queue, and the [team roles](#brief-team-roles-and-permissions) that open it to moderators (the queue, not the money).
 3. [Spam & sign-up protection](#what-else-confirmed-2026-10-11) (bot check, rate limits), plus the quick part of [keeping art out of AI training](#what-else-confirmed-2026-10-11) (robots.txt, `noai` tags).
 4. [Guidelines, terms & privacy](#what-else-confirmed-2026-10-11), drafted for legal review, with the AI rule, content tags and strikes.
 
@@ -52,7 +52,7 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 
 | Item | Scope | Status | Notes |
 | ---- | ----- | ------ | ----- |
-| Auth & accounts | Sign-up, sign-in, roles, permissions | **Built (Supabase)** | Real accounts since 2026-10-10: email + password sign-up with a handle, sign in with email **or** handle, sign out, password reset (`/new-password`), email confirmation (`/auth/confirm`). A database trigger creates each profile; invites are separate (see the [brief](#brief-artist-invite-codes)). Real profiles show at `/{handle}` beside the demo artists. **Before opening sign-ups:** Resend as Supabase's SMTP (the built-in mailer only reaches the project team) (redirect URLs are set). Social logins: **Google and Discord on** (2026-10-10); Twitch shows faded and disabled until 2FA is on for the owner's Twitch account and its app exists. A button turns on by itself once its provider is on in Supabase. Accounts without a handle (first social sign-in) go through `/join/handle` ("Connected to Twitch as @…", handle prefilled from their username). Roles and permissions not started. |
+| Auth & accounts | Sign-up, sign-in, roles, permissions | **Built (Supabase)** | Real accounts since 2026-10-10: email + password sign-up with a handle, sign in with email **or** handle, sign out, password reset (`/new-password`), email confirmation (`/auth/confirm`). A database trigger creates each profile; invites are separate (see the [brief](#brief-artist-invite-codes)). Real profiles show at `/{handle}` beside the demo artists. **Before opening sign-ups:** Resend as Supabase's SMTP (the built-in mailer only reaches the project team) (redirect URLs are set). Social logins: **Google and Discord on** (2026-10-10); Twitch shows faded and disabled until 2FA is on for the owner's Twitch account and its app exists. A button turns on by itself once its provider is on in Supabase. Accounts without a handle (first social sign-in) go through `/join/handle` ("Connected to Twitch as @…", handle prefilled from their username). **Team roles and permissions** (user, moderator, admin) planned 2026-10-15: see the [brief](#brief-team-roles-and-permissions). |
 | ↳ **Settings** | Account (email, password, ways to sign in, where you're signed in), notifications (mute per kind), privacy (like counts, local time, who sees what), appearance (theme, wall size) | **Built (real)** | Request, 2026-10-15 (VGen's three settings screens, "without the VGen parts, adapted to how our system works"). `/settings`, from the account menu. **Needs:** the `account_settings` migration applied to production, and "Manual linking" switched on in Supabase for connecting Google / Discord / Twitch to an existing account. Left out on purpose, each waiting on its own work: 2-step verification, delete account / download your data, content preferences + birthdate, blocked users. See the [brief](#brief-settings). |
 | ↳ **Artist codes: who can sell** | Anyone joins, browses and commissions; selling (services, adoptables) takes a single-use artist code, used at sign-up or later; the Artist mark on profiles; the codes you hold, and who used each | **Built (real)** | Request, 2026-10-14 (VGen's model, Toyhouse's invitations page). `/codes`, the strip on a collector's own profile, the gift when codes arrive, the welcome + Artist Pass post. **Codes are earned (2026-10-14):** an artist code lets you sell, not invite; 10 followers and $100 in sales make you a **verified artist** with 2 codes; more come only with Flow+ (1 a week). Sabrina (@shinllz) and Ipphie hold 6 each. See the [brief](#brief-artist-invite-codes). |
 | Artist profile | Banner, identity, links, post feed + composer, free vs Pro appearance | Prototype | `/[handle]`. Pro gating in `resolveAppearance()`. |
@@ -71,9 +71,10 @@ Goal (blueprint): launch the core discovery → transaction loop, validate that 
 | Discovery & search | Explore, search, filters, tags | **Built (first pass)** | Request, 2026-10-12. `/explore/search`: commissions, adoptables and artists by name, category, style, who they draw, price range, availability and turnaround; sorted by relevance, recent or popular; the URL is the state. `/explore/popular`: the week's most-liked pieces, featured artists, popular commissions, new studios, adoptables. Explore's open studios and adoptables include real listings; its categories, the header's Explore menu and the autocomplete lead to search. Simple rules over a cached list (no model). **Explore is the salon wall since 2026-10-14:** every piece (gallery, posts, characters, adoptables, commission examples) edge to edge at its own size, with tabs, palette, "open for commissions", search and four orders in the URL, a viewer with a wall label, infinite paging, GIFs that play only on screen; the old landing is `/explore/studios` (see the request log). **Later:** move matching into Postgres (full-text + trigram) past a few thousand listings; personalized ranking (Phase 2). See the [brief](#brief-listings-and-discovery). |
 | Checkout & orders | Platform fee (about 5%, `PLATFORM_FEE_PERCENT`), order history, minimal refund/dispute flow | Needs decision | Payments provider. Commissions pay through the [commission flow](#brief-commission-flow-request--proposal--payment--delivery). |
 | Media upload & delivery | Limits, validation, thumbnails, CDN, metadata stripping | **Built (first pass)** | Supabase Storage, public `art` bucket, one folder per account (policies: write/delete only your own). The browser resizes (posts 2400px, cover 2400px, picture 512px; never enlarges), re-encodes to WebP (strips EXIF) and **extracts the palette** before uploading straight to storage (no server hop, 10 MB cap). Next/Image serves them. **2026-10-11:** small images (≤ 640px) stay lossless PNG, and transparent ones stay PNG in browsers that can't encode WebP (Safari), instead of a JPEG that blackens transparency (messages excepted: their bucket takes no PNG). A new picture or cover is **framed first** (zoom + position, `<ImageCropDialog>`). Open: delete an account's files when the account is deleted; moderation/scanning; cropping animated GIFs (they go up whole for now). **2026-10-12:** the [original images plan](#brief-original-images-cheap-and-safe) is approved (originals + display copy + thumb, art straight from storage's CDN, server check, backups; then R2): ~$35–45/month at a year-one scale against ~$1,800 today. **Step 1 built 2026-10-14** (originals, thumbs, our own loader, metadata stripping, server check, upload limits); backup waits on R2. |
-| Admin & moderation | Reports, takedowns, essential analytics | Needs decision | Moderation policy. |
+| Admin & moderation | Reports, takedowns, essential analytics | Needs decision | Moderation policy. Roles and what each can do: [team roles and permissions](#brief-team-roles-and-permissions) (planned 2026-10-15). |
 | ↳ **Back office (`/admin`): the team's dashboard** | Accounts, daily active, sign-ups, commissions funnel, money through the platform, our revenue, Flow+, shop, activity | **Built** | Request, 2026-10-15 (project lead). Admins: robindev, shinllz, ipphie (`team_members`, `npm run team`). Daily active accounts recorded from 2026-10-15 (`daily_activity`, one mark per account per day), earlier days inferred from activity. **Money is estimated until checkout:** paid orders are the ones the team marks paid, adoptables the ones artists mark sold, Flow+ is given by the team. **Not yet:** visitors who aren't signed in (Vercel Web Analytics would cover them), plan cancellations (members are counted back from today's), the fee charged per payment (comes with checkout), CSV export. |
 | ↳ **Reporting: posts, comments, profiles** | "…" → Report on anything people post; reasons; block/mute; team review queue; outcomes and appeals | **Planned (P1)** | Request, 2026-10-11. Needed before sign-ups open beyond invited artists: posting is real and the site is public. See the [brief](#brief-reporting-and-keeping-artiflow-human-made). |
+| ↳ **Team roles and permissions: users, moderators, admins** | Granular permissions behind three roles; moderators review reports, hide and remove content, warn and suspend up to 30 days, with no access to money, settings or the team; admins add bans, reversals, the team, rules, money and the dashboard; a required rule on every action, an append-only audit log, appeals decided by someone else, private messages seen only through a report; an account standing page with appeals | **Planned (P1)** | Request, 2026-10-15 (project lead, a written proposal; planned only, not to be built yet). Lands with reporting: the queue is the moderator's first tool. `team_members` already takes `moderator`, but today only admins open anything. See the [brief](#brief-team-roles-and-permissions). |
 | ↳ **Made by humans: no generative AI** | The rule; agreement at sign-up and on paid listings; AI-generator check on upload; AI reports reviewed evidence-first, with private process requests | **Planned (P1)**; **generator check Built** | Request, 2026-10-11 ("only real posts"). **Rule and strikes decided** 2026-10-11. **Built 2026-10-11:** every upload (posts, picture and cover, profile background, About board) is checked for AI generators' marks before it's re-encoded, with an "I made this myself" review request. See [Part 2](#part-2-ai-generated-art). |
 | ↳ **Content tags: sensitive art hidden until you click** | Artists tag their work (artistic nudity, suggestive, sexual content, gore, violence, flashing, revealing clothes, other). 18+ tags are covered and only confirmed adults can reveal them | **Planned (P1)** | Confirmed 2026-10-11: adult art is welcome, tagged and hidden. Tags replace a single "Mature" switch (2026-10-11). See the [brief](#brief-content-rating-mature-art-hidden-until-you-click). |
 | ↳ **Keep our art out of AI training** | Block AI crawlers, `noai` tags, scraping ban in the terms; check that our resize + WebP doesn't weaken Glaze/Nightshade | **Planned** | Confirmed 2026-10-11. See [What else](#what-else-confirmed-2026-10-11). |
@@ -384,7 +385,7 @@ We follow VGen's model (open to everyone, a code to sell), with Toyhouse's two g
 
 ### Part 1: report anything, in two clicks
 
-1. **Where.** Every post gets the "…" menu. Today only authors see it, and only for delete. For everyone else it holds **Report post**, **Block @handle** and **Mute @handle**. Comments and profiles get the same, and so will services, adoptables and messages once they exist. Visitors who aren't signed in are asked to sign in.
+1. **Where.** Every post gets the "…" menu. Today only authors see it, and only for delete. For everyone else it holds **Report post**, **Block @handle** and **Mute @handle**. Comments and profiles get the same, and so do services, adoptables and messages (all real since 2026-10-12; what a moderator may read in a conversation is set in [team roles](#brief-team-roles-and-permissions)). Visitors who aren't signed in are asked to sign in.
 2. **The dialog.** Pick a reason, add an optional note, Send. That's two clicks in the common case. A few reasons ask one more thing:
 
    | Reason (posts) | Extra question | While the case is open |
@@ -458,7 +459,7 @@ No upscalers that invent detail and no generative fill, however small. Drawing *
 
 ### Who reviews
 
-The team, at first, on a minimal team-only page (`/admin/reports`). It shows the queue by severity. Each case shows the item, the reports, the artist's history and past cases. The actions are dismiss, remove, ask for process, warn and suspend. Access goes by a `moderator` role on the profile; anything sent to that page is checked against the role on the server. Community moderators come later (Phase 3, "Moderation at scale").
+The team, at first, on a minimal team-only page (`/admin/reports`). It shows the queue by severity. Each case shows the item, the reports, the artist's history and past cases. The actions are dismiss, remove, ask for process, warn and suspend. Access goes by the team's permissions (`team_members`, since 2026-10-15), not a flag on the profile; anything sent to that page is checked against them on the server. What moderators and admins may each do is in [team roles and permissions](#brief-team-roles-and-permissions). Community moderators come later (Phase 3, "Moderation at scale").
 
 ### Acceptance criteria
 
@@ -494,6 +495,137 @@ The team, at first, on a minimal team-only page (`/admin/reports`). It shows the
 - **Notifications:** `report_resolved`, `content_removed`, `process_requested`, `appeal_decided`.
 
 Sources: VGen help center, ["AI Policy"](https://help.vgen.co/hc/en-us/articles/12882944163991) and ["How to tell if an image is created with Generative AI?"](https://help.vgen.co/hc/en-us/articles/31672648933399) (both read 2026-10-11); [Hive AI-generated content detection](https://docs.thehive.ai/docs/ai-generated-content-detection).
+
+---
+
+## Brief: team roles and permissions
+
+- **Requested by:** project lead, 2026-10-15, as a written proposal: three roles (user, moderator, admin), what each one can do, the moderator's starting permissions, the moderation desk's tools and six ground rules. "Implement granular permissions from the start, even if there are only these three roles at first." Planned only: not to be built yet.
+- **Phase / priority:** Phase 1, together with [reporting](#brief-reporting-and-keeping-artiflow-human-made) (P1). The report queue is the moderator's first tool, so the two land together. The money permissions are defined now and wired in when checkout exists.
+- **Status:** Planned. A few limits are still open (recommendations below).
+- **Depends on:** reporting (reports, cases, the queue), notifications (built), 2-step verification for team accounts (recommended, see [settings](#brief-settings)), and checkout for the money side.
+
+### Where we are today
+
+- `public.team_members` (`admin` | `moderator`, secret key only, `npm run team`) has existed since 2026-10-15, with three admins (robindev, shinllz, ipphie). Only admins can open anything: `requireAdmin()` guards `/admin`, the back office dashboard with the money in it. Today a moderator has no page and no powers.
+- Two other things already decide what an account can do, and they stay separate from team roles:
+  - **Plan** (free / Flow+): what you can do with your own page.
+  - **Artist access** (collector / artist / verified): whether you can sell.
+  - **Team role** (none / moderator / admin): what you can do to other people's things. That's this brief.
+
+### The three roles
+
+| Role | Who | In one line |
+| ---- | --- | ----------- |
+| **User** | Everyone with an account (collector or artist, any plan) | Their own things, plus reporting and appealing. |
+| **Moderator** | Team members an admin picks | Keeps the community safe: reviews reports, hides and removes content, warns, suspends for a limited time. No money, no settings, no team. |
+| **Admin** | The founders, at first | Everything a moderator does, plus permanent bans, reversing decisions, the team, the rules, money and the dashboard. |
+
+A user can create and customize their profile according to their plan; post art, characters and services; buy, sell and message; report profiles, posts, comments, messages, services and adoptables; and **see every decision made about them and appeal it** (new, see [Account standing](#what-the-person-sees-account-standing)).
+
+### Permissions, not just roles
+
+A role is a named set of permissions. Every check in the app and in the database asks for a permission ("can remove content"), never for a role ("is a moderator"). That way, a later role, such as a community moderator (Phase 3) or a support person who only sees orders, is just a new set and needs no new code. An admin can also give one person a single extra permission (refunds, to one admin, say) or take one away.
+
+| Permission | What it allows | User | Moderator | Admin |
+| ---------- | -------------- | ---- | --------- | ----- |
+| `reports.view` | The report queue, each case, its evidence and its reporters | — | Yes | Yes |
+| `reports.assign` | Take a case, or hand it to someone else | — | Take one, give it back | Anyone's |
+| `content.hide` | Hide something while it's reviewed | — | Yes | Yes |
+| `content.remove` | Remove something for breaking a rule | — | Yes | Yes |
+| `users.warn` | Send a warning, add a strike | — | Yes | Yes |
+| `users.suspend` | Suspend posting, selling or the whole account for a while | — | Up to 30 days | Any length |
+| `users.ban` | Ban permanently | — | No | Yes |
+| `users.delete` | Delete an account and its files for good | — | No | Yes |
+| `users.investigate` | The person page: history, past reports, actions, team notes | — | Yes | Yes |
+| `messages.read_reported` | The reported message and the messages around it, inside an open case | — | Yes | Yes |
+| `orders.view` | An order's facts (status, price, dates, files) | Their own | Inside a case | Yes |
+| `decisions.reverse` | Undo a decision | — | Their own only (logged as a correction) | Anyone's |
+| `appeals.decide` | Decide an appeal | — | Yes, except on their own decisions | Yes |
+| `money.refund`, `money.hold` | Refund a buyer, hold a payout | — | No | Granted by name |
+| `metrics.view` | The dashboard (today's `/admin`) | — | No | Yes |
+| `audit.view` | The whole audit log | — | Their own actions + the cases they work on | Yes |
+| `platform.manage` | The list of rules moderators pick from, categories, policies, system settings | — | No | Yes |
+| `team.manage` | Add and remove team members, change roles and permissions | — | No | Yes |
+
+**Nobody, whatever their role, can:**
+
+- see passwords (Supabase only keeps a hash) or full bank details (those will live at the payments provider, never in our database);
+- edit or delete the audit log, admins included;
+- act on a case where they're the reporter or the reported person. A moderator also can't act on another team member: those cases go to an admin;
+- read a conversation nobody reported.
+
+Email addresses are admin-only, and every look is logged. Moderators see account age, plan, artist access and ways to sign in, not addresses.
+
+### The moderation desk
+
+Plain and data first, like the back office: it's a work tool. `/admin` becomes the team's front door and shows each person only the sections their permissions open: moderators get Reports and People, admins get everything, the dashboard included. In the account menu the link reads "Moderation" for moderators and "Back office" for admins.
+
+1. **Report queue** (`/admin/reports`, from the reporting brief). One row per case: the reason, the content (thumbnail or quote), who reported it (a count; names only for the team), the reported account, the date, the status (new · in review · waiting on the artist · escalated · closed), the severity and the moderator on it. Filters: mine, unassigned, escalated, by reason, by severity. Sorted by severity, then number of reports, then age. Opening a case takes it ("in review by @x"), so two people don't work on the same one.
+2. **Case page.** The item as it was when reported (a snapshot, so editing or deleting it doesn't wipe the evidence), every report with its note and links, a summary of the reported person (from the person page), and past cases on the same item. Actions: dismiss, hide, remove, ask for process (AI cases), warn, suspend, **escalate to an admin** (with a note; admins are notified).
+3. **Person page** (`/admin/people/@handle`): account age, plan, artist access, track record (once it exists), active and expired strikes, warnings, suspensions, every case against them and how it ended, the reports they sent and how many held up, open orders, and **team notes** (private, dated, signed). This is what keeps decisions consistent: nobody acts on a person without seeing it first.
+4. **Audit log** (`/admin/log`): every action by anyone on the team: who, when, what, on which content or account, which rule, the note, and what changed. Filters by team member, action and account. Moderators see their own entries and the history of the cases they work on; admins see everything.
+5. **Team** (`/admin/team`, admins only): members, roles, extra permissions. Replaces `npm run team` (the script stays, for bootstrapping the first admin).
+
+### Ground rules
+
+1. **A rule is required.** Every action names the rule it enforces, picked from the community guidelines' list (the same list the guidelines publish), plus a note. Suspensions and bans can't go without the note. The person is told which rule, never just "you broke the rules".
+2. **Proportional.** The person page suggests the next step from the person's history: a first minor offense gets a warning; repeats get a strike, then 7 days, then 30 days, then a ban (admin). The AI ladder is already decided (remove + warn → 30 days → immediate suspension for selling AI art). Going past the suggestion needs a note. Severe cases are acted on at once: sexual content involving minors (hidden automatically, per the reporting brief), scams where money is involved, threats.
+3. **Right to appeal.** One appeal per decision, from the person's standing page. Someone else decides it: another moderator for warnings and removals, an admin for suspensions and bans, never the person who made the decision. The outcome arrives as a notification, with the reason.
+4. **Guarded against abuse.** The audit log is append-only for everyone; a correction is a new entry ("reversed by @x because …"). Moderators can't act on themselves, on cases they reported, or on team members. Admins can see whether one moderator's decisions get reversed on appeal more often than others'.
+5. **Money stays apart.** A moderator can investigate a fraud report on a sale (the order's facts, the reported messages) and suspend the seller. Refunds and payout holds are separate permissions, given to people by name. Until checkout exists there's no money to move, but the permissions are defined now so checkout plugs straight into them.
+6. **Private by default.** Joining the team doesn't open anyone's private messages. A moderator sees a conversation only when someone in it reported a message, and then only that message and the messages around it (about 20 before and after), inside the open case. Every opening is logged. No browsing inboxes, no searching across conversations.
+
+### What the person sees (account standing)
+
+A **Standing** tab in [Settings](#brief-settings), with two sheets:
+
+- **About you:** warnings, strikes (with when each one expires), suspensions (what's paused, until when) and removed content (what and why), each with **Appeal** while an appeal is still possible. "All good" when there's nothing there.
+- **Your reports:** what you reported and what came of it (the reporting brief's "Your reports").
+
+Notices are signed "the Artiflow team", never with a moderator's handle, so nobody becomes a target for doing the job. The audit log keeps the real name.
+
+**What a suspension does:** you can still sign in, browse, see your standing and appeal, but you can't post, comment, message, request or sell. Your services stop taking new requests; orders already under way carry on, unless the case is about fraud, in which case an admin decides. A ban (admins only) stops you signing in and hides your profile.
+
+### Acceptance criteria
+
+- Every check asks for a permission, and the database refuses an action from anyone without it, whatever the page shows.
+- A moderator can open Reports and People, never the dashboard, the team, the rules or the money; going to one of those URLs directly gives the site's 404.
+- Every hide, removal, warning, suspension, ban, reversal and appeal decision writes its audit entry in the same transaction: no entry, no action. Nobody can edit or delete an entry.
+- An action without a rule is refused. A suspension or ban without a note is refused.
+- A moderator's suspension longer than 30 days is refused; a permanent ban takes an admin.
+- An appeal is never decided by the person who made the decision.
+- A moderator sees a private message only through a case about it, and every look is logged.
+- Moderators never see email addresses, passwords or payment details.
+- The person sees every decision about them, with the rule, and can appeal each one once.
+
+### Open questions
+
+| Question | Recommendation |
+| -------- | -------------- |
+| How long can a moderator suspend someone? | Up to 30 days. That covers the decided AI ladder without waiting for an admin. Anything longer, and permanent bans, is admin-only. |
+| Selling AI art and scams call for an immediate suspension that may need to last longer than 30 days. | The moderator suspends for 30 days and escalates; an admin decides what happens next. |
+| Who decides appeals? | Another moderator for warnings and removals; an admin for suspensions and bans. With three admins on the team, someone else is always available. |
+| Should team accounts need 2-step verification? | Yes, before the moderation tools open: a team account is the one worth stealing. That moves 2-step verification (settings brief, ~2–3 days) ahead of checkout. |
+| Do moderators see email or IP addresses (for fake accounts and ban evasion)? | No. Admins see the email, and every look is logged. Signals for linked accounts (same device, same burst of sign-ups) come later, computed, without showing the raw data. |
+| How long do we keep removed content? | 90 days (the appeal window plus evidence), then the files go. Sexual content involving minors is preserved and reported as the law requires, never simply deleted; this needs the legal review. |
+| Do moderators get a public badge? | No: notices are signed "the Artiflow team". Revisit if community moderators come (Phase 3). |
+| The rules list and categories: in code, or editable by admins? | In code first (`src/lib/moderation/rules.ts`, mirroring the guidelines), then a table admins can edit once the guidelines settle. Listing categories stay in code. |
+
+### Implementation sketch
+
+- **Permissions:** `team_role_permissions` (role, permission), seeded from the table above, and `team_member_permissions` (user, permission, granted true/false) for per-person grants and revokes. `private.team_can(user, permission)` is used by every moderation function; `my_team_permissions()` serves the app. Keys and labels live in `src/lib/team/permissions.ts` (client-safe). `requireAdmin()` becomes `requirePermission(…)`; `getTeamRole()` becomes `getTeamAccess()` (role + permissions), still cached for the menu and still checked fresh on every page.
+- **Every action is one database function** (`mod_hide`, `mod_remove`, `mod_warn`, `mod_suspend`, `admin_ban`, `mod_reverse`, `decide_appeal`…), called by Server Actions with the secret key after the session check. It checks the permission and the limits, makes the change and writes the audit row, all in one transaction.
+- **Tables:**
+  - `moderation_actions`, the audit log: actor, action, target type + id, target account, case, rule, note, before/after snapshot, the entry it reverses. A trigger refuses update and delete; no grants.
+  - `restrictions`: account, kind (warning | strike | posting | selling | account | ban), from, until, rule, action, lifted at / by.
+  - `appeals`: action, account, text, status, decided_by (never the actor), outcome.
+  - `team_notes`, and `message_views` (case, viewer, conversation, when).
+  - Plus the reporting brief's `reports`, `report_cases` and `process_requests`; its `strikes` fold into `restrictions`.
+- **Hidden and removed content:** a `moderation` column (null | hidden | removed) on posts, comments, artworks, characters, services and adoptables. Public reads (RLS and the cached queries) skip it; the owner still sees it, with a notice. Each action refreshes the item's cache tags.
+- **Suspensions in the database:** restrictive insert policies on posts, comments, messages, commission requests, services and adoptables refuse a restricted account (`private.is_restricted(user, kind)`). A ban also bans the auth user (`ban_duration`).
+- **Notifications** (always on): `warning`, `content_removed`, `suspended`, `appeal_decided`, and the reporting brief's `report_resolved`.
+- **Pages:** `/admin` (sections by permission), `/admin/reports`, `/admin/reports/[case]`, `/admin/people/[handle]`, `/admin/log`, `/admin/team`, and `/settings/standing`.
 
 ---
 
@@ -1105,6 +1237,7 @@ Trust and safety gaps the roadmap owner raised on 2026-10-11. The project lead c
 | 2026-10-15 | Profile (screenshot of @ipphie): put the headline and bio in a box like the Followers / Following / Artworks card, for contrast, since on some background colors the text disappears. Robin: it should be a choice, box or no box, and if a box, with a color of its own ("I liked it better without"). | **Built:** Customize → Name & bio → **Bio box**: "No box" (the default, as before) or "On a card", the same card as the stats beside it. Free accounts get the box (it's for readability); its own color is Flow+, and the headline and bio re-ink themselves to read on whatever color is picked (`bioBoxStyle()`, `readableOn()`). New CSS hook `data-part="intro"`. Tested in `tests/e2e/bio-box-and-buttons.spec.ts` and `customization.test.ts`. |
 | 2026-10-15 | When changing button colors in Customize, only the first button's color can be chosen; the second should have its own. | **Built:** Customize → Buttons & layout → **Button colors** (Flow+): Follow & Request (the accent, as before), Message & Edit profile, Commission & Customize, each in its own color, with text that picks itself to read on it. Every button of that kind on the page follows (`action-secondary` / `action-soft` markers, `data-button-second` / `data-button-soft` on the canvas). The demo @pebblecat shows both. |
 | 2026-10-15 | About board (screenshot of a text block): gradients and effects on the board's text, like the profile name; and choosing the effects' colors on both (name and board), with HEX or RGB. | **Built:** the board's title and text (or list items) each take a gradient and an effect (glow, sticker, outline, shimmer), apart from each other, with the same rules as the name (`letteringStyle()`, `text-fx.ts`). Every effect has its own color, the name's too: the glow, the sticker's edge, the outline, the shimmer's light (`--fx-color`; unset, each keeps its old default). Every color field types and copies HEX or RGB (a switch remembered per browser; a pasted "rgb(…)" works in either box). Gradients and effects past the glow are Flow+ on the board as on the name; colors are for everyone. Tested in `customization.test.ts` and `tests/e2e/lettering.spec.ts`. |
+| 2026-10-15 | Project lead (a written proposal): roles for users, moderators and admins. Moderators keep the community safe without full access: review reports, hide and remove content, warn, suspend for a limited time, investigate scams, plagiarism, harassment and fake profiles, escalate serious cases; no permanent bans, account deletion, roles, payments, refunds or secrets. Admins manage users, moderators and permissions, ban, reverse decisions, set rules, handle money and see metrics and audit logs. A report queue, an investigation page and an action log; a required reason, proportionality, appeals, an audit log nobody can erase, money kept apart, no free access to private messages. "Granular permissions from the start." Roadmap only, not to be built yet. | **Planned:** [team roles and permissions](#brief-team-roles-and-permissions), next to the reporting brief and landing with it (P1). Adapted to what exists: `team_members` already takes `moderator`, but only admins open anything today; plan and artist access stay separate from team roles. Every check asks for a permission (19 of them, in a table per role) and every action is one database function that writes its audit entry in the same transaction. Adds an account **Standing** tab in Settings (decisions about you, appeals, your reports) and notices signed "the Artiflow team". **Open, with recommendations:** a moderator can suspend for up to 30 days (the AI ladder fits), appeals go to someone else (an admin for suspensions), 2-step verification for team accounts first, removed content kept 90 days. |
 
 ## Pending decisions
 
@@ -1120,7 +1253,7 @@ From blueprint §16, with the items they block.
 | ~~What moves an order past "Awaiting payment" before checkout exists?~~ **Decided 2026-10-13: nothing in the app.** Real orders wait there until the payments provider; the team can mark test orders paid (`npm run orders -- paid <id>`). | — |
 | ~~Platform fee~~ **Decided 2026-10-15 (project lead): about 5%** (was the blueprint's 10%), adjustable: one constant, `PLATFORM_FEE_PERCENT` in `src/lib/plans.ts`. The back office tries other fees on its receipt. With checkout, store the fee charged on each payment so a change never rewrites the past. | — |
 | Refund, dispute & payout policy | Checkout & orders, commission cancellations |
-| Content limits & moderation process | Admin & moderation, media upload |
+| Content limits & moderation process. **Roles and permissions planned 2026-10-15** ([brief](#brief-team-roles-and-permissions)); still open there: the moderator's suspension limit (30 days recommended), who decides appeals, 2-step verification for the team, how long removed content is kept | Admin & moderation, media upload |
 | ~~Exact AI rule and strikes~~ **Decided 2026-10-11:** strict on the posted pixels (no upscalers that invent detail, no generative fill); strikes remove + warn → 30 days → immediate suspension for selling AI art. Still open: drawing *from* an AI image you don't post, after artist interviews. | — |
 | ~~Drawn characters who look underage in sexual content~~ **Decided 2026-10-11: banned**, whatever the character's stated age. | — |
 | ~~Can mature commissions be paid?~~ **Decided 2026-10-11: yes.** Still to do: the chosen provider's written OK for drawn adult art (like VGen's from Stripe). | Payments provider choice, paid mature commissions |

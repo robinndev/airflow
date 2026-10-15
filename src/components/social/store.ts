@@ -266,6 +266,15 @@ export function useFollow(handle: string, initial?: boolean) {
   return { following, toggle, set };
 }
 
+/** Whether follow buttons know their state: a visitor, or the viewer's follows have loaded. */
+export function useFollowsReady() {
+  return useSyncExternalStore(
+    subscribe,
+    () => state.viewer === null || state.followsLoaded,
+    () => false,
+  );
+}
+
 /** The signed-in viewer's id (null: a visitor; undefined until the header knows). */
 export function useSocialViewer() {
   return useSyncExternalStore(
