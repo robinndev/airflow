@@ -29,7 +29,7 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="group/switch relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-border p-0.5 transition-colors duration-200 hover:bg-ice-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ocean disabled:cursor-not-allowed disabled:opacity-60 aria-checked:bg-[linear-gradient(110deg,var(--sky),var(--ocean))] aria-checked:hover:brightness-105"
+      className="group/switch relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-muted/35 p-0.5 transition-colors duration-200 hover:bg-muted/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ocean disabled:cursor-not-allowed disabled:opacity-60 aria-checked:bg-[linear-gradient(110deg,var(--sky),var(--ocean))] aria-checked:hover:brightness-105"
     >
       <span
         aria-hidden

@@ -30,7 +30,7 @@ export function PasswordSetting({ hasPassword }: { hasPassword: boolean }) {
   return (
     <>
       <SheetRow
-        label="Password"
+        label="Your password"
         action={
           !open &&
           !state?.ok && (

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { SUPABASE_PUBLIC_KEY, SUPABASE_URL, assertSupabaseEnv } from "./env";
 
 /**
@@ -10,8 +10,12 @@ import { SUPABASE_PUBLIC_KEY, SUPABASE_URL, assertSupabaseEnv } from "./env";
  */
 export async function createSupabaseServer() {
   assertSupabaseEnv();
-  const store = await cookies();
+  const [store, request] = await Promise.all([cookies(), headers()]);
+  // Sign-ins happen on the server: pass the browser's name along, so
+  // "Where you're signed in" (Settings) can say "Chrome on macOS".
+  const userAgent = request.get("user-agent");
   return createServerClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
+    ...(userAgent && { global: { headers: { "user-agent": userAgent } } }),
     cookies: {
       getAll: () => store.getAll(),
       setAll(cookiesToSet) {

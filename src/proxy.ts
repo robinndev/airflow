@@ -12,7 +12,10 @@ export async function proxy(request: NextRequest) {
   if (!hasSession || !SUPABASE_URL || !SUPABASE_PUBLIC_KEY) return NextResponse.next();
 
   let response = NextResponse.next({ request });
+  const userAgent = request.headers.get("user-agent");
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
+    // Refreshing a session records the browser it's in (Settings → "Where you're signed in").
+    ...(userAgent && { global: { headers: { "user-agent": userAgent } } }),
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, headers) {

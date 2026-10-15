@@ -9,6 +9,10 @@ import type { ImageAsset } from "@/lib/profile/types";
 export const cellRatio = ({ width, height }: Pick<ImageAsset, "width" | "height">) =>
   Math.min(2.4, Math.max(0.5, width / height));
 
-/** The mat behind a piece: its main color, barely there, over the theme's surface. */
+/**
+ * The mat behind a piece: its main color, barely there, over the theme's
+ * surface. The raw theme variables, so it follows any re-scoped palette (an
+ * artist's profile canvas, a data-theme preview); `--color-*` resolve at :root.
+ */
 export const matOf = (palette?: string[]) =>
-  palette?.[0] ? `color-mix(in oklab, ${palette[0]} 14%, var(--color-surface))` : "var(--color-ice)";
+  palette?.[0] ? `color-mix(in oklab, ${palette[0]} 14%, var(--surface))` : "var(--ice)";
