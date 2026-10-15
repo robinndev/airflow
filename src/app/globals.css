@@ -932,7 +932,11 @@ html:has(dialog[open]:modal) {
   filter: brightness(0.95);
 }
 
-/* Display name effects. */
+/*
+ * Lettering effects: the display name's, also used by the About board's text
+ * (src/lib/customization/text-fx.ts). `--fx-color` is the effect's own color
+ * when the artist picks one; each rule falls back to its default.
+ */
 .name-gradient {
   background-image: var(--name-gradient);
   background-size: 200% 100%;
@@ -943,29 +947,29 @@ html:has(dialog[open]:modal) {
 
 .name-glow {
   text-shadow:
-    0 0 12px color-mix(in oklab, var(--profile-accent) 70%, transparent),
-    0 0 28px color-mix(in oklab, var(--profile-accent) 45%, transparent);
+    0 0 12px color-mix(in oklab, var(--fx-color, var(--profile-accent, var(--ocean))) 70%, transparent),
+    0 0 28px color-mix(in oklab, var(--fx-color, var(--profile-accent, var(--ocean))) 45%, transparent);
 }
 
 .name-gradient.name-glow {
-  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--profile-accent) 60%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--fx-color, var(--profile-accent, var(--ocean))) 60%, transparent));
   text-shadow: none;
 }
 
 /* A die-cut border from stacked shadows: works on solid and gradient names alike. */
 .name-sticker {
-  filter: drop-shadow(0.05em 0 0 var(--surface)) drop-shadow(-0.05em 0 0 var(--surface))
-    drop-shadow(0 0.05em 0 var(--surface)) drop-shadow(0 -0.05em 0 var(--surface))
+  filter: drop-shadow(0.05em 0 0 var(--fx-color, var(--surface))) drop-shadow(-0.05em 0 0 var(--fx-color, var(--surface)))
+    drop-shadow(0 0.05em 0 var(--fx-color, var(--surface))) drop-shadow(0 -0.05em 0 var(--fx-color, var(--surface)))
     drop-shadow(0.05em 0.07em 0 color-mix(in oklab, var(--ink) 30%, transparent));
 }
 
 .name-outline {
-  -webkit-text-stroke: 0.035em currentColor;
+  -webkit-text-stroke: 0.035em var(--fx-color, currentColor);
   color: transparent;
 }
 
 .name-gradient.name-outline {
-  -webkit-text-stroke: 0.035em var(--profile-accent);
+  -webkit-text-stroke: 0.035em var(--fx-color, var(--profile-accent, var(--ocean)));
 }
 
 .name-shimmer {
@@ -973,7 +977,7 @@ html:has(dialog[open]:modal) {
 }
 
 .name-shimmer:not(.name-gradient) {
-  background-image: linear-gradient(100deg, currentColor 40%, color-mix(in oklab, currentColor 30%, white) 50%, currentColor 60%);
+  background-image: linear-gradient(100deg, currentColor 40%, color-mix(in oklab, currentColor 30%, var(--fx-color, white)) 50%, currentColor 60%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;

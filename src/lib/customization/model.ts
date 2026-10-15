@@ -34,7 +34,9 @@ export const NAME_FONTS = {
   pixel: { label: "Pixel", family: "var(--font-pixel), monospace" },
 } as const;
 
+/** Lettering effects: the profile name's, also offered on the About board's text. */
 export const NAME_EFFECTS = ["none", "glow", "sticker", "outline", "shimmer"] as const;
+export type NameEffect = (typeof NAME_EFFECTS)[number];
 export const BUTTON_SHAPES = ["rounded", "pill", "square", "sketch"] as const;
 export const BUTTON_STYLES = ["solid", "soft", "outline"] as const;
 export const PATTERNS = ["none", "dots", "grid", "paper", "stars", "hearts"] as const;
@@ -66,6 +68,8 @@ export const customizationSchema = z.object({
       /** Two or three stops; wins over `color` (Flow+). */
       gradient: z.array(hex).min(2).max(3).optional(),
       effect: z.enum(NAME_EFFECTS).default("none"),
+      /** The effect's own color (the glow, the sticker's edge, the outline, the shimmer's light); unset = its default. */
+      effectColor: hex.optional(),
     })
     .default({ font: "display", effect: "none" }),
   buttons: z

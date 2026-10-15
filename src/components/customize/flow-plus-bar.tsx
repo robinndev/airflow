@@ -29,7 +29,7 @@ const FLOW_PLUS_ADDS: Record<TabId, string[]> = {
     "the sidebar on the right",
   ],
   frame: ["one paid shop item a month, on the house"],
-  about: [`${PAID_ABOUT_BLOCKS} blocks instead of ${FREE.aboutBlocks}`, "HTML blocks"],
+  about: [`${PAID_ABOUT_BLOCKS} blocks instead of ${FREE.aboutBlocks}`, "HTML blocks", "gradient text", "text effects"],
   css: ["your own CSS on your page"],
 };
 

@@ -176,11 +176,16 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
           </div>
 
           <dl data-part="stats" className="flex gap-1 rounded-card border border-border bg-surface p-1.5 shadow-soft sm:max-w-[300px] lg:max-w-none">
-            <Stat label="Followers">
+            {/* Each number opens its list: followers and following in the binder, artworks in the gallery. */}
+            <Stat label="Followers" href={`/${profile.handle}/followers`}>
               <FollowerCount handle={profile.handle} count={profile.stats.followers} />
             </Stat>
-            <Stat label="Following">{formatCompact(profile.stats.following)}</Stat>
-            <Stat label="Artworks">{formatCompact(profile.stats.artworks)}</Stat>
+            <Stat label="Following" href={`/${profile.handle}/following`}>
+              {formatCompact(profile.stats.following)}
+            </Stat>
+            <Stat label="Artworks" href={`/${profile.handle}/gallery`}>
+              {formatCompact(profile.stats.artworks)}
+            </Stat>
           </dl>
         </div>
       </div>
@@ -207,11 +212,17 @@ export function BannerScrims() {
   );
 }
 
-function Stat({ label, children }: { label: string; children: ReactNode }) {
+/** One number on the stats card; the whole cell is its link (the link sits on the number, stretched). */
+function Stat({ label, href, children }: { label: string; href: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col-reverse items-center rounded-input px-2 py-2 text-center">
+    <div className="relative flex min-w-0 flex-1 flex-col-reverse items-center rounded-input px-2 py-2 text-center transition-colors has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ocean has-[a:hover]:bg-ice/70">
       <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className="font-display text-lg font-bold text-ink tabular-nums">{children}</dd>
+      <dd className="font-display text-lg font-bold text-ink tabular-nums">
+        <Link href={href} className="outline-none after:absolute after:inset-0 after:rounded-input">
+          {children}
+          <span className="sr-only"> {label.toLowerCase()}</span>
+        </Link>
+      </dd>
     </div>
   );
 }

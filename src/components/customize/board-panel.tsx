@@ -22,7 +22,7 @@ import {
 } from "@/lib/customization/about";
 import { FREE } from "@/lib/customization/model";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
-import { ChipGroup, ColorField, FlowBadge, Section, Slider } from "./controls";
+import { ChipGroup, ColorField, EffectField, FlowBadge, GradientField, Section, Slider } from "./controls";
 
 /*
  * Left panel while the About board is open: add blocks, then edit whatever
@@ -340,7 +340,8 @@ const CARD_SWATCHES = ["#ffffff", "#fff0f6", "#f1edff", "#eaf6ff", "#fff8e1", "#
 
 /**
  * Text and list blocks: the title and the text under it are styled apart
- * (font, size, bold/italic, alignment, color), plus the space between them.
+ * (font, size, bold/italic, alignment, color, gradient, effect and its
+ * color, like the profile name), plus the space between them.
  * The title's look stays unset until the artist touches it, so it keeps
  * following the text (1.15× its size) like older boards.
  */
@@ -384,7 +385,29 @@ function TextualFields({
             <FontChips label="Title font" value={look.font} onChange={(font) => setTitle({ font })} />
             <Slider label="Size" value={Math.round(look.size)} min={10} max={120} onChange={(size) => setTitle({ size })} />
             <TypeToolbar label="Title" bold={look.bold} italic={look.italic} align={look.align} onChange={setTitle} />
-            <ColorField palette={palette} label="Color" value={look.color} onChange={(color) => setTitle({ color })} onClear={() => setTitle({ color: undefined })} />
+            <ColorField
+              palette={palette}
+              label="Color"
+              value={look.gradient ? undefined : look.color}
+              onChange={(color) => setTitle({ color, gradient: undefined })}
+              onClear={() => setTitle({ color: undefined })}
+            />
+            <GradientField
+              label="Title gradient"
+              value={look.gradient}
+              isPaid={isPaid}
+              palette={palette}
+              onChange={(gradient) => setTitle({ gradient })}
+            />
+            <EffectField
+              label="Title effect"
+              value={look.effect}
+              effectColor={look.effectColor}
+              gradient={look.gradient}
+              isPaid={isPaid}
+              palette={palette}
+              onChange={setTitle}
+            />
             <Slider label="Space below" value={Math.round(look.gap)} min={0} max={200} onChange={(gap) => setTitle({ gap })} />
           </>
         )}
@@ -414,7 +437,29 @@ function TextualFields({
         <Slider label="Size" value={block.size} min={10} max={120} onChange={(size) => onUpdate({ size })} />
         <TypeToolbar label={isList ? "Items" : "Text"} bold={!!block.bold} italic={!!block.italic} align={block.align} onChange={onUpdate} />
         <Slider label="Line spacing" value={block.leading ?? 1.4} min={0.8} max={3} step={0.1} unit="×" onChange={(leading) => onUpdate({ leading })} />
-        <ColorField palette={palette} label="Color" value={block.color} onChange={(color) => onUpdate({ color })} onClear={() => onUpdate({ color: undefined })} />
+        <ColorField
+          palette={palette}
+          label="Color"
+          value={block.gradient ? undefined : block.color}
+          onChange={(color) => onUpdate({ color, gradient: undefined })}
+          onClear={() => onUpdate({ color: undefined })}
+        />
+        <GradientField
+          label={isList ? "Items gradient" : "Text gradient"}
+          value={block.gradient}
+          isPaid={isPaid}
+          palette={palette}
+          onChange={(gradient) => onUpdate({ gradient })}
+        />
+        <EffectField
+          label={isList ? "Items effect" : "Text effect"}
+          value={block.effect}
+          effectColor={block.effectColor}
+          gradient={block.gradient}
+          isPaid={isPaid}
+          palette={palette}
+          onChange={onUpdate}
+        />
         {block.type === "list" && (
           <>
             <ChipGroup

@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { parseHex } from "@/lib/customization/hex";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { hexToRgb, parseColor, rgbToHex } from "@/lib/customization/hex";
+import { FREE, NAME_EFFECTS, type NameEffect } from "@/lib/customization/model";
 
 /* Small building blocks for the customizer panels. */
 
@@ -107,7 +108,7 @@ export function ChipGroup<T extends string>({
 
 const SWATCHES = ["#173b5b", "#0788f9", "#21d4e5", "#8b83f6", "#f0679a", "#ff3948", "#ff762e", "#ffd166", "#4f8a3a", "#2c2a26", "#ffffff", "#0b101c"];
 
-/** Hex color with a native picker, quick swatches, and its hex code to copy or paste. */
+/** A color with a native picker, quick swatches, and its code (HEX or RGB) to copy or paste. */
 export function ColorField({
   label,
   value,
@@ -181,22 +182,75 @@ export function ColorField({
           ))}
         </div>
       )}
-      <HexCode label={label} value={value} onChange={onChange} />
+      <ColorCode label={label} value={value} onChange={onChange} />
     </div>
   );
 }
 
-/** The color as a hex code: follows the picker live, copies in one click, takes a pasted code. */
-function HexCode({ label, value, onChange }: { label: string; value: string | undefined; onChange: (hex: string) => void }) {
+/*
+ * How color codes are typed, HEX or RGB: one choice for every color field,
+ * kept per browser (localStorage).
+ */
+type CodeMode = "hex" | "rgb";
+const CODE_MODE_KEY = "artiflow-color-code";
+let codeMode: CodeMode | null = null;
+const codeModeListeners = new Set<() => void>();
+
+function readCodeMode(): CodeMode {
+  if (codeMode === null) {
+    try {
+      codeMode = localStorage.getItem(CODE_MODE_KEY) === "rgb" ? "rgb" : "hex";
+    } catch {
+      codeMode = "hex";
+    }
+  }
+  return codeMode;
+}
+
+function setCodeMode(mode: CodeMode) {
+  codeMode = mode;
+  try {
+    localStorage.setItem(CODE_MODE_KEY, mode);
+  } catch {
+    // Blocked storage: the choice holds for this page.
+  }
+  for (const listener of codeModeListeners) listener();
+}
+
+function useCodeMode() {
+  return useSyncExternalStore(
+    (listener) => {
+      codeModeListeners.add(listener);
+      return () => codeModeListeners.delete(listener);
+    },
+    readCodeMode,
+    () => "hex" as CodeMode,
+  );
+}
+
+const CHANNELS = [
+  { key: "R", name: "red" },
+  { key: "G", name: "green" },
+  { key: "B", name: "blue" },
+] as const;
+
+/**
+ * The color as a code, HEX or RGB: follows the picker live, copies in one
+ * click, and takes a typed or pasted code (either kind, in either box).
+ */
+function ColorCode({ label, value, onChange }: { label: string; value: string | undefined; onChange: (hex: string) => void }) {
+  const mode = useCodeMode();
   // What's being typed; null = show the current color.
   const [draft, setDraft] = useState<string | null>(null);
+  const [channels, setChannels] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
   const shown = draft ?? value?.replace(/^#/, "").toUpperCase() ?? "";
+  const rgb = channels ?? (value ? hexToRgb(value).map(String) : ["", "", ""]);
 
   async function copy() {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value.toUpperCase());
+      await navigator.clipboard.writeText(mode === "hex" ? value.toUpperCase() : `rgb(${hexToRgb(value).join(", ")})`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -204,42 +258,231 @@ function HexCode({ label, value, onChange }: { label: string; value: string | un
     }
   }
 
+  function typeChannel(index: number, text: string) {
+    const next = rgb.map((c, i) => (i === index ? text.replace(/\D/g, "").slice(0, 3) : c));
+    setChannels(next);
+    const values = next.map(Number);
+    if (next.every((c) => c !== "") && values.every((c) => c <= 255)) onChange(rgbToHex(values[0], values[1], values[2]));
+  }
+
+  const box = "flex h-8 items-center gap-0.5 rounded-input border border-border bg-surface px-2 font-mono text-xs text-ink transition-colors focus-within:border-ocean";
+
   return (
-    <div className="mt-2 flex items-center gap-1.5">
-      <label className="flex h-8 w-28 items-center gap-0.5 rounded-input border border-border bg-surface px-2 font-mono text-xs text-ink transition-colors focus-within:border-ocean">
-        <span aria-hidden className="text-muted">
-          #
-        </span>
-        <input
-          value={shown}
-          aria-label={`${label}: hex code`}
-          placeholder="Hex"
-          maxLength={9}
-          spellCheck={false}
-          autoComplete="off"
-          onChange={(e) => {
-            setDraft(e.target.value.replace(/^#/, "").toUpperCase());
-            const hex = parseHex(e.target.value);
-            if (hex) onChange(hex);
-          }}
-          onBlur={() => {
-            const hex = draft !== null && parseHex(draft, { short: true });
-            if (hex) onChange(hex);
-            setDraft(null);
-          }}
-          className="w-full min-w-0 bg-transparent uppercase outline-none placeholder:normal-case placeholder:text-muted"
-        />
-      </label>
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div role="radiogroup" aria-label={`${label}: code`} className="flex h-8 items-center rounded-input border border-border p-0.5">
+        {(["hex", "rgb"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={mode === option}
+            onClick={() => setCodeMode(option)}
+            className="h-full rounded-[7px] px-1.5 text-[0.625rem] font-bold text-muted transition-colors hover:text-ink aria-checked:bg-ice aria-checked:text-ink"
+          >
+            {option.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      {mode === "hex" ? (
+        <label className={`${box} w-28`}>
+          <span aria-hidden className="text-muted">
+            #
+          </span>
+          <input
+            value={shown}
+            aria-label={`${label}: hex code`}
+            placeholder="Hex"
+            maxLength={20}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => {
+              setDraft(e.target.value.replace(/^#/, "").toUpperCase());
+              const hex = parseColor(e.target.value);
+              if (hex) onChange(hex);
+            }}
+            onBlur={() => {
+              const hex = draft !== null && parseColor(draft, { short: true });
+              if (hex) onChange(hex);
+              setDraft(null);
+            }}
+            className="w-full min-w-0 bg-transparent uppercase outline-none placeholder:normal-case placeholder:text-muted"
+          />
+        </label>
+      ) : (
+        <div
+          className="flex gap-1"
+          // Leaving the three boxes shows the current color again; moving between them keeps what's typed.
+          onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setChannels(null)}
+        >
+          {CHANNELS.map(({ key, name }, i) => (
+            <label key={key} className={`${box} w-14`}>
+              <span aria-hidden className="text-muted">
+                {key}
+              </span>
+              <input
+                value={rgb[i]}
+                inputMode="numeric"
+                aria-label={`${label}: ${name} (0 to 255)`}
+                placeholder="0"
+                maxLength={3}
+                autoComplete="off"
+                onChange={(e) => typeChannel(i, e.target.value)}
+                onPaste={(e) => {
+                  // A whole "rgb(…)" or hex pasted into one box fills all three.
+                  const hex = parseColor(e.clipboardData.getData("text"));
+                  if (!hex) return;
+                  e.preventDefault();
+                  setChannels(null);
+                  onChange(hex);
+                }}
+                className="w-full min-w-0 bg-transparent text-right outline-none placeholder:text-muted"
+              />
+            </label>
+          ))}
+        </div>
+      )}
       <button
         type="button"
         disabled={!value}
         onClick={copy}
-        aria-label={`Copy ${label} hex code`}
+        aria-label={`Copy ${label} ${mode === "hex" ? "hex" : "RGB"} code`}
         className="inline-flex h-8 items-center gap-1 rounded-input px-2 text-xs font-semibold text-muted transition-colors hover:bg-ice hover:text-ink disabled:opacity-40 [&_svg]:size-3.5"
       >
         {copied ? <Check aria-hidden className="text-ocean" /> : <Copy aria-hidden />}
         <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
       </button>
+    </div>
+  );
+}
+
+/** Ready-made gradients, two or three stops (each editable once picked). */
+export const GRADIENTS = [
+  ["#ff7aa8", "#c04dff"],
+  ["#00e0b4", "#4cc9f0"],
+  ["#ff3948", "#ff762e", "#ffd166"],
+  ["#9d7bff", "#5ee7ff"],
+  ["#ffd166", "#ff6fa5"],
+  ["#0788f9", "#8b83f6"],
+];
+
+/** A gradient for lettering (the profile name, the About board's text): pick one, then tune each stop. */
+export function GradientField({
+  label = "Gradient",
+  value,
+  isPaid,
+  onChange,
+  palette,
+}: {
+  label?: string;
+  value: string[] | undefined;
+  isPaid: boolean;
+  onChange: (gradient: string[] | undefined) => void;
+  palette?: { label: string; colors: string[] };
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+        {label} {!isPaid && <FlowBadge />}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {GRADIENTS.map((stops) => (
+          <button
+            key={stops.join()}
+            type="button"
+            aria-label={`${label} ${stops.join(" to ")}`}
+            aria-pressed={value?.join() === stops.join()}
+            onClick={() => onChange(stops)}
+            className="h-8 w-14 rounded-full border border-border shadow-soft transition-transform hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ocean aria-pressed:ring-offset-2 aria-pressed:ring-offset-surface"
+            style={{ background: `linear-gradient(100deg, ${stops.join(", ")})` }}
+          />
+        ))}
+        {value && (
+          <button type="button" onClick={() => onChange(undefined)} className="text-xs font-medium text-muted hover:text-ink">
+            Remove
+          </button>
+        )}
+      </div>
+      {value && (
+        <div className="mt-3 grid gap-3">
+          {value.map((stop, i) => (
+            <ColorField
+              key={i}
+              label={`${label} stop ${i + 1}`}
+              value={stop}
+              swatches={[]}
+              palette={palette}
+              onChange={(hex) => onChange(value.map((s, j) => (j === i ? hex : s)))}
+              onClear={value.length > 2 ? () => onChange(value.filter((_, j) => j !== i)) : undefined}
+            />
+          ))}
+          {value.length < 3 && (
+            <button
+              type="button"
+              onClick={() => onChange([...value, value[value.length - 1]])}
+              className="justify-self-start text-xs font-semibold text-ocean-ink hover:underline dark:text-ocean"
+            >
+              + Add a third color
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** What each effect's color is, and what it is when the artist doesn't pick one. */
+const EFFECT_COLOR_HINT: Record<Exclude<NameEffect, "none">, string> = {
+  glow: "The glow. Unset, it glows in your accent.",
+  sticker: "The die-cut edge. Unset, your card color.",
+  outline: "The outline. Unset, the text's own color.",
+  shimmer: "The light that runs across. Unset, white.",
+};
+
+/** A lettering effect (glow, sticker, outline, shimmer) and, once picked, its own color. */
+export function EffectField({
+  label = "Effect",
+  value,
+  effectColor,
+  gradient,
+  isPaid,
+  onChange,
+  palette,
+}: {
+  label?: string;
+  value: NameEffect | undefined;
+  effectColor: string | undefined;
+  /** A gradient shimmer moves its own colors: no light to color. */
+  gradient?: string[];
+  isPaid: boolean;
+  onChange: (patch: { effect?: NameEffect; effectColor?: string }) => void;
+  palette?: { label: string; colors: string[] };
+}) {
+  const effect = value ?? "none";
+  return (
+    <div>
+      <ChipGroup
+        label={label}
+        value={effect}
+        isPaid={isPaid}
+        onChange={(next) => onChange({ effect: next })}
+        options={NAME_EFFECTS.map((option) => ({
+          value: option,
+          label: { none: "None", glow: "Glow", sticker: "Sticker", outline: "Outline", shimmer: "Shimmer" }[option],
+          paid: !FREE.nameEffects.includes(option),
+        }))}
+      />
+      {effect !== "none" && !(effect === "shimmer" && gradient) && (
+        <div className="mt-3">
+          <ColorField
+            label={`${label} color`}
+            value={effectColor}
+            palette={palette}
+            onChange={(color) => onChange({ effectColor: color })}
+            onClear={() => onChange({ effectColor: undefined })}
+          />
+          <p className="mt-1.5 text-xs text-muted">{EFFECT_COLOR_HINT[effect]}</p>
+        </div>
+      )}
     </div>
   );
 }

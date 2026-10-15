@@ -2,6 +2,8 @@
 
 import { updateTag } from "next/cache";
 import { z } from "zod";
+import { cleanFollowQuery, isFollowList, type FollowList, type FollowPage } from "@/lib/follows/list";
+import { fetchFollowersAmong, fetchFollowList } from "@/lib/follows/server";
 import { fetchPostInfo, postRef } from "@/lib/profile/conversation";
 import { db } from "@/lib/profile/mock-db";
 import { FEED_TAG, normalizeHandle, postsTag, profileTag } from "@/lib/profile/queries";
@@ -35,6 +37,31 @@ export async function loadLikes(postIds: string[]): Promise<string[]> {
   const ids = z.array(z.string().max(64)).max(200).safeParse(postIds);
   if (!viewer || !ids.success) return [];
   return fetchLikedPostIds(viewer.id, ids.data);
+}
+
+/**
+ * More of someone's followers or following, a search through them, or only
+ * the ones who also follow the viewer (`mutual`).
+ */
+export async function loadFollowList(
+  rawHandle: string,
+  list: FollowList,
+  options: { offset?: number; query?: string; mutual?: boolean } = {},
+): Promise<FollowPage> {
+  const handle = typeof rawHandle === "string" ? normalizeHandle(rawHandle) : "";
+  const offset = z.number().int().min(0).max(100_000).safeParse(options.offset ?? 0);
+  if (!HANDLE.test(handle) || !isFollowList(list) || !offset.success) return { people: [], total: 0 };
+  const viewer = options.mutual ? await getViewer() : null;
+  if (options.mutual && !viewer) return { people: [], total: 0 };
+  return fetchFollowList(handle, list, { offset: offset.data, query: cleanFollowQuery(options.query), follows: viewer?.id });
+}
+
+/** Which of these people follow the viewer (cards on a list ask in one batch). */
+export async function loadFollowsYou(handles: string[]): Promise<string[]> {
+  const viewer = await getViewer();
+  const parsed = z.array(z.string().regex(HANDLE)).max(200).safeParse(handles);
+  if (!viewer || !parsed.success) return [];
+  return fetchFollowersAmong(viewer.id, parsed.data);
 }
 
 /** Follows or unfollows an artist; answers with their follower count. */

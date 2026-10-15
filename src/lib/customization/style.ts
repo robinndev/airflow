@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { artUrl } from "@/lib/art-storage";
 import { contrast, luminance, readableOn } from "./contrast";
 import { NAME_FONTS, THEME_PRESETS, type Customization } from "./model";
+import { letteringStyle } from "./text-fx";
 
 /*
  * Turns a (gated) customization into what the profile renders: CSS variables
@@ -100,19 +101,13 @@ export function nameStyle(c: Customization): { style: CSSProperties; className: 
   if (c.name.font === "hand") style["--name-scale"] = "1.35";
   if (c.name.font === "pixel") style["--name-scale"] = "0.7";
 
-  if (c.name.gradient) {
-    // The first stop repeats at the end so the shimmer effect loops seamlessly.
-    style["--name-gradient"] = `linear-gradient(100deg, ${[...c.name.gradient, c.name.gradient[0]].join(", ")})`;
-  } else if (c.name.color) {
-    style.color = c.name.color;
-  }
+  if (!c.name.gradient && c.name.color) style.color = c.name.color;
 
-  const className = [
-    c.name.gradient ? "name-gradient" : "",
+  const lettering = letteringStyle({
+    gradient: c.name.gradient,
     // An animated name from the shop takes the effect's place.
-    c.name.effect !== "none" && !c.nameFx ? `name-${c.name.effect}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return { style: style as CSSProperties, className };
+    effect: c.nameFx ? "none" : c.name.effect,
+    effectColor: c.name.effectColor,
+  });
+  return { style: { ...style, ...lettering.style } as CSSProperties, className: lettering.className };
 }

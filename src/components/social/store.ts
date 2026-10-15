@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { loadFollowing, loadLikes, setFollow, setLike, type CountResult } from "@/app/(site)/social-actions";
+import { loadFollowing, loadFollowsYou, loadLikes, setFollow, setLike, type CountResult } from "@/app/(site)/social-actions";
 import { showToast } from "@/components/favorites/toast-events";
 
 /*
@@ -11,6 +11,9 @@ import { showToast } from "@/components/favorites/toast-events";
  * who is signed in (<SocialSession>), follows load once per viewer, likes
  * load in one batch for the posts on screen, and buttons update
  * optimistically, then confirm with the server.
+ *
+ * Followers lists also ask which of the people on screen follow the viewer
+ * ("Follows you", "Follow back"), in one batch like likes.
  *
  * Counts: the page renders a count; after the viewer's own follow or like,
  * the store shows its own number (optimistic, then the server's answer)
@@ -32,6 +35,9 @@ type State = {
   liked: ReadonlySet<string>;
   /** Posts whose liked state came from the server. */
   likesKnown: ReadonlySet<string>;
+  /** Handles that follow the viewer, among the ones asked about. */
+  followsYou: ReadonlySet<string>;
+  followsYouKnown: ReadonlySet<string>;
   /** Handles and posts the viewer changed in this session: what they did wins over any load. */
   touched: ReadonlySet<string>;
   counters: ReadonlyMap<string, Counter>;
@@ -43,6 +49,8 @@ let state: State = {
   followsLoaded: false,
   liked: new Set(),
   likesKnown: new Set(),
+  followsYou: new Set(),
+  followsYouKnown: new Set(),
   touched: new Set(),
   counters: new Map(),
 };
@@ -130,6 +138,38 @@ function askLikes(postIds: Iterable<string>) {
   }, 30);
 }
 
+/** People on a list (asked about once the viewer is known). */
+const wantedFollowers = new Set<string>();
+let queuedFollowers = new Set<string>();
+let followersTimer: ReturnType<typeof setTimeout> | undefined;
+
+function askFollowsYou(handles: Iterable<string>) {
+  for (const handle of handles) if (!state.followsYouKnown.has(handle)) queuedFollowers.add(handle);
+  if (!state.viewer || queuedFollowers.size === 0 || followersTimer) return;
+  followersTimer = setTimeout(() => {
+    followersTimer = undefined;
+    const viewer = state.viewer;
+    const handles = [...queuedFollowers];
+    queuedFollowers = new Set();
+    for (let i = 0; i < handles.length; i += 200) {
+      const batch = handles.slice(i, i + 200);
+      loadFollowsYou(batch)
+        .then((followers) => {
+          if (state.viewer !== viewer) return;
+          const known = new Set(state.followsYouKnown);
+          const next = new Set(state.followsYou);
+          for (const handle of batch) {
+            known.add(handle);
+            if (followers.includes(handle)) next.add(handle);
+            else next.delete(handle);
+          }
+          update({ followsYouKnown: known, followsYou: next });
+        })
+        .catch(() => {});
+    }
+  }, 30);
+}
+
 /** Called by the header with the signed-in viewer's id: a new viewer starts from their own state. */
 export function syncViewer(viewer: string | null) {
   if (viewer === state.viewer) return;
@@ -139,6 +179,8 @@ export function syncViewer(viewer: string | null) {
     followsLoaded: false,
     liked: new Set(),
     likesKnown: new Set(),
+    followsYou: new Set(),
+    followsYouKnown: new Set(),
     touched: new Set(),
   });
   if (!viewer) return;
@@ -157,6 +199,7 @@ export function syncViewer(viewer: string | null) {
     })
     .catch(() => {});
   askLikes(wanted);
+  askFollowsYou(wantedFollowers);
 }
 
 // Writing ---------------------------------------------------------------------
@@ -197,27 +240,57 @@ async function write(
   else showToast({ message: result?.error ?? "Couldn't reach the studio. Try again in a moment." });
 }
 
+/** Follows or unfollows; a no-op when that's already the case (an Undo pressed twice). */
+function sendFollow(handle: string, on: boolean, current: boolean, signIn: () => void) {
+  if (state.viewer === null) return signIn();
+  if (on === current) return;
+  const apply = (value: boolean) => update({ following: toggled(state.following, handle, value) });
+  void write(followKey(handle), apply, on, () => setFollow(handle, on), signIn);
+}
+
 /**
  * Whether the viewer follows `handle`, and a toggle that sends visitors to
  * sign in. `initial` is the server's answer when the page knows it, so the
- * button doesn't flip once follows load.
+ * button doesn't flip once follows load. `set` is for an Undo: it follows or
+ * unfollows whatever the button showed when it was made.
  */
 export function useFollow(handle: string, initial?: boolean) {
   const key = followKey(handle);
-  const following = useSyncExternalStore(
-    subscribe,
-    () => (state.followsLoaded || state.touched.has(key) ? state.following.has(handle) : (initial ?? false)),
-    () => initial ?? false,
-  );
+  const current = () => (state.followsLoaded || state.touched.has(key) ? state.following.has(handle) : (initial ?? false));
+  const following = useSyncExternalStore(subscribe, current, () => initial ?? false);
   const signIn = useSignIn();
 
-  function toggle() {
-    if (state.viewer === null) return signIn();
-    const apply = (on: boolean) => update({ following: toggled(state.following, handle, on) });
-    void write(key, apply, !following, () => setFollow(handle, !following), signIn);
-  }
+  const toggle = () => sendFollow(handle, !following, following, signIn);
+  const set = (on: boolean) => sendFollow(handle, on, current(), signIn);
 
-  return { following, toggle };
+  return { following, toggle, set };
+}
+
+/** The signed-in viewer's id (null: a visitor; undefined until the header knows). */
+export function useSocialViewer() {
+  return useSyncExternalStore(
+    subscribe,
+    () => state.viewer,
+    () => undefined,
+  );
+}
+
+/**
+ * Whether `handle` follows the viewer: undefined until known. `known` is the
+ * page's answer when it already has it (everyone on your own followers list).
+ */
+export function useFollowsYou(handle: string, known?: boolean) {
+  useEffect(() => {
+    if (known !== undefined) return;
+    wantedFollowers.add(handle);
+    askFollowsYou([handle]);
+  }, [handle, known]);
+  const followsYou = useSyncExternalStore(
+    subscribe,
+    () => (state.followsYouKnown.has(handle) ? state.followsYou.has(handle) : undefined),
+    () => undefined,
+  );
+  return known ?? followsYou;
 }
 
 /** Someone's follower count, moved by the viewer's own follow. */

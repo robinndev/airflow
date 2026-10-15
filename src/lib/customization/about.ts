@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FREE, NAME_EFFECTS } from "./model.ts";
 
 /*
  * The "About" board: a free-form canvas artists fill with text, lists of
@@ -52,8 +53,16 @@ const font = z.enum(BOARD_FONTS);
 const align = z.enum(["left", "center", "right"]);
 const fontSize = z.number().min(10).max(120);
 
+/** Lettering like the profile name's: a gradient (2–3 stops, wins over the color), an effect and the effect's color. */
+const lettering = {
+  gradient: z.array(hex).min(2).max(3).optional(),
+  effect: z.enum(NAME_EFFECTS).optional(),
+  effectColor: hex.optional(),
+};
+
 /** The text of a text block, or a list's items. */
 const textStyle = {
+  ...lettering,
   color: hex.optional(),
   background: color.optional(),
   font: font.default("sans"),
@@ -76,6 +85,7 @@ const titleStyle = z
     italic: z.boolean().optional(),
     /** Space between the title and what's under it, in board units. */
     gap: z.number().min(0).max(200).optional(),
+    ...lettering,
   })
   .optional();
 
@@ -135,7 +145,8 @@ export type TitleStyle = NonNullable<TextualBlock["titleStyle"]>;
 /**
  * A title as it renders: what the artist set, else the defaults (display
  * font, bold, 1.15× the text, the text's color and alignment, 0.4× its own
- * size of space below).
+ * size of space below). Its gradient and effect are its own, never the
+ * text's, so each part can be lettered apart.
  */
 export function titleLook(block: TextualBlock) {
   const t = block.titleStyle ?? {};
@@ -144,6 +155,9 @@ export function titleLook(block: TextualBlock) {
     font: t.font ?? "display",
     size,
     color: t.color,
+    gradient: t.gradient,
+    effect: t.effect ?? "none",
+    effectColor: t.effectColor,
     align: t.align ?? block.align,
     bold: t.bold ?? true,
     italic: t.italic ?? false,
@@ -169,11 +183,19 @@ export function readBoard(raw: unknown): Board {
   return parsed.success ? parsed.data : EMPTY_BOARD;
 }
 
-/** HTML blocks are Flow+; free boards also have a block cap (images are for everyone). */
+/**
+ * What on a board is Flow+: HTML blocks, more blocks than the free cap, and
+ * the same lettering the name keeps for Flow+ (gradients, effects past the
+ * glow). Images, colors and effect colors are for everyone.
+ */
 export function boardPaidFeatures(board: Board, freeLimit: number): string[] {
   const used: string[] = [];
   if (board.blocks.some((b) => b.type === "html")) used.push("HTML blocks");
   if (board.blocks.length > freeLimit) used.push(`more than ${freeLimit} blocks`);
+  const textual = board.blocks.filter((b): b is TextualBlock => b.type === "text" || b.type === "list");
+  const letterings = textual.flatMap((b) => [b, b.titleStyle ?? {}]);
+  if (letterings.some((l) => l.gradient)) used.push("gradient text");
+  if (letterings.some((l) => l.effect && !FREE.nameEffects.includes(l.effect))) used.push("text effects");
   return used;
 }
 
@@ -185,7 +207,11 @@ export function boardColors(board: Board, max = 16) {
   for (const block of readingOrder(board.blocks)) {
     if (block.type === "text" || block.type === "list") {
       add(block.titleStyle?.color);
+      block.titleStyle?.gradient?.forEach(add);
+      add(block.titleStyle?.effectColor);
       add(block.color);
+      block.gradient?.forEach(add);
+      add(block.effectColor);
       add(block.background);
       if (block.type === "list") add(block.markerColor);
     }

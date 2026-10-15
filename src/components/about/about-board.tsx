@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { artUrl } from "@/lib/art-storage";
 import { readingOrder, titleLook, type Block, type Board, type BoardFont } from "@/lib/customization/about";
+import { letteringStyle } from "@/lib/customization/text-fx";
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import { Sticker } from "./stickers";
 
@@ -100,18 +101,22 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
       } ${boxed && !block.background ? "border border-border bg-surface" : ""}`;
 
       const look = titleLook(block);
+      // Gradients and effects, like the profile name's (title and text each their own).
+      const titleFx = letteringStyle(look);
+      const textFx = letteringStyle(block);
       const title = block.title && (
         <p
           data-part="block-title"
-          className="leading-snug break-words"
+          className={`leading-snug break-words ${titleFx.className}`}
           style={{
             fontFamily: FONT[look.font],
             fontSize: length(look.size, 36),
             fontWeight: look.bold ? 800 : 400,
             fontStyle: look.italic ? "italic" : "normal",
-            color: look.color,
+            color: look.gradient ? undefined : look.color,
             textAlign: look.align,
             marginBottom: length(look.gap, 48),
+            ...titleFx.style,
           }}
         >
           {block.title}
@@ -122,14 +127,16 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
         return (
           <div className={shell} style={style}>
             {title}
-            <p className="break-words whitespace-pre-wrap">{block.text}</p>
+            <p className={`break-words whitespace-pre-wrap ${textFx.className}`} style={textFx.style}>
+              {block.text}
+            </p>
           </div>
         );
       }
       return (
         <div className={shell} style={style}>
           {title}
-          <ul className="grid gap-[0.25em]">
+          <ul className={`grid gap-[0.25em] ${textFx.className}`} style={textFx.style}>
             {block.items.map((item, i) => (
               <li key={i} className="flex gap-[0.45em]">
                 <span aria-hidden className="shrink-0 text-accent" style={{ color: block.markerColor }}>

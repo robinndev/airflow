@@ -6,11 +6,11 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { FrameArt } from "@/components/frames/avatar-frame";
 import { AiImageDialog } from "@/components/uploads/ai-image-dialog";
 import { AiImageError } from "@/lib/ai-check/browser";
-import { FREE, NAME_EFFECTS, NAME_FONTS, THEME_PRESETS, type Customization, type ThemePreset } from "@/lib/customization/model";
+import { FREE, NAME_FONTS, THEME_PRESETS, type Customization, type ThemePreset } from "@/lib/customization/model";
 import { resolvePalette } from "@/lib/customization/style";
 import { FRAMES, formatFramePrice, isFreeFrame, type FrameId } from "@/lib/frames";
 import { prepareImage, uploadArt } from "@/lib/images/prepare";
-import { ChipGroup, ColorField, FlowBadge, Section } from "./controls";
+import { ChipGroup, ColorField, EffectField, FlowBadge, GradientField, Section } from "./controls";
 
 type Props = {
   custom: Customization;
@@ -199,63 +199,18 @@ export function NamePanel({ custom, isPaid, onChange, displayName }: Props & { d
             onChange={(color) => set({ color, gradient: undefined })}
             onClear={() => set({ color: undefined })}
           />
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-ink">
-              Gradient {!isPaid && <FlowBadge />}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {[
-                ["#ff7aa8", "#c04dff"],
-                ["#00e0b4", "#4cc9f0"],
-                ["#ff3948", "#ff762e", "#ffd166"],
-                ["#9d7bff", "#5ee7ff"],
-                ["#ffd166", "#ff6fa5"],
-                ["#0788f9", "#8b83f6"],
-              ].map((stops) => (
-                <button
-                  key={stops.join()}
-                  type="button"
-                  aria-label={`Gradient ${stops.join(" to ")}`}
-                  aria-pressed={gradient?.join() === stops.join()}
-                  onClick={() => set({ gradient: stops, color: undefined })}
-                  className="h-8 w-14 rounded-full border border-border shadow-soft transition-transform hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ocean aria-pressed:ring-offset-2 aria-pressed:ring-offset-surface"
-                  style={{ background: `linear-gradient(100deg, ${stops.join(", ")})` }}
-                />
-              ))}
-              {gradient && (
-                <button type="button" onClick={() => set({ gradient: undefined })} className="text-xs font-medium text-muted hover:text-ink">
-                  Remove
-                </button>
-              )}
-            </div>
-            {gradient && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {gradient.map((stop, i) => (
-                  <ColorField
-                    key={i}
-                    label={`Stop ${i + 1}`}
-                    value={stop}
-                    swatches={[]}
-                    onChange={(hex) => set({ gradient: gradient.map((s, j) => (j === i ? hex : s)) })}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <GradientField value={gradient} isPaid={isPaid} onChange={(next) => set({ gradient: next, ...(next && { color: undefined }) })} />
         </div>
       </Section>
 
-      <Section title="Effect">
-        <ChipGroup
+      <Section title="Effect" hint="Pick an effect, then its color if you like.">
+        <EffectField
           label="Name effect"
           value={name.effect}
+          effectColor={name.effectColor}
+          gradient={gradient}
           isPaid={isPaid}
-          onChange={(effect) => set({ effect })}
-          options={NAME_EFFECTS.map((effect) => ({
-            value: effect,
-            label: { none: "None", glow: "Glow", sticker: "Sticker", outline: "Outline", shimmer: "Shimmer" }[effect],
-            paid: !FREE.nameEffects.includes(effect),
-          }))}
+          onChange={set}
         />
       </Section>
 
