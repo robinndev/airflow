@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { HeaderSentinel } from "@/components/site/header-shell";
 import { formatCompact, formatMonthYear } from "@/lib/format";
 import type { Customization } from "@/lib/customization/model";
-import { nameStyle } from "@/lib/customization/style";
+import { BIO_BOX, bioBoxStyle, nameStyle } from "@/lib/customization/style";
 import { averageOf } from "@/lib/palette";
 import { artistLabels, exploreDrawsHref } from "@/lib/profile/draws";
 import type { ArtistProfile, ResolvedAppearance } from "@/lib/profile/types";
@@ -120,12 +120,15 @@ export function ProfileHero({ profile, appearance, custom }: ProfileHeroProps) {
         */}
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
           <div className="max-w-2xl">
-            {profile.headline && (
-              <p data-part="headline" className="font-display text-[1.0625rem] font-semibold text-ink">
-                {profile.headline}
-              </p>
-            )}
-            <p data-part="bio" className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80">{profile.bio}</p>
+            {/* The artist can set the headline and bio on a card, so they read on any background. */}
+            <div data-part="intro" className={custom.bio.box ? BIO_BOX : ""} style={bioBoxStyle(custom)}>
+              {profile.headline && (
+                <p data-part="headline" className="font-display text-[1.0625rem] font-semibold text-ink">
+                  {profile.headline}
+                </p>
+              )}
+              <p data-part="bio" className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink/80 first:mt-0">{profile.bio}</p>
+            </div>
             {profile.draws.length > 0 && (
               <ul data-part="draws" aria-label="What they draw" className="mt-3 flex flex-wrap gap-1.5">
                 {artistLabels(profile.draws).map(({ tag, label }) => (

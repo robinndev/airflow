@@ -53,13 +53,13 @@ export function BackOffice({ dash, query }: { dash: Dashboard; query: AdminQuery
           query={query}
         />
 
-        <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2">
           <StatTile
-            label="Accounts"
-            value={formatValue(dash.accounts.total)}
+            label="New accounts"
+            value={formatValue(totals.signups)}
             change={change("signups")}
-            against={window.compare ? `new, ${against}` : undefined}
-            detail={`${formatValue(totals.signups)} joined in this period`}
+            against={against}
+            detail={`${formatValue(dash.accounts.total)} accounts in all`}
             trend={trend("signups")}
           />
           <StatTile
@@ -141,8 +141,8 @@ export function BackOffice({ dash, query }: { dash: Dashboard; query: AdminQuery
             <Fact label="New artists in this period" value={formatValue(dash.accounts.new_artists)} />
             <Fact label="Flow+ members" value={formatValue(dash.accounts.subscribers)} />
             <Fact
-              label="Here this month who came today"
-              hint="Daily ÷ monthly active"
+              label="Come back daily"
+              hint="Average day ÷ active in 30 days"
               value={dash.active.stickiness === null ? "—" : formatPercent(dash.active.stickiness)}
             />
             <Fact label="Email not confirmed yet" value={formatValue(dash.accounts.unconfirmed)} />
@@ -484,7 +484,7 @@ export function BackOffice({ dash, query }: { dash: Dashboard; query: AdminQuery
 
 function Total({ value, change, against }: { value: number; change: ReturnType<typeof changeOf>; against: string }) {
   return (
-    <div className="text-right">
+    <div className="sm:text-right [&>p:last-child]:sm:justify-end">
       <p className="font-display text-xl font-extrabold text-ink">{formatValue(value, "usd")}</p>
       <ChangeNote change={change} against={against} />
     </div>

@@ -228,12 +228,16 @@ export type Bucket = {
   values: Values;
 };
 
-/** Days grouped into points: one a day, or a week each (the last one may be short). */
+/**
+ * Days grouped into points: one a day, or a week each. Weeks end on the
+ * last day, so a short week comes first (the oldest), never as a dip today.
+ */
 export function bucketize(days: { day: string; values: Values }[], from: string, to: string, size: number): Bucket[] {
   const inside = days.filter((d) => d.day >= from && d.day <= to);
   const buckets: Bucket[] = [];
-  for (let i = 0; i < inside.length; i += size) {
-    const chunk = inside.slice(i, i + size);
+  const short = inside.length % size;
+  for (let i = short ? short - size : 0; i < inside.length; i += size) {
+    const chunk = inside.slice(Math.max(0, i), i + size);
     buckets.push({ start: chunk[0].day, end: chunk[chunk.length - 1].day, values: total(chunk) });
   }
   return buckets;
@@ -288,6 +292,7 @@ export type Dashboard = {
   previousTotals: Values | null;
   receipt: ReceiptLine[];
   accounts: RawDashboard["accounts"] & { collectors: number; unconfirmed: number; noHandle: number };
+  /** `stickiness`: the average day of the last 30 ÷ the accounts active in those 30 days. */
   active: RawDashboard["active"] & { stickiness: number | null };
   funnel: FunnelStep[];
   requests: RawDashboard["requests"];
@@ -373,7 +378,11 @@ export function buildDashboard(raw: RawDashboard, window: Window, feePercent: nu
       unconfirmed: raw.unfinished.unconfirmed,
       noHandle: raw.unfinished.no_handle,
     },
-    active: { ...raw.active, stickiness: raw.active.month > 0 ? totals.active / raw.active.month : null },
+    active: {
+      ...raw.active,
+      stickiness:
+        raw.active.month > 0 ? total(days.filter((d) => d.day > addDays(window.to, -30) && d.day <= window.to)).active / raw.active.month : null,
+    },
     funnel: steps.map(([id, label, n]) => ({ id, label, n, share: r.sent > 0 ? n / r.sent : 0 })),
     requests: r,
     averageOrderUsd: totals.paidOrders > 0 ? totals.commissionsUsd / totals.paidOrders : null,

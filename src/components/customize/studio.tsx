@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Check, LoaderCircle, Redo2, Sparkles, Undo2 } from "lucide-react";
+import { ArrowUpRight, Check, LoaderCircle, Redo2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { saveCustomization, type SaveResult } from "@/app/(site)/customize/actions";
 import { buttonClasses } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { BoardEditor } from "./board-editor";
 import { BoardPanel } from "./board-panel";
 import { CssPanel } from "./css-panel";
 import { ButtonsPanel, FramePanel, NamePanel, ThemePanel } from "./design-panels";
-import { FlowBadge } from "./controls";
+import { FlowPlusBar } from "./flow-plus-bar";
 import { ProfilePreview, type PreviewProfile } from "./profile-preview";
 import { isTextField, useShortcutLabel } from "./shortcuts";
 import { TABS, type TabId } from "./tabs";
@@ -211,19 +211,7 @@ export function Studio({
         </div>
       </div>
 
-      {needsPlan.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-card border border-lilac/40 bg-lilac/10 px-4 py-3 text-sm text-ink">
-          <Sparkles aria-hidden className="size-4 shrink-0 text-lilac-ink" />
-          <p className="min-w-0 flex-1">
-            You&apos;re previewing <strong>{needsPlan.slice(0, 3).join(", ")}</strong>
-            {needsPlan.length > 3 ? ` and ${needsPlan.length - 3} more` : ""} — part of <FlowBadge className="align-middle" />.
-            Keep playing; publishing them needs Flow+.
-          </p>
-          <Link href="/plans#flow-plus" className={buttonClasses({ size: "sm" })}>
-            See Flow+
-          </Link>
-        </div>
-      )}
+      {!isPaid && <FlowPlusBar tab={tab} previewing={needsPlan} />}
 
       {result && !result.ok && !result.needsPlan && (
         <p role="alert" className="mt-4 rounded-card border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-ink">

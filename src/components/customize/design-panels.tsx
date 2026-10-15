@@ -18,10 +18,25 @@ type Props = {
   onChange: (next: Customization) => void;
 };
 
+/** Sets one of the page's own colors (Flow+), starting the rest from what's on screen so they don't jump. */
+function withThemeColor(custom: Customization, key: "canvas" | "surface" | "ink" | "accent", hex: string): Customization {
+  const palette = resolvePalette(custom);
+  return {
+    ...custom,
+    theme: {
+      ...custom.theme,
+      canvas: custom.theme.canvas ?? palette?.canvas ?? "#f6fbff",
+      surface: custom.theme.surface ?? palette?.surface ?? "#ffffff",
+      ink: custom.theme.ink ?? palette?.ink ?? "#173b5b",
+      accent: custom.theme.accent ?? palette?.accent ?? "#0788f9",
+      [key]: hex,
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ theme */
 
 export function ThemePanel({ custom, isPaid, onChange }: Props) {
-  const set = (patch: Partial<Customization["theme"]>) => onChange({ ...custom, theme: { ...custom.theme, ...patch } });
   const palette = resolvePalette(custom);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +85,9 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
                   <span className="h-6 flex-1 rounded-[5px]" style={{ background: preset.surface || "#ffffff80" }} />
                   <span className="size-4 rounded-full" style={{ background: preset.accent || "linear-gradient(135deg,#0788f9,#ff3948)" }} />
                 </span>
-                <span className="flex items-center justify-between gap-1 bg-surface px-2 py-1.5 text-xs font-semibold text-ink">
-                  {preset.label}
-                  {locked && <FlowBadge />}
-                </span>
+                <span className="block truncate bg-surface px-2 py-1.5 text-xs font-semibold text-ink">{preset.label}</span>
+                {/* A corner tag, like the frames' prices: beside the name it got cut off. */}
+                {locked && <FlowBadge className="absolute top-1 right-1 shadow-soft" />}
               </button>
             );
           })}
@@ -94,16 +108,7 @@ export function ThemePanel({ custom, isPaid, onChange }: Props) {
               key={key}
               label={label}
               value={custom.theme[key] ?? palette?.[key]}
-              onChange={(hex) =>
-                set({
-                  // Customizing starts from what's on screen, so untouched colors don't jump.
-                  canvas: custom.theme.canvas ?? palette?.canvas ?? "#f6fbff",
-                  surface: custom.theme.surface ?? palette?.surface ?? "#ffffff",
-                  ink: custom.theme.ink ?? palette?.ink ?? "#173b5b",
-                  accent: custom.theme.accent ?? palette?.accent ?? "#0788f9",
-                  [key]: hex,
-                })
-              }
+              onChange={(hex) => onChange(withThemeColor(custom, key, hex))}
               onClear={
                 custom.theme.canvas ? () => onChange({ ...custom, theme: { preset: custom.theme.preset } }) : undefined
               }
@@ -253,6 +258,31 @@ export function NamePanel({ custom, isPaid, onChange, displayName }: Props & { d
           }))}
         />
       </Section>
+
+      <Section title="Bio box" hint="Your headline and bio on a card, so they read on any background.">
+        <ChipGroup
+          label="Bio box"
+          value={custom.bio.box ? "card" : "none"}
+          isPaid={isPaid}
+          onChange={(value) => onChange({ ...custom, bio: { ...custom.bio, box: value === "card" } })}
+          options={[
+            { value: "none", label: "No box" },
+            { value: "card", label: "On a card" },
+          ]}
+        />
+        {custom.bio.box && (
+          <div className="mt-4">
+            <ColorField
+              label="Card color"
+              locked={!isPaid}
+              value={custom.bio.color}
+              onChange={(color) => onChange({ ...custom, bio: { ...custom.bio, color } })}
+              onClear={() => onChange({ ...custom, bio: { box: true } })}
+            />
+            <p className="mt-2 text-xs text-muted">Matches your cards until you pick one. The text re-inks itself to read on it.</p>
+          </div>
+        )}
+      </Section>
     </>
   );
 }
@@ -290,6 +320,31 @@ export function ButtonsPanel({ custom, isPaid, onChange }: Props) {
             { value: "outline", label: "Outline", paid: true },
           ]}
         />
+      </Section>
+      <Section
+        title="Button colors"
+        paid={!isPaid}
+        hint="Each kind of button in its own color. The text on it picks itself, so it always reads."
+      >
+        <div className="grid gap-4">
+          <ColorField
+            label="Follow & Request (your accent)"
+            value={custom.theme.accent ?? resolvePalette(custom)?.accent}
+            onChange={(hex) => onChange(withThemeColor(custom, "accent", hex))}
+          />
+          <ColorField
+            label="Message & Edit profile"
+            value={custom.buttons.secondary}
+            onChange={(secondary) => onChange({ ...custom, buttons: { ...custom.buttons, secondary } })}
+            onClear={() => onChange({ ...custom, buttons: { ...custom.buttons, secondary: undefined } })}
+          />
+          <ColorField
+            label="Commission & Customize"
+            value={custom.buttons.soft}
+            onChange={(soft) => onChange({ ...custom, buttons: { ...custom.buttons, soft } })}
+            onClear={() => onChange({ ...custom, buttons: { ...custom.buttons, soft: undefined } })}
+          />
+        </div>
       </Section>
       <Section title="Layout" paid={!isPaid} hint="Which side your commissions, links and gallery sit on.">
         <ChipGroup

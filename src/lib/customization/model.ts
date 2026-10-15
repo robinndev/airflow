@@ -69,8 +69,20 @@ export const customizationSchema = z.object({
     })
     .default({ font: "display", effect: "none" }),
   buttons: z
-    .object({ shape: z.enum(BUTTON_SHAPES).default("rounded"), style: z.enum(BUTTON_STYLES).default("solid") })
+    .object({
+      shape: z.enum(BUTTON_SHAPES).default("rounded"),
+      style: z.enum(BUTTON_STYLES).default("solid"),
+      /**
+       * Flow+: each kind of button in its own color. The main one (Follow,
+       * Request) takes the accent; these are the second (Message, Edit
+       * profile) and the soft one (Commission, Customize).
+       */
+      secondary: hex.optional(),
+      soft: hex.optional(),
+    })
     .default({ shape: "rounded", style: "solid" }),
+  /** The headline and bio on a card of their own, so they read on any background; its color is Flow+. */
+  bio: z.object({ box: z.boolean().default(false), color: hex.optional() }).default({ box: false }),
   layout: z
     .object({ sidebar: z.enum(["left", "right"]).default("left") })
     .default({ sidebar: "left" }),
@@ -118,6 +130,9 @@ export function gateCustomization(input: Customization, paid: boolean): Customiz
   delete c.name.gradient;
   if (!FREE.buttonShapes.includes(c.buttons.shape)) c.buttons.shape = "rounded";
   c.buttons.style = "solid";
+  delete c.buttons.secondary;
+  delete c.buttons.soft;
+  delete c.bio.color;
   c.layout.sidebar = "left";
   delete c.css;
   return c;
@@ -135,6 +150,8 @@ export function paidFieldsUsed(c: Customization): string[] {
   if (c.name.gradient) used.push("a gradient name");
   if (!FREE.buttonShapes.includes(c.buttons.shape)) used.push("that button shape");
   if (c.buttons.style !== "solid") used.push("button styles");
+  if (c.buttons.secondary || c.buttons.soft) used.push("button colors");
+  if (c.bio.color) used.push("a bio box color");
   if (c.layout.sidebar !== "left") used.push("moving the sidebar");
   if (c.css?.trim()) used.push("custom CSS");
   return used;

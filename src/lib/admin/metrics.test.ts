@@ -91,7 +91,8 @@ describe("windows", () => {
     });
   });
 
-  test("all time starts at the first account and compares with nothing", () => {
+  test("all time starts at the oldest account and compares with nothing", () => {
+    assert.equal(windowOf("all", "2026-10-15", "2026-08-01").from, "2026-08-01");
     assert.deepEqual(windowOf("all", "2026-10-15"), {
       from: "2026-10-10",
       to: "2026-10-15",
@@ -141,12 +142,13 @@ describe("points on the charts", () => {
       accounts: { total: 10, before: 0, artists: 0, new_artists: 0, verified: 0, subscribers: 3, subscriber_days: 0 },
     });
     const buckets = bucketize(daysOf(data, 5), "2026-10-06", "2026-10-15", 7);
+    // The short week is the oldest one; the last week ends today.
     assert.equal(buckets.length, 2);
-    assert.deepEqual([buckets[0].start, buckets[0].end, buckets[1].end], ["2026-10-06", "2026-10-12", "2026-10-15"]);
-    assert.equal(buckets[0].values.signups, 7);
-    assert.equal(buckets[1].values.signups, 3);
+    assert.deepEqual([buckets[0].start, buckets[0].end, buckets[1].start, buckets[1].end], ["2026-10-06", "2026-10-08", "2026-10-09", "2026-10-15"]);
+    assert.equal(buckets[0].values.signups, 3);
+    assert.equal(buckets[1].values.signups, 7);
     assert.equal(buckets[0].values.active, 2);
-    assert.equal(buckets[1].values.active, 4);
+    assert.equal(buckets[1].values.active, (4 * 2 + 4 * 3) / 7);
     assert.equal(buckets[1].values.subscribers, 3);
   });
 });

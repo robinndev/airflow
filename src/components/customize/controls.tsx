@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Lock } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { parseHex } from "@/lib/customization/hex";
 
@@ -43,7 +43,7 @@ export function Section({
 export type ChipOption<T extends string> = {
   value: T;
   label: string;
-  /** Shown (and saved) only with Flow+, but always previewable. */
+  /** Tagged FLOW+ and saved only with it, but always previewable. */
   paid?: boolean;
   /** Optional visual instead of / next to the label. */
   preview?: ReactNode;
@@ -91,7 +91,7 @@ export function ChipGroup<T extends string>({
             {option.preview}
             <span className="inline-flex items-center gap-1">
               {option.label}
-              {locked && <Lock aria-label="Flow+" className="size-3 text-lilac-ink" />}
+              {locked && <FlowBadge />}
             </span>
             {checked && option.preview && (
               <span className="absolute -top-1.5 -right-1.5 grid size-4 place-items-center rounded-full bg-ocean text-white">
@@ -131,7 +131,7 @@ export function ColorField({
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink">
           {label}
-          {locked && <Lock aria-label="Flow+" className="size-3 text-lilac-ink" />}
+          {locked && <FlowBadge />}
         </span>
         {value && onClear && (
           <button type="button" onClick={onClear} className="text-xs font-medium text-muted hover:text-ink">

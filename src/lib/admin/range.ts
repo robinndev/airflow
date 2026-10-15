@@ -5,18 +5,18 @@
  */
 
 export const RANGES = {
-  "7d": { label: "7 days", days: 7 },
-  "30d": { label: "30 days", days: 30 },
-  "90d": { label: "90 days", days: 90 },
-  "12m": { label: "12 months", days: 365 },
-  all: { label: "All time", days: null },
+  "7d": { label: "7 days", short: "7d", days: 7 },
+  "30d": { label: "30 days", short: "30d", days: 30 },
+  "90d": { label: "90 days", short: "90d", days: 90 },
+  "12m": { label: "12 months", short: "1y", days: 365 },
+  all: { label: "All time", short: "All", days: null },
 } as const;
 
 export type RangeId = keyof typeof RANGES;
 export const RANGE_ORDER = Object.keys(RANGES) as RangeId[];
 export const DEFAULT_RANGE: RangeId = "30d";
 
-/** The first real account (2026-10-10): "All time" starts here. */
+/** The first real account (2026-10-10): "All time" starts here unless the database knows better. */
 export const FIRST_DAY = "2026-10-10";
 
 /** Fees to try on the receipt, besides the configured one. */
@@ -76,10 +76,11 @@ export type Window = {
   compare: boolean;
 };
 
-export function windowOf(range: RangeId, today: string): Window {
+/** `firstDay`: the day the oldest account was made ("All time" starts there). */
+export function windowOf(range: RangeId, today: string, firstDay = FIRST_DAY): Window {
   const length = RANGES[range].days;
   if (length === null) {
-    const from = FIRST_DAY < today ? FIRST_DAY : today;
+    const from = firstDay < today ? firstDay : today;
     return { from, to: today, seriesFrom: from, days: daysBetween(from, today) + 1, compare: false };
   }
   const from = addDays(today, -(length - 1));

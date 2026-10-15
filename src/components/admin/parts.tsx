@@ -65,7 +65,7 @@ export function ChangeNote({
   const good = change.direction === "flat" ? null : (change.direction === "up") === upIsGood;
   const Icon = change.direction === "up" ? ArrowUpRight : change.direction === "down" ? ArrowDownRight : Minus;
   return (
-    <p className="flex items-center gap-1 text-xs text-muted">
+    <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted">
       <span
         className={`inline-flex items-center gap-0.5 font-semibold ${
           good === null ? "text-muted" : good ? "text-mint-ink" : "text-danger"
@@ -74,7 +74,7 @@ export function ChangeNote({
         <Icon aria-hidden className="size-3.5" />
         {formatChange(change)}
       </span>
-      <span className="truncate">{against}</span>
+      <span>{against}</span>
     </p>
   );
 }

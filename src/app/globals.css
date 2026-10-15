@@ -912,6 +912,26 @@ html:has(dialog[open]:modal) {
   color: var(--profile-accent-strong);
 }
 
+/*
+ * Button colors (Flow+): the second (Message, Edit profile) and soft
+ * (Commission, Customize) buttons in colors of their own; the text color
+ * comes from canvasStyle(), picked to read on them.
+ */
+[data-button-second] .action-secondary {
+  border-color: color-mix(in oklab, var(--btn-second) 78%, var(--btn-on-second));
+  background-color: var(--btn-second);
+  color: var(--btn-on-second);
+}
+
+[data-button-soft] .action-soft {
+  background-color: var(--btn-soft);
+  color: var(--btn-on-soft);
+}
+
+:is([data-button-second] .action-secondary, [data-button-soft] .action-soft):hover {
+  filter: brightness(0.95);
+}
+
 /* Display name effects. */
 .name-gradient {
   background-image: var(--name-gradient);

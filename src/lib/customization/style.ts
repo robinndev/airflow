@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { artUrl } from "@/lib/art-storage";
+import { contrast, luminance, readableOn } from "./contrast";
 import { NAME_FONTS, THEME_PRESETS, type Customization } from "./model";
 
 /*
@@ -10,19 +11,6 @@ import { NAME_FONTS, THEME_PRESETS, type Customization } from "./model";
  */
 
 const BUTTON_RADII = { rounded: "12px", pill: "999px", square: "4px", sketch: "255px 15px 225px 15px / 15px 225px 15px 255px" };
-
-function luminance(hex: string) {
-  const [r, g, b] = [1, 3, 5].map((i) => {
-    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-const contrast = (a: string, b: string) => {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-};
 
 /** The palette in effect, or null when the profile follows the site theme. */
 export function resolvePalette(c: Customization) {
@@ -64,15 +52,44 @@ export function canvasStyle(c: Customization): CSSProperties {
     });
   }
 
+  // Buttons in their own colors (see canvasData and globals.css).
+  if (c.buttons.secondary) {
+    style["--btn-second"] = c.buttons.secondary;
+    style["--btn-on-second"] = readableOn(c.buttons.secondary, palette);
+  }
+  if (c.buttons.soft) {
+    style["--btn-soft"] = c.buttons.soft;
+    style["--btn-on-soft"] = readableOn(c.buttons.soft, palette);
+  }
+
   if (c.background.image) style["--profile-bg-image"] = `url("${artUrl(c.background.image.path)}")`;
   return style as CSSProperties;
 }
 
-/** Data attributes the canvas carries for CSS-driven options (patterns, button styles). */
+/** The bio box's card, like the stats card beside it on the profile. */
+export const BIO_BOX = "rounded-card border border-border bg-surface px-4 py-3 shadow-soft";
+
+/**
+ * The bio box: the card it sits on (the palette's card color unless the
+ * artist picked one), with its text re-inked to read on it.
+ */
+export function bioBoxStyle(c: Customization): CSSProperties | undefined {
+  if (!c.bio.box || !c.bio.color) return undefined;
+  const ink = readableOn(c.bio.color, resolvePalette(c));
+  return {
+    backgroundColor: c.bio.color,
+    borderColor: `color-mix(in oklab, ${c.bio.color} 82%, ${ink})`,
+    "--ink": ink,
+  } as CSSProperties;
+}
+
+/** Data attributes the canvas carries for CSS-driven options (patterns, button styles and colors). */
 export function canvasData(c: Customization) {
   return {
     "data-pattern": c.background.pattern,
     "data-button-style": c.buttons.style,
+    ...(c.buttons.secondary && { "data-button-second": "" }),
+    ...(c.buttons.soft && { "data-button-soft": "" }),
   } as const;
 }
 

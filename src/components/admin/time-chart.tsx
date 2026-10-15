@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { formatTick, formatValue, type Unit } from "@/lib/admin/format";
 
 /*
@@ -62,6 +62,16 @@ export function TimeChart({
   const [fromKeys, setFromKeys] = useState(false);
   const summaryId = useId();
   const n = points.length;
+  // How many dates fit under the axis depends on how wide it is.
+  const plot = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const node = plot.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const stacked = kind === "columns";
   const peaks = points.map((_, i) =>
@@ -90,9 +100,10 @@ export function TimeChart({
     setActive((i) => Math.min(n - 1, Math.max(0, (i ?? n - 1) + moves[event.key])));
   }
 
-  // About six dates under the axis, always including the last one.
-  const every = Math.max(1, Math.ceil(n / (compact ? 3 : 6)));
-  const shown = points.map((_, i) => i).filter((i) => i % every === 0 && n - 1 - i >= every / 2);
+  // A date every ~80px (about six before the width is known), always including the last one.
+  const fit = width === null ? (compact ? 3 : 6) : Math.max(2, Math.floor(width / 80));
+  const every = Math.max(1, Math.ceil(n / fit));
+  const shown = points.map((_, i) => i).filter((i) => i % every === 0 && n - 1 - i >= every * 0.75);
   if (n) shown.push(n - 1);
 
   const tooltip = active === null ? null : (
@@ -118,6 +129,7 @@ export function TimeChart({
 
       <div className={compact ? "" : "pl-9"}>
         <div
+          ref={plot}
           role="group"
           tabIndex={0}
           aria-label={label}

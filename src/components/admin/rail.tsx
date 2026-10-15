@@ -11,7 +11,7 @@ export function AdminRail({ query, generatedAt }: { query: AdminQuery; generated
   return (
     <div className="sticky top-16 z-20 -mx-4 border-b border-border/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <nav aria-label="Period" className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none]">
+        <nav aria-label="Period">
           <ul className="flex w-max gap-1 rounded-full bg-ice p-1">
             {RANGE_ORDER.map((range) => {
               const current = range === query.range;
@@ -21,11 +21,14 @@ export function AdminRail({ query, generatedAt }: { query: AdminQuery; generated
                     href={adminHref(query, { range })}
                     scroll={false}
                     aria-current={current ? "page" : undefined}
-                    className={`flex h-8 items-center rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    className={`flex h-8 items-center rounded-full px-3 text-sm sm:px-3.5 font-semibold whitespace-nowrap transition-colors ${
                       current ? "bg-surface text-ink shadow-soft" : "text-muted hover:text-ink"
                     }`}
                   >
-                    {RANGES[range].label}
+                    <span className="sm:hidden" aria-hidden>
+                      {RANGES[range].short}
+                    </span>
+                    <span className="max-sm:sr-only">{RANGES[range].label}</span>
                   </Link>
                 </li>
               );

@@ -7,12 +7,17 @@ import { windowOf, type AdminQuery } from "./range";
 /**
  * Everything /admin shows, fresh on every request (admins only: call after
  * `requireAdmin()`). One call to `admin_dashboard()`, which only the secret
- * key can run.
+ * key can run (for "All time", first the date of the oldest account).
  */
 export async function getAdminDashboard(query: AdminQuery): Promise<Dashboard> {
   const today = new Date().toISOString().slice(0, 10);
-  const window = windowOf(query.range, today);
-  const { data, error } = await createSupabaseAdmin().rpc("admin_dashboard", {
+  const supabase = createSupabaseAdmin();
+  const { data: first } =
+    query.range === "all"
+      ? await supabase.from("profiles").select("created_at").order("created_at").limit(1).maybeSingle()
+      : { data: null };
+  const window = windowOf(query.range, today, first?.created_at?.slice(0, 10));
+  const { data, error } = await supabase.rpc("admin_dashboard", {
     p_from: window.from,
     p_to: window.to,
     p_series_from: window.seriesFrom,

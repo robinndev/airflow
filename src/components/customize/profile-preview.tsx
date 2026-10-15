@@ -5,7 +5,7 @@ import { Brush, Heart, MessageCircle, Plus } from "lucide-react";
 import { FramedAvatar } from "@/components/frames/avatar-frame";
 import { buttonClasses } from "@/components/ui/button";
 import type { Customization } from "@/lib/customization/model";
-import { canvasData, canvasStyle, nameStyle } from "@/lib/customization/style";
+import { BIO_BOX, bioBoxStyle, canvasData, canvasStyle, nameStyle } from "@/lib/customization/style";
 import type { ImageAsset } from "@/lib/profile/types";
 
 export type PreviewProfile = {
@@ -89,7 +89,7 @@ export function ProfilePreview({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
+          <div data-part="intro" className={`min-w-0 ${custom.bio.box ? BIO_BOX : ""}`} style={bioBoxStyle(custom)}>
             <p data-part="headline" className="font-display font-semibold text-ink">
               {profile.headline || "Your headline"}
             </p>
