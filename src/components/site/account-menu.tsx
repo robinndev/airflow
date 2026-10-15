@@ -106,7 +106,7 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
               </Link>
               <Link href="/shop" className={item}>
                 <Frame aria-hidden />
-                Frame shop
+                Shop
               </Link>
               <Link href="/plans" className={item}>
                 <Sparkles aria-hidden />

@@ -351,7 +351,7 @@ export function FramePanel({ custom, onChange, owned }: Props & { owned: string[
         className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-accent-strong hover:underline [&_svg]:size-4"
       >
         <ShoppingBag aria-hidden />
-        Browse the frame shop
+        More in the shop: effects, animated names, covers, pins
       </Link>
     </Section>
   );
