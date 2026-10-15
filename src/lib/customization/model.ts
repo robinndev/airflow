@@ -76,6 +76,11 @@ export const customizationSchema = z.object({
     .default({ sidebar: "left" }),
   /** Equipped avatar frame (see src/lib/frames.ts); must be owned or free. */
   frame: z.string().max(40).optional(),
+  /** From the shop (src/lib/shop/catalog.ts), each owned or free: a profile effect, an animated name, an animated cover, a pin. */
+  effect: z.string().max(40).optional(),
+  nameFx: z.string().max(40).optional(),
+  coverFx: z.string().max(40).optional(),
+  pin: z.string().max(40).optional(),
   /** Flow+: sanitized and scoped to the profile (see css.ts). */
   css: z.string().max(CSS_MAX).optional(),
 });

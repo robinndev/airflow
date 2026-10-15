@@ -49,7 +49,14 @@ function InterludeHeading({
   );
 }
 
-/** Commission sheets that are open right now, as a row of cover cards. */
+const coverOf = (studio: Studio) => studio.tiers.at(-1)?.image ?? studio.tiers[0].image;
+
+/**
+ * Commission sheets that are open right now, as cover cards, each piece at
+ * its real proportions (never cropped). Desktop: one justified row, every
+ * cover the same height and as wide as its art. Phones: a row to scroll
+ * sideways, every cover the same height.
+ */
 export function OpenStudios({ studios }: { studios: Studio[] }) {
   if (studios.length === 0) return null;
   return (
@@ -61,35 +68,43 @@ export function OpenStudios({ studios }: { studios: Studio[] }) {
         note="first come, first served!"
         action={{ href: "/explore/commissions", label: "All open studios" }}
       />
-      <ul className="-mx-4 mt-8 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pt-2 pb-3 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 lg:gap-5">
-        {studios.map((studio) => (
-          <li key={studio.id} className="w-[70%] shrink-0 snap-start sm:w-auto">
-            <StudioCover studio={studio} />
-          </li>
-        ))}
+      <ul className="-mx-4 mt-8 flex snap-x snap-mandatory scroll-px-4 items-start gap-4 overflow-x-auto px-4 pt-2 pb-3 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:snap-none lg:gap-5 lg:overflow-visible lg:px-0">
+        {studios.map((studio) => {
+          const { width, height } = coverOf(studio);
+          return (
+            <li
+              key={studio.id}
+              // Phones: 20rem tall, as wide as the art. Desktop: widths share the row by aspect ratio, so heights match.
+              className="w-[calc(20rem*var(--ratio))] max-w-[85vw] shrink-0 snap-start lg:w-auto lg:max-w-none lg:min-w-0 lg:shrink lg:basis-0 lg:[flex-grow:var(--ratio)]"
+              style={{ "--ratio": width / height } as CSSProperties}
+            >
+              <StudioCover studio={studio} />
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
 }
 
 function StudioCover({ studio }: { studio: Studio }) {
-  const cover = studio.tiers.at(-1)?.image ?? studio.tiers[0].image;
+  const cover = coverOf(studio);
   const left = studio.slots.total - studio.slots.taken;
   const from = Math.min(...studio.tiers.map((t) => t.priceUsd));
 
   return (
     <article className="group relative">
+      {/* The art at its own proportions: the box takes the image's aspect ratio, nothing is cropped. */}
       <div
-        className="relative aspect-4/5 overflow-hidden rounded-[20px] shadow-soft transition-shadow duration-300 group-hover:shadow-lift"
-        style={{ backgroundColor: cover.palette?.[0] }}
+        className="relative overflow-hidden rounded-[20px] shadow-soft transition-[box-shadow,translate] duration-300 group-hover:-translate-y-1 group-hover:shadow-lift"
+        style={{ aspectRatio: `${cover.width} / ${cover.height}`, backgroundColor: cover.palette?.[0] }}
       >
         <Image
           src={cover.src}
           alt={cover.alt}
           fill
-          sizes="(min-width: 1024px) 260px, (min-width: 640px) 45vw, 70vw"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
-          style={{ objectPosition: cover.focus ?? "50% 25%" }}
+          sizes="(min-width: 1024px) 420px, 85vw"
+          className="object-contain"
         />
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-scrim/75 to-transparent" />
         <Stamp

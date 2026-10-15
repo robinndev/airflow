@@ -106,9 +106,9 @@ test("visitors are asked to sign in, but can still pick a theme", async ({ page 
   await expect(page.getByRole("link", { name: "Sign in", exact: true }).last()).toHaveAttribute("href", "/sign-in?next=%2Fsettings");
 
   await page.goto("/settings/appearance");
-  await page.getByText("Ember", { exact: true }).click();
+  await page.locator("main").getByText("Ember", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "ember");
-  await page.getByText("Aqua", { exact: true }).click();
+  await page.locator("main").getByText("Aqua", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "aqua");
 });
 
@@ -207,7 +207,8 @@ test("another device can be signed out from here", async ({ browser }) => {
   await signedIn(browser, fan);
   await openSettings(page, "/settings");
   const sessions = page.getByRole("list", { name: "Signed in on" }).getByRole("listitem");
-  await expect(sessions).toHaveCount(2);
+  // Both browsers (and the API clients earlier tests signed in with).
+  await expect.poll(() => sessions.count()).toBeGreaterThanOrEqual(2);
   await expect(sessions.first()).toContainText("This device");
   await expect(sessions.first()).toContainText("Chrome on");
 

@@ -34,7 +34,34 @@ const PATHS: Record<StickerId, { d: string; detail?: string }> = {
   arrow: { d: "M10 58c20-30 50-38 70-28l4-14 12 30-30 10 6-12c-16-6-38 0-56 22z" },
   tape: { d: "M8 30l84-8 2 46-84 10z", detail: "M8 30l4 6-4 6 4 6-4 6 4 6-4 6M92 22l-4 6 4 6-4 6 4 6-4 6 4 6" },
   swirl: { d: "M50 50m-6 0a6 6 0 1 1 12 0 14 14 0 1 1-28 0 22 22 0 1 1 44 0 30 30 0 1 1-60 0", detail: "" },
+
+  // The shop's packs. Café Break:
+  coffee: { d: "M16 38h56v22c0 17-12 28-28 28S16 77 16 60zM72 46h4a14 14 0 0 1 0 28h-6v-9h6a5 5 0 0 0 0-10h-4z", detail: "M34 28c-4-5 4-9 0-14M50 28c-4-5 4-9 0-14M22 48h44" },
+  croissant: { d: "M8 66c6-28 30-44 42-44s36 16 42 44c-8-5-15-5-21 2-6-9-14-12-21-12s-15 3-21 12C23 61 16 61 8 66z", detail: "M36 38l7 18M50 32v22M64 38l-7 18" },
+  teacup: { d: "M12 42h62c0 23-13 38-31 38S12 65 12 42zM72 48h6a10 10 0 0 1 0 20h-9l2-8h7a2 2 0 0 0 0-4h-7z", detail: "M8 88h76M30 42c2-10 10-14 18-14" },
+  cake: { d: "M8 66l72-32v40L8 88zM62 14a10 10 0 1 0 0.1 0z", detail: "M8 74l72-31M62 24c-2 4-1 8 2 10" },
+  // Space Cadet:
+  planet: { d: "M50 22a28 28 0 1 0 0.1 0z", detail: "M8 68c-6-12 34-36 62-40s28 8 8 18M36 40a5 5 0 1 0 0.1 0" },
+  rocket: { d: "M50 6c16 12 22 34 18 58H32C28 40 34 18 50 6zM32 52 16 74l17-3zM68 52l16 22-17-3zM40 64h20l-4 18H44z", detail: "M50 26a7 7 0 1 0 0.1 0" },
+  comet: { d: "M58 26 8 82l64-36zM72 16a18 18 0 1 0 0.1 0z", detail: "M22 68l30-22M66 26l4 6" },
+  ufo: { d: "M30 46a20 18 0 0 1 40 0zM6 58c0-8 20-14 44-14s44 6 44 14-20 14-44 14S6 66 6 58z", detail: "M26 58h1M50 62h1M74 58h1M40 34c2-4 6-6 10-6" },
+  // Pixel Pack (each cell outlined, like pixels on a grid):
+  "pixel-heart": { d: cells("2,1 3,1 6,1 7,1 1,2 2,2 3,2 4,2 5,2 6,2 7,2 8,2 1,3 2,3 3,3 4,3 5,3 6,3 7,3 8,3 1,4 2,4 3,4 4,4 5,4 6,4 7,4 8,4 2,5 3,5 4,5 5,5 6,5 7,5 3,6 4,6 5,6 6,6 4,7 5,7") },
+  "pixel-star": { d: cells("4,0 5,0 4,1 5,1 3,2 4,2 5,2 6,2 0,3 1,3 2,3 3,3 4,3 5,3 6,3 7,3 8,3 9,3 1,4 2,4 3,4 4,4 5,4 6,4 7,4 8,4 2,5 3,5 4,5 5,5 6,5 7,5 2,6 3,6 6,6 7,6 1,7 2,7 7,7 8,7") },
+  "pixel-sword": { d: cells("8,0 9,0 7,1 8,1 9,1 6,2 7,2 8,2 5,3 6,3 7,3 4,4 5,4 6,4 1,4 3,5 4,5 5,5 2,5 2,6 3,6 4,6 1,7 2,7 4,7 5,7 0,8 1,8 0,9") },
+  "pixel-potion": { d: cells("4,0 5,0 4,1 5,1 3,2 4,2 5,2 6,2 2,3 3,3 4,3 5,3 6,3 7,3 1,4 2,4 3,4 4,4 5,4 6,4 7,4 8,4 1,5 2,5 3,5 4,5 5,5 6,5 7,5 8,5 1,6 2,6 3,6 4,6 5,6 6,6 7,6 8,6 2,7 3,7 4,7 5,7 6,7 7,7"), detail: "M30 52h8" },
 };
+
+/** Pixel stickers: "col,row" cells on a 10×10 grid, each its own square. */
+function cells(list: string) {
+  return list
+    .split(" ")
+    .map((cell) => {
+      const [col, row] = cell.split(",").map(Number);
+      return `M${col * 9 + 5} ${row * 9 + 5}h9v9h-9z`;
+    })
+    .join("");
+}
 
 export function Sticker({ id, color, className = "" }: { id: StickerId; color: string; className?: string }) {
   const { d, detail } = PATHS[id];

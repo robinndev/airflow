@@ -54,10 +54,20 @@ const textStyle = {
   align: z.enum(["left", "center", "right"]).default("left"),
 };
 
-export const STICKERS = [
+/** Everyone's stickers. */
+export const BUILT_IN_STICKERS = [
   "heart", "star", "sparkle", "flower", "cloud", "moon", "crown", "paw",
   "bow", "music", "palette", "brush", "speech", "arrow", "tape", "swirl",
 ] as const;
+
+/** Stickers from the shop's packs (STICKER_PACKS in src/lib/shop/catalog.ts): owned packs only. */
+export const PACK_STICKERS = [
+  "coffee", "croissant", "teacup", "cake",
+  "planet", "rocket", "comet", "ufo",
+  "pixel-heart", "pixel-star", "pixel-sword", "pixel-potion",
+] as const;
+
+export const STICKERS = [...BUILT_IN_STICKERS, ...PACK_STICKERS] as const;
 export type StickerId = (typeof STICKERS)[number];
 
 export const blockSchema = z.discriminatedUnion("type", [

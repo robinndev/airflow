@@ -63,6 +63,11 @@
   /* Messages: the other person's bubbles, tinted with their art (see `tint-bubble`). */
   --bubble-l: 0.95;
   --bubble-c: 0.04;
+  /* The supply shop's fixtures (/shop): birch shelves and pegboard, pale felt. */
+  --shelf: #ead6b8;
+  --shelf-edge: #c9a47a;
+  --pegboard: #f3e6d1;
+  --felt: #d7e9f7;
 
   /* Per-profile overrides are set inline on the profile root (see appearance.ts). */
   --profile-accent: var(--ocean);
@@ -120,6 +125,11 @@
   --ambient-alpha: 0.4;
   --bubble-l: 0.3;
   --bubble-c: 0.06;
+  /* Walnut shelves and pegboard, deep violet felt. */
+  --shelf: #4a3528;
+  --shelf-edge: #2f2119;
+  --pegboard: #2b2230;
+  --felt: #2a2142;
 
   --profile-accent: var(--ocean);
   --profile-accent-strong: var(--ocean-ink);
@@ -162,6 +172,11 @@
   --color-like: var(--like);
   --color-star: var(--star);
   --color-danger: var(--danger);
+
+  --color-shelf: var(--shelf);
+  --color-shelf-edge: var(--shelf-edge);
+  --color-pegboard: var(--pegboard);
+  --color-felt: var(--felt);
 
   --color-accent: var(--profile-accent);
   --color-accent-strong: var(--profile-accent-strong);
@@ -1190,4 +1205,354 @@ html:has(dialog[open]:modal) {
 /* Settings → Privacy, "Show like counts" off: the numbers go, the hearts stay. */
 :root[data-hide-likes] [data-like-count] {
   display: none;
+}
+
+/*
+ * The shop's effects (src/components/shop/fx/): profile effects, animated
+ * covers and names, holo pins. Particles move in container units, so they
+ * cross whatever box holds them (a profile's top, the shop's mirror). None
+ * of it plays with reduced motion: effects leave, names and covers hold still.
+ */
+.fx-layer {
+  container-type: size;
+}
+
+.fx-p {
+  position: absolute;
+  top: var(--y, 0);
+  left: var(--x);
+  animation-delay: var(--delay);
+  animation-duration: var(--dur);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.fx-fall {
+  animation-name: fx-fall;
+}
+
+.fx-rise {
+  animation-name: fx-rise;
+  animation-timing-function: ease-in;
+}
+
+.fx-wander {
+  animation-name: fx-wander;
+  animation-timing-function: ease-in-out;
+}
+
+.fx-shoot {
+  animation-name: fx-shoot;
+  animation-timing-function: ease-out;
+}
+
+.fx-twinkle {
+  animation: fx-twinkle var(--dur, 2.6s) ease-in-out var(--delay, 0s) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.fx-blink {
+  animation: fx-blink var(--blink, 2.2s) ease-in-out infinite;
+}
+
+@keyframes fx-fall {
+  from {
+    translate: 0 -8cqh;
+    rotate: 0deg;
+  }
+  50% {
+    translate: var(--sway, 3cqw) 50cqh;
+  }
+  to {
+    translate: 0 108cqh;
+    rotate: var(--spin, 260deg);
+  }
+}
+
+@keyframes fx-rise {
+  from {
+    translate: 0 104cqh;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    translate: var(--sway, 2cqw) 50cqh;
+  }
+  85% {
+    opacity: 0.8;
+  }
+  to {
+    translate: 0 -6cqh;
+    opacity: 0;
+  }
+}
+
+@keyframes fx-wander {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 4cqw -7cqh;
+  }
+  50% {
+    translate: -2cqw -12cqh;
+  }
+  75% {
+    translate: -5cqw -4cqh;
+  }
+}
+
+@keyframes fx-shoot {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  3% {
+    opacity: 1;
+  }
+  14% {
+    translate: -38cqw 26cqh;
+    opacity: 0;
+  }
+  100% {
+    translate: -38cqw 26cqh;
+    opacity: 0;
+  }
+}
+
+@keyframes fx-twinkle {
+  0%,
+  100% {
+    scale: 0.45;
+    opacity: 0.25;
+  }
+  50% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+@keyframes fx-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+/* Animated covers, over the cover image (never instead of it). */
+.cover-rain {
+  background-image: var(--rain-a), var(--rain-b);
+  background-size:
+    140px 140px,
+    90px 90px;
+  animation: cover-rain 0.9s linear infinite;
+}
+
+@keyframes cover-rain {
+  to {
+    background-position:
+      -30px 140px,
+      -19px 90px;
+  }
+}
+
+.cover-sunbeams {
+  background: conic-gradient(
+    from 95deg at 8% -20%,
+    transparent 0deg,
+    rgb(255 255 255 / 0.4) 5deg,
+    transparent 12deg 20deg,
+    rgb(255 255 255 / 0.28) 25deg,
+    transparent 33deg 41deg,
+    rgb(255 255 255 / 0.34) 45deg,
+    transparent 52deg
+  );
+  mix-blend-mode: soft-light;
+  mask-image: radial-gradient(120% 140% at 8% -20%, black 30%, transparent 85%);
+  transform-origin: 8% -20%;
+  animation: cover-sunbeams 9s ease-in-out infinite alternate;
+}
+
+@keyframes cover-sunbeams {
+  from {
+    rotate: -5deg;
+    opacity: 0.75;
+  }
+  to {
+    rotate: 6deg;
+    opacity: 1;
+  }
+}
+
+.cover-holo {
+  background: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgb(255 120 200 / 0.55) 38%,
+    rgb(255 236 140 / 0.55) 44%,
+    rgb(120 255 214 / 0.55) 50%,
+    rgb(120 180 255 / 0.55) 56%,
+    rgb(190 140 255 / 0.55) 62%,
+    transparent 75%
+  );
+  background-size: 300% 100%;
+  mix-blend-mode: overlay;
+  animation: cover-holo 6s ease-in-out infinite alternate;
+}
+
+@keyframes cover-holo {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Animated names, on a span inside the name (so fonts and colors still apply). */
+.name-fx-rainbow {
+  background-image: linear-gradient(90deg, #ff5f8a, #ffb347, #5ee08f, #3bc4ff, #a77bff, #ff5f8a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: name-fx-rainbow 6s linear infinite;
+}
+
+@keyframes name-fx-rainbow {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.name-fx-neon {
+  text-shadow:
+    0 0 2px color-mix(in oklab, currentColor 80%, white),
+    0 0 10px var(--ocean),
+    0 0 22px color-mix(in oklab, var(--ocean) 70%, transparent);
+  animation: name-fx-neon 5s linear infinite;
+}
+
+@keyframes name-fx-neon {
+  0%,
+  88%,
+  91%,
+  95%,
+  100% {
+    opacity: 1;
+  }
+  89%,
+  93% {
+    opacity: 0.45;
+  }
+}
+
+.name-fx-glitch {
+  position: relative;
+  display: inline-block;
+}
+
+.name-fx-glitch::before,
+.name-fx-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.name-fx-glitch::before {
+  color: var(--mint);
+  -webkit-text-fill-color: var(--mint);
+  animation: name-fx-glitch 2.8s steps(1) infinite;
+  mix-blend-mode: multiply;
+  opacity: 0.8;
+}
+
+.name-fx-glitch::after {
+  color: var(--like);
+  -webkit-text-fill-color: var(--like);
+  animation: name-fx-glitch 2.8s steps(1) 0.15s infinite reverse;
+  mix-blend-mode: multiply;
+  opacity: 0.8;
+}
+
+:root[data-theme="ember"] .name-fx-glitch::before,
+:root[data-theme="ember"] .name-fx-glitch::after {
+  mix-blend-mode: screen;
+}
+
+@keyframes name-fx-glitch {
+  0%,
+  100% {
+    clip-path: inset(0 0 100% 0);
+    translate: 0;
+  }
+  8% {
+    clip-path: inset(20% 0 55% 0);
+    translate: -3px 0;
+  }
+  12% {
+    clip-path: inset(60% 0 12% 0);
+    translate: 3px 0;
+  }
+  16% {
+    clip-path: inset(0 0 100% 0);
+  }
+  58% {
+    clip-path: inset(40% 0 35% 0);
+    translate: 2px 0;
+  }
+  62% {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+
+.name-fx-wave .fx-letter {
+  display: inline-block;
+  white-space: pre;
+  animation: name-fx-wave 1.8s ease-in-out calc(var(--i) * 70ms) infinite;
+}
+
+@keyframes name-fx-wave {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 -0.14em;
+  }
+}
+
+.pin-holo {
+  background: linear-gradient(120deg, #ffd1f0, #fff3b0, #b8ffe8, #bcd8ff, #e4c8ff, #ffd1f0);
+  background-size: 300% 300%;
+  animation: cover-holo 4s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-motion {
+    display: none;
+  }
+
+  .fx-twinkle,
+  .fx-blink,
+  .cover-rain,
+  .cover-sunbeams,
+  .cover-holo,
+  .name-fx-rainbow,
+  .name-fx-neon,
+  .name-fx-glitch::before,
+  .name-fx-glitch::after,
+  .name-fx-wave .fx-letter,
+  .pin-holo {
+    animation: none;
+  }
 }
