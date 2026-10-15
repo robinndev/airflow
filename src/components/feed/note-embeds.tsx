@@ -5,7 +5,9 @@ import { HangTag } from "@/components/explore/adopt-card";
 import { HandNote, Tape } from "@/components/explore/doodles";
 import { SlotMeter } from "@/components/explore/slot-meter";
 import { Stamp } from "@/components/explore/stamp";
+import { ListingArt } from "@/components/listings/listing-art";
 import { buttonClasses } from "@/components/ui/button";
+import { matOf } from "@/components/wall/mat";
 import { formatUsd } from "@/lib/format";
 import type { FeedEntry, ResolvedEmbed } from "@/lib/profile/queries";
 import { categoryLabel } from "@/lib/listings/catalog";
@@ -101,18 +103,9 @@ export function AdoptableCard({ embed }: { embed: AdoptableEmbed }) {
 
   return (
     <article className="group relative mx-auto w-full max-w-[19rem] pt-3">
-      <div
-        className="relative aspect-4/5 overflow-hidden rounded-[22px] bg-ice shadow-lift"
-        style={{ backgroundColor: artwork.image.palette?.[0] }}
-      >
-        <Image
-          src={artwork.image.src}
-          alt={artwork.image.alt}
-          fill
-          sizes="304px"
-          className={`object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] ${sold ? "saturate-50" : ""}`}
-          style={{ objectPosition: artwork.image.focus ?? "50% 20%" }}
-        />
+      {/* The character whole, at no more than its own pixels, on a mat in its colors. */}
+      <div className="relative aspect-4/5 overflow-hidden rounded-[22px] shadow-lift" style={{ backgroundColor: matOf(artwork.image.palette) }}>
+        <ListingArt image={artwork.image} sizes="304px" className={sold ? "saturate-50" : ""} />
         {sold && (
           <span className="absolute inset-0 grid place-items-center bg-scrim/25">
             <Stamp tone="like" className="-rotate-12 bg-paper/90 px-3 py-1.5 text-sm">

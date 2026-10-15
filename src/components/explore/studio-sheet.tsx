@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Star } from "lucide-react";
+import { ListingArt } from "@/components/listings/listing-art";
 import { buttonClasses } from "@/components/ui/button";
 import type { Studio } from "@/lib/explore";
 import { formatUsd } from "@/lib/format";
@@ -84,16 +85,12 @@ export function StudioSheet({ studio }: { studio: Studio }) {
       <ol className={`mt-4 grid gap-2 sm:gap-2.5 ${["grid-cols-1", "grid-cols-2", "grid-cols-3"][Math.min(3, studio.tiers.length) - 1]}`}>
         {studio.tiers.map((tier, i) => (
           <li key={`${tier.label}-${i}`} className="min-w-0">
-            {/* No palette tint behind: see-through art sits on the sheet's own color. */}
+            {/*
+              No palette tint behind: see-through art sits on the sheet's own color.
+              Whole and at no more than its own pixels, so a 128px pixel GIF stays 128px.
+            */}
             <div className={`relative overflow-hidden rounded-[14px] bg-ice ${studio.tiers.length === 1 ? "aspect-16/10" : "aspect-4/5"}`}>
-              <Image
-                src={tier.image.src}
-                alt={tier.image.alt}
-                fill
-                sizes="(min-width: 1024px) 176px, (min-width: 640px) 28vw, 26vw"
-                className="object-cover transition-transform duration-700 ease-out group-hover/sheet:scale-[1.05]"
-                style={{ objectPosition: tier.image.focus ?? "50% 25%" }}
-              />
+              <ListingArt image={tier.image} sizes="(min-width: 1024px) 176px, (min-width: 640px) 28vw, 26vw" />
               <span
                 aria-hidden
                 className="absolute top-2 left-2 grid size-6 place-items-center rounded-full bg-paper/90 font-display text-[0.6875rem] font-extrabold text-on-paper shadow-soft"

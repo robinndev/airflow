@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ListingArt } from "@/components/listings/listing-art";
+import { matOf } from "@/components/wall/mat";
 import type { Adopt, AdoptSale, Drop } from "@/lib/explore";
 import { formatUsd } from "@/lib/format";
 import { Countdown, DropClock, RemindButton } from "./countdown";
@@ -65,17 +67,12 @@ export function AdoptCard({ adopt }: { adopt: Adopt }) {
 
   return (
     <article className="group relative">
-      <div
-        className="relative aspect-4/5 overflow-hidden rounded-[20px] bg-ice"
-        style={{ backgroundColor: adopt.image.palette?.[0] }}
-      >
-        <Image
-          src={adopt.image.src}
-          alt={adopt.image.alt}
-          fill
+      {/* The character whole, at no more than its own pixels, on a mat in its colors. */}
+      <div className="relative aspect-4/5 overflow-hidden rounded-[20px]" style={{ backgroundColor: matOf(adopt.image.palette) }}>
+        <ListingArt
+          image={adopt.image}
           sizes="(min-width: 1024px) 270px, (min-width: 640px) 45vw, 48vw"
-          className={`object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] ${adopted ? "saturate-50" : ""}`}
-          style={{ objectPosition: adopt.image.focus ?? "50% 20%" }}
+          className={adopted ? "saturate-50" : ""}
         />
         {adopted && (
           <span className="absolute inset-0 grid place-items-center bg-scrim/25">
