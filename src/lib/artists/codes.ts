@@ -83,16 +83,20 @@ export function progressOf({ followers, salesUsd }: Progress) {
 export const WHY_CODES =
   "Every artist here was let in by another artist. It keeps bots, AI sellers and scammers out of the marketplace.";
 
-/** How to hand a code on (VGen's code policy, in our words). */
+/** How to hand a code on (wording proofread by a native speaker, 2026-10-15). */
 export const CODE_RULES = [
-  { ok: true, text: "Give codes to artists you know and trust." },
-  { ok: true, text: "Send them in Messages: it keeps a record of who got which." },
-  { ok: false, text: "Never sell or trade a code. They're free and stay free." },
-  { ok: false, text: "Don't post codes publicly, not even partly hidden." },
-  { ok: false, text: "No giveaways without checking who you give to." },
+  { ok: true, text: "Only give codes to artists you know and trust." },
+  { ok: true, text: "Send codes through messages: it helps keep track of them!" },
+  { ok: false, text: "Codes cannot be sold or traded. They're free and will stay free." },
+  { ok: false, text: "Do not post codes publicly, even if they are partially hidden or obscured." },
+  { ok: false, text: "Do not host code giveaways without checking who they are going to." },
 ] as const;
 
-export const ANSWERABLE = "You're answerable for who you invite: inviting bad actors can cost your own account.";
+export const ANSWERABLE =
+  "You're responsible for users that you invite to Artiflow and your account may face consequences if they are found to be bad actors.";
+
+/** Said right after ANSWERABLE, so nobody reads it as "any small slip of theirs lands on me". */
+export const BAD_ACTORS = "Bad actors may be, but aren't limited to, scammers, AI artists, and art thieves.";
 
 /** The invite link that opens the sign-up with the code already in: `/join?invite=K7QH-3MPA`. */
 export const inviteHref = (code: string) => `/join?invite=${encodeURIComponent(code)}`;

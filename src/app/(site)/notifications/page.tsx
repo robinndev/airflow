@@ -15,7 +15,7 @@ const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "s
 
 export const metadata: Metadata = {
   title: "Notifications",
-  description: "Likes, comments, follows, reposts and commission requests, signed into your guest book.",
+  description: "Likes, comments, follows and reposts, signed into your guest book.",
 };
 
 const container = "mx-auto w-full max-w-[1184px] px-4 sm:px-6";
@@ -74,7 +74,7 @@ async function Book() {
     return (
       <ClosedBook>
         <p className="font-display text-lg font-bold text-on-paper">Your guest book opens when you sign in.</p>
-        <p className="mt-1 text-sm text-paper-muted">Likes, comments, follows and commission requests get signed in here.</p>
+        <p className="mt-1 text-sm text-paper-muted">Likes, comments, follows and reposts get signed in here.</p>
         <Link
           href="/sign-in?next=/notifications"
           className="mt-5 inline-flex h-10 items-center rounded-full bg-ocean px-5 text-sm font-semibold text-white transition-[filter] hover:brightness-105"

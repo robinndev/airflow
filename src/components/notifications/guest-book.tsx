@@ -27,7 +27,6 @@ const FLAG_TONE: Record<Show, string> = {
   likes: "var(--like)",
   follows: "var(--ocean)",
   reposts: "var(--sky)",
-  requests: "var(--lilac)",
 };
 
 const EMPTY: Record<Show, string> = {
@@ -36,7 +35,6 @@ const EMPTY: Record<Show, string> = {
   likes: "No likes yet.",
   follows: "No new followers yet.",
   reposts: "Nobody has reposted your work yet.",
-  requests: "No commission requests yet.",
 };
 
 const TALLY_ROWS: { key: keyof WeekTally; label: string; ink: string }[] = [
@@ -44,7 +42,6 @@ const TALLY_ROWS: { key: keyof WeekTally; label: string; ink: string }[] = [
   { key: "comments", label: "Comments", ink: "text-mint-ink dark:text-mint" },
   { key: "follows", label: "Followers", ink: "text-ocean-ink dark:text-ocean" },
   { key: "reposts", label: "Reposts", ink: "text-sky-ink dark:text-sky" },
-  { key: "requests", label: "Requests", ink: "text-lilac-ink dark:text-lilac" },
 ];
 
 type Book = { show: Show; items: AppNotification[]; more: boolean };

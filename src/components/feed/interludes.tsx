@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { HandNote, Sparkle, Tape } from "@/components/explore/doodles";
 import { Stamp } from "@/components/explore/stamp";
+import { ListingArt } from "@/components/listings/listing-art";
 import { FollowButton, FollowerCount } from "@/components/profile/follow-button";
 import { buttonClasses } from "@/components/ui/button";
 import type { Studio } from "@/lib/explore";
@@ -51,11 +52,15 @@ function InterludeHeading({
 
 const coverOf = (studio: Studio) => studio.tiers.at(-1)?.image ?? studio.tiers[0].image;
 
+/** The mat's shape: the art's, kept between 1:2 and 12:5 like the Explore wall (the art itself is never cropped). */
+const matRatio = ({ width, height }: { width: number; height: number }) => Math.min(2.4, Math.max(0.5, width / height));
+
 /**
- * Commission sheets that are open right now, as cover cards, each piece at
- * its real proportions (never cropped). Desktop: one justified row, every
- * cover the same height and as wide as its art. Phones: a row to scroll
- * sideways, every cover the same height.
+ * Commission sheets that are open right now, as cover cards. Each piece hangs
+ * whole on a mat tinted with its own color, at most at its real size (a small
+ * pixel GIF stays small), and nothing is printed over it. Desktop: one
+ * justified row, every mat the same height and as wide as its art's shape.
+ * Phones: a row to scroll sideways, every mat the same height.
  */
 export function OpenStudios({ studios }: { studios: Studio[] }) {
   if (studios.length === 0) return null;
@@ -70,13 +75,13 @@ export function OpenStudios({ studios }: { studios: Studio[] }) {
       />
       <ul className="-mx-4 mt-8 flex snap-x snap-mandatory scroll-px-4 items-start gap-4 overflow-x-auto px-4 pt-2 pb-3 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:snap-none lg:gap-5 lg:overflow-visible lg:px-0">
         {studios.map((studio) => {
-          const { width, height } = coverOf(studio);
+          const ratio = matRatio(coverOf(studio));
           return (
             <li
               key={studio.id}
-              // Phones: 20rem tall, as wide as the art. Desktop: widths share the row by aspect ratio, so heights match.
-              className="w-[calc(20rem*var(--ratio))] max-w-[85vw] shrink-0 snap-start lg:w-auto lg:max-w-none lg:min-w-0 lg:shrink lg:basis-0 lg:[flex-grow:var(--ratio)]"
-              style={{ "--ratio": width / height } as CSSProperties}
+              // Phones: 20rem tall, as wide as the mat. Desktop: widths share the row by shape, so heights match.
+              className="w-[calc(20rem*var(--ratio))] max-w-[85vw] min-w-52 shrink-0 snap-start lg:w-auto lg:max-w-none lg:min-w-0 lg:shrink lg:basis-0 lg:grow-(--ratio)"
+              style={{ "--ratio": ratio } as CSSProperties}
             >
               <StudioCover studio={studio} />
             </li>
@@ -94,45 +99,33 @@ function StudioCover({ studio }: { studio: Studio }) {
 
   return (
     <article className="group relative">
-      {/* The art at its own proportions: the box takes the image's aspect ratio, nothing is cropped. */}
+      {/* The mat: the art whole and at most its real size, on its own color. Nothing sits on top of it. */}
       <div
-        className="relative overflow-hidden rounded-[20px] shadow-soft transition-[box-shadow,translate] duration-300 group-hover:-translate-y-1 group-hover:shadow-lift"
-        style={{ aspectRatio: `${cover.width} / ${cover.height}`, backgroundColor: cover.palette?.[0] }}
+        className="relative overflow-hidden rounded-[20px] bg-ice shadow-soft transition-[box-shadow,translate] duration-300 group-hover:-translate-y-1 group-hover:shadow-lift"
+        style={{ aspectRatio: matRatio(cover), backgroundColor: cover.palette?.[0] }}
       >
-        <Image
-          src={cover.src}
-          alt={cover.alt}
-          fill
-          sizes="(min-width: 1024px) 420px, 85vw"
-          className="object-contain"
-        />
-        <span aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-scrim/75 to-transparent" />
-        <Stamp
-          tone={studio.status === "closing" ? "like" : "mint"}
-          className="absolute top-3 left-3 -rotate-[5deg] bg-paper"
-        >
-          {studio.status === "closing" ? (left === 1 ? "Last slot!" : `${left} slots left`) : "Comms open"}
-        </Stamp>
-        <span className="absolute inset-x-3 bottom-3 flex items-center gap-2">
-          <span className="group/avatar relative shrink-0">
-            <Image
-              src={studio.artist.avatar.src}
-              alt=""
-              width={32}
-              height={32}
-              className="size-8 rounded-full object-cover ring-2 ring-white/80"
-              style={{ objectPosition: studio.artist.avatar.focus }}
-            />
-          </span>
-          <span className="min-w-0 text-white">
-            <Link href={studio.href} className="block truncate text-sm font-bold after:absolute after:inset-0">
-              {studio.artist.name}
-            </Link>
-            <span className="block truncate text-xs text-white/75">{studio.specialty}</span>
-          </span>
-        </span>
+        <ListingArt image={cover} sizes="(min-width: 1024px) 420px, 85vw" />
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3 px-0.5">
+      <div className="mt-3 flex items-start gap-2.5 px-0.5">
+        <Image
+          src={studio.artist.avatar.src}
+          alt=""
+          width={32}
+          height={32}
+          className="size-8 shrink-0 rounded-full object-cover"
+          style={{ objectPosition: studio.artist.avatar.focus }}
+        />
+        <span className="min-w-0 flex-1">
+          <Link href={studio.href} className="block truncate text-sm font-bold text-ink after:absolute after:inset-0">
+            {studio.artist.name}
+          </Link>
+          <span className="block truncate text-xs text-muted">{studio.specialty}</span>
+        </span>
+        <Stamp tone={studio.status === "closing" ? "like" : "mint"} className="mt-0.5 shrink-0 rotate-3 bg-surface">
+          {studio.status === "closing" ? (left === 1 ? "Last slot!" : `${left} left`) : "Open"}
+        </Stamp>
+      </div>
+      <div className="mt-2.5 flex items-center justify-between gap-3 px-0.5">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
           <span aria-hidden className="size-2 rounded-full bg-mint-strong shadow-[0_0_0_3px_color-mix(in_oklab,var(--mint)_22%,transparent)]" />
           {left} of {studio.slots.total} slots open

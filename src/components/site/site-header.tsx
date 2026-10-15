@@ -11,11 +11,14 @@ import { getProfile } from "@/lib/profile/queries";
 import { getViewer } from "@/lib/session";
 import { getViewerSettings } from "@/lib/settings/server";
 import { ViewerPrefs } from "@/components/settings/viewer-prefs";
+import { getTeamRole } from "@/lib/admin/team";
 import { AccountMenu } from "./account-menu";
+import { ActivityPing } from "./activity-ping";
 import { CopyLinkButton } from "./copy-link-button";
 import { ExploreMenu } from "./explore-menu";
 import { HeaderShell } from "./header-shell";
 import { NotificationsMenu } from "./notifications-menu";
+import { OrdersMenu } from "./orders-menu";
 import { sinceMonth } from "@/components/notifications/time";
 import { ThemeMenu } from "./theme-menu";
 import { Logo } from "./logo";
@@ -51,10 +54,13 @@ export function SiteHeader({ overlay = false, handle, frosted = false, wide = fa
           )}
         </div>
 
-        <nav aria-label="Main" className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <nav aria-label="Main" className="group/nav ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ExploreMenu />
-          <ThemeMenu />
-          {/* Cart, messages and notifications only exist for signed-in artists; visitors get sign in / join. */}
+          {/* Signed in on a phone under 440px, the order clipboard takes this spot; the theme moves to the account menu. */}
+          <div className="max-[439px]:group-has-[[data-orders-menu]]/nav:hidden">
+            <ThemeMenu />
+          </div>
+          {/* Cart, messages, commissions and notifications only exist for signed-in people; visitors get sign in / join. */}
           <Suspense fallback={<div aria-hidden className="h-10 w-24 sm:w-52" />}>
             <ViewerNav />
           </Suspense>
@@ -99,9 +105,9 @@ function CircleButton({
 
 async function ViewerNav() {
   const viewer = await getViewer();
-  const [profile, codes, settings] = viewer
-    ? await Promise.all([getProfile(viewer.handle), getViewerCodeNews(), getViewerSettings()])
-    : [null, null, null];
+  const [profile, codes, settings, teamRole] = viewer
+    ? await Promise.all([getProfile(viewer.handle), getViewerCodeNews(), getViewerSettings(), getTeamRole(viewer.id)])
+    : [null, null, null, null];
   // Artists on their way to verification get their missions in the corner.
   const progress = profile?.artist && !profile.artist.verifiedAt ? await getViewerProgress() : null;
 
@@ -135,10 +141,18 @@ async function ViewerNav() {
       <SocialSession viewer={viewer.id} />
       <MessagesSession viewer={viewer} />
       <ViewerPrefs hideLikes={settings?.hideLikeCounts ?? false} />
+      {/* Once a day: "was here", for the back office's active accounts. */}
+      <ActivityPing viewer={viewer.id} />
       <CircleButton label="Cart" className="hidden sm:grid">
         <ShoppingBag aria-hidden />
       </CircleButton>
       <MessagesMenu />
+      {/* Commission notices, apart from the bell's likes and follows. */}
+      <OrdersMenu
+        viewer={viewer.id}
+        owner={{ name: profile.displayName, handle: profile.handle }}
+        isArtist={profile.artist !== null}
+      />
       <NotificationsMenu
         viewer={viewer.id}
         owner={{ name: profile.displayName, handle: profile.handle, since: sinceMonth(profile.joinedAt) }}
@@ -151,6 +165,7 @@ async function ViewerNav() {
           isPro: profile.plan === "pro",
           isArtist: profile.artist !== null,
           codesLeft: codes?.toGive ?? 0,
+          isAdmin: teamRole === "admin",
         }}
       />
       {progress && <Missions progress={progress} />}

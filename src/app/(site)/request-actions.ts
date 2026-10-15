@@ -137,11 +137,14 @@ const deliverySchema = z.object({
     .min(1, "Add the finished piece.")
     .max(4, "Up to four files."),
   note: z.string().trim().max(1000, "Keep the note under 1,000 characters."),
+  /** "Add 1 slot back to this service": the delivery releases the slot the order held (the trigger counts it). */
+  slotBack: z.boolean().optional(),
 });
 
 /**
  * The final files, with a note. The buyer sees them on their postcard and
- * downloads the originals (kept untouched beside the display copies).
+ * downloads the originals (kept untouched beside the display copies). With
+ * `slotBack`, the order's slot goes back to its service (*_slot_back_on_delivery.sql).
  */
 export async function deliverOrder(id: string, input: z.input<typeof deliverySchema>): Promise<RequestResult> {
   const viewer = await getViewer();
@@ -152,13 +155,21 @@ export async function deliverOrder(id: string, input: z.input<typeof deliverySch
   const checked = await verifyUploads(parsed.data.images as StoredImage[], { userId: viewer.id, folder: "deliveries" });
   if (!checked.ok) return checked;
   return done(
-    await advance(id, "artist", ["in_progress"], {
-      status: "delivered",
-      step: "render",
-      delivered_at: new Date().toISOString(),
-      delivery: { images: checked.images, ...(parsed.data.note && { note: parsed.data.note }) },
-      paused: false,
-    }),
+    await advance(
+      id,
+      "artist",
+      ["in_progress"],
+      {
+        status: "delivered",
+        step: "render",
+        delivered_at: new Date().toISOString(),
+        delivery: { images: checked.images, ...(parsed.data.note && { note: parsed.data.note }) },
+        paused: false,
+        ...(parsed.data.slotBack && { holds_slot: false }),
+      },
+      // Slots changed: the service's sheet, profile and discovery follow.
+      { listings: Boolean(parsed.data.slotBack) },
+    ),
   );
 }
 

@@ -115,6 +115,47 @@ export function ThemeMenu() {
   );
 }
 
+/**
+ * The same choice as one compact row, for the account menu on phones too
+ * narrow for the header's theme button (the header gives that room to the
+ * order clipboard).
+ */
+export function ThemeRow({ className = "" }: { className?: string }) {
+  const preference = useThemePreference();
+
+  function onChange(event: ChangeEvent<HTMLInputElement>) {
+    const rect = event.currentTarget.parentElement!.getBoundingClientRect();
+    applyPreference(event.currentTarget.value as ThemePreference, {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+  }
+
+  const options = [
+    { value: "aqua", label: THEMES.aqua.name, Icon: Droplet },
+    { value: "ember", label: THEMES.ember.name, Icon: Flame },
+    { value: "system", label: "Device", Icon: MonitorSmartphone },
+  ] as const;
+
+  return (
+    <fieldset className={`px-2 py-1.5 ${className}`}>
+      <legend className="sr-only">Theme</legend>
+      <div className="flex gap-1 rounded-full bg-ice p-1">
+        {options.map(({ value, label, Icon }) => (
+          <label
+            key={value}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-semibold text-muted transition-colors has-checked:bg-surface has-checked:text-ink has-checked:shadow-soft has-focus-visible:outline-2 has-focus-visible:outline-ocean [&_svg]:size-3.5"
+          >
+            <input type="radio" name="theme-row" value={value} checked={preference === value} onChange={onChange} className="sr-only" />
+            <Icon aria-hidden />
+            {label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function ThemeOption({
   theme,
   checked,

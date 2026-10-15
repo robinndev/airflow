@@ -137,6 +137,7 @@ const PARTS: { label: string; selector: string }[] = [
   { label: "Sidebar cards", selector: '[data-part="card"]' },
   { label: "Posts", selector: '[data-part="post"]' },
   { label: "About board", selector: '[data-part="board"]' },
+  { label: "Board titles", selector: '[data-part="block-title"]' },
   { label: "Whole page", selector: ":scope" },
 ];
 

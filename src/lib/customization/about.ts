@@ -46,13 +46,43 @@ const box = {
   z: z.number().int().min(0).max(999).default(1),
 };
 
+export const BOARD_FONTS = ["sans", "display", "hand", "serif", "pixel"] as const;
+export type BoardFont = (typeof BOARD_FONTS)[number];
+const font = z.enum(BOARD_FONTS);
+const align = z.enum(["left", "center", "right"]);
+const fontSize = z.number().min(10).max(120);
+
+/** The text of a text block, or a list's items. */
 const textStyle = {
   color: hex.optional(),
   background: color.optional(),
-  font: z.enum(["sans", "display", "hand", "serif", "pixel"]).default("sans"),
-  size: z.number().min(10).max(120).default(18),
-  align: z.enum(["left", "center", "right"]).default("left"),
+  font: font.default("sans"),
+  size: fontSize.default(18),
+  align: align.default("left"),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  /** Line height, as a multiple of the text size; unset = 1.375. */
+  leading: z.number().min(0.8).max(3).optional(),
 };
+
+/** The title's own look. Anything unset follows `titleLook()`'s defaults, so older boards look the same. */
+const titleStyle = z
+  .object({
+    font: font.optional(),
+    size: fontSize.optional(),
+    color: hex.optional(),
+    align: align.optional(),
+    bold: z.boolean().optional(),
+    italic: z.boolean().optional(),
+    /** Space between the title and what's under it, in board units. */
+    gap: z.number().min(0).max(200).optional(),
+  })
+  .optional();
+
+const title = z.string().max(60);
+
+/** Flipped left ↔ right (images and stickers). */
+const mirror = z.boolean().optional();
 
 /** Everyone's stickers. */
 export const BUILT_IN_STICKERS = [
@@ -71,13 +101,16 @@ export const STICKERS = [...BUILT_IN_STICKERS, ...PACK_STICKERS] as const;
 export type StickerId = (typeof STICKERS)[number];
 
 export const blockSchema = z.discriminatedUnion("type", [
-  z.object({ ...box, type: z.literal("text"), text: z.string().max(2000), ...textStyle }),
+  z.object({ ...box, type: z.literal("text"), title: title.optional(), titleStyle, text: z.string().max(2000), ...textStyle }),
   z.object({
     ...box,
     type: z.literal("list"),
-    title: z.string().max(60),
+    title,
+    titleStyle,
     items: z.array(z.string().max(120)).max(20),
     marker: z.enum(["heart", "star", "check", "cross", "dot"]).default("heart"),
+    /** Unset = the profile's accent. */
+    markerColor: hex.optional(),
     ...textStyle,
   }),
   z.object({
@@ -86,14 +119,37 @@ export const blockSchema = z.discriminatedUnion("type", [
     image: z.object({ path: z.string().max(200), width: z.number(), height: z.number() }),
     alt: z.string().max(200).default(""),
     frame: z.enum(["none", "polaroid", "tape", "round"]).default("none"),
+    mirror,
   }),
-  z.object({ ...box, type: z.literal("sticker"), sticker: z.enum(STICKERS), color: hex.default("#ff6fa5") }),
+  z.object({ ...box, type: z.literal("sticker"), sticker: z.enum(STICKERS), color: hex.default("#ff6fa5"), mirror }),
   // Flow+: rendered in a sandboxed iframe with no scripts.
   z.object({ ...box, type: z.literal("html"), html: z.string().max(10_000) }),
 ]);
 
 export type Block = z.infer<typeof blockSchema>;
 export type BlockType = Block["type"];
+
+export type TextualBlock = Extract<Block, { type: "text" | "list" }>;
+export type TitleStyle = NonNullable<TextualBlock["titleStyle"]>;
+
+/**
+ * A title as it renders: what the artist set, else the defaults (display
+ * font, bold, 1.15× the text, the text's color and alignment, 0.4× its own
+ * size of space below).
+ */
+export function titleLook(block: TextualBlock) {
+  const t = block.titleStyle ?? {};
+  const size = t.size ?? block.size * 1.15;
+  return {
+    font: t.font ?? "display",
+    size,
+    color: t.color,
+    align: t.align ?? block.align,
+    bold: t.bold ?? true,
+    italic: t.italic ?? false,
+    gap: t.gap ?? size * 0.4,
+  };
+}
 
 /** A block before it's placed on the board (the editor assigns id, position and layer). */
 export type NewBlock = Block extends infer B ? (B extends Block ? Omit<B, "id" | "x" | "y" | "z"> : never) : never;
@@ -119,6 +175,23 @@ export function boardPaidFeatures(board: Board, freeLimit: number): string[] {
   if (board.blocks.some((b) => b.type === "html")) used.push("HTML blocks");
   if (board.blocks.length > freeLimit) used.push(`more than ${freeLimit} blocks`);
   return used;
+}
+
+/** The colors already on a board (texts, titles, cards, bullets, stickers, background), first used first, so a new block can match. */
+export function boardColors(board: Board, max = 16) {
+  const found = new Set<string>();
+  const add = (color: string | undefined) => color && color !== "transparent" && found.add(color.toLowerCase());
+  add(board.background);
+  for (const block of readingOrder(board.blocks)) {
+    if (block.type === "text" || block.type === "list") {
+      add(block.titleStyle?.color);
+      add(block.color);
+      add(block.background);
+      if (block.type === "list") add(block.markerColor);
+    }
+    if (block.type === "sticker") add(block.color);
+  }
+  return [...found].slice(0, max);
 }
 
 /** Reading order for the stacked (mobile) layout: top to bottom, then left to right. */

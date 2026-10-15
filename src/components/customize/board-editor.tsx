@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, ArrowUpToLine, Copy, GripHorizontal, RotateCw, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Copy, FlipHorizontal2, GripHorizontal, RotateCw, Trash2 } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { BlockView } from "@/components/about/about-board";
 import {
@@ -11,6 +11,7 @@ import {
   type Block,
   type Board,
 } from "@/lib/customization/about";
+import { useShortcutLabel } from "./shortcuts";
 
 /*
  * Drag-and-drop board editor. The surface uses the same board units as the
@@ -161,7 +162,7 @@ export function BoardEditor({
         ref={surfaceRef}
         tabIndex={0}
         role="application"
-        aria-label="About board editor. Click a block to select it; arrows nudge, Delete removes, Cmd+D duplicates."
+        aria-label="About board editor. Click a block to select it; arrows nudge, Delete removes, Cmd or Ctrl+D duplicates, Cmd or Ctrl+Z undoes."
         onKeyDown={onKeyDown}
         onPointerDown={() => onSelect(null)}
         className="about-board-inner relative touch-none overflow-hidden rounded-panel border border-dashed border-border outline-none focus-visible:border-ocean"
@@ -184,6 +185,7 @@ export function BoardEditor({
           return (
             <div
               key={block.id}
+              data-block={block.type}
               onPointerDown={(e) => {
                 onSelect(block.id);
                 surfaceRef.current?.focus({ preventScroll: true });
@@ -246,6 +248,14 @@ export function BoardEditor({
             onDuplicate={() => onDuplicate(selected.id)}
             onDelete={() => onDelete(selected.id)}
             onLayer={(where) => onLayer(selected.id, where)}
+            onMirror={
+              selected.type === "image" || selected.type === "sticker"
+                ? () => {
+                    updateBlock(selected.id, { mirror: !selected.mirror });
+                    onCommit();
+                  }
+                : undefined
+            }
           />
         )}
       </div>
@@ -268,12 +278,16 @@ function BlockToolbar({
   onDuplicate,
   onDelete,
   onLayer,
+  onMirror,
 }: {
   block: Block;
   onDuplicate: () => void;
   onDelete: () => void;
   onLayer: (where: "front" | "back") => void;
+  /** Images and stickers only. */
+  onMirror?: () => void;
 }) {
+  const shortcut = useShortcutLabel();
   const button =
     "grid size-8 place-items-center rounded-full text-ink transition-colors hover:bg-ice [&_svg]:size-4";
   return (
@@ -282,7 +296,7 @@ function BlockToolbar({
       className="absolute z-[950] flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border bg-surface p-1 shadow-lift"
       style={{
         // Kept inside the board even when the block hangs off an edge.
-        left: `clamp(5.5rem, calc(var(--u) * ${block.x + block.w / 2}), calc(100% - 5.5rem))`,
+        left: `clamp(6rem, calc(var(--u) * ${block.x + block.w / 2}), calc(100% - 6rem))`,
         top: `max(4px, calc(var(--u) * ${block.y} - 5.25rem))`,
       }}
     >
@@ -292,7 +306,19 @@ function BlockToolbar({
       <button type="button" aria-label="Send to back" title="Send to back" onClick={() => onLayer("back")} className={button}>
         <ArrowDownToLine aria-hidden />
       </button>
-      <button type="button" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={onDuplicate} className={button}>
+      {onMirror && (
+        <button
+          type="button"
+          aria-label="Mirror"
+          aria-pressed={"mirror" in block && !!block.mirror}
+          title="Mirror"
+          onClick={onMirror}
+          className={`${button} aria-pressed:bg-ocean/10 aria-pressed:text-ocean-ink dark:aria-pressed:text-ocean`}
+        >
+          <FlipHorizontal2 aria-hidden />
+        </button>
+      )}
+      <button type="button" aria-label="Duplicate" title={`Duplicate (${shortcut("D")})`} onClick={onDuplicate} className={button}>
         <Copy aria-hidden />
       </button>
       <button

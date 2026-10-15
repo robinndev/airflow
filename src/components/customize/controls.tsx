@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Lock } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, Copy, Lock } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { parseHex } from "@/lib/customization/hex";
 
 /* Small building blocks for the customizer panels. */
 
@@ -106,13 +107,14 @@ export function ChipGroup<T extends string>({
 
 const SWATCHES = ["#173b5b", "#0788f9", "#21d4e5", "#8b83f6", "#f0679a", "#ff3948", "#ff762e", "#ffd166", "#4f8a3a", "#2c2a26", "#ffffff", "#0b101c"];
 
-/** Hex color with a native picker and quick swatches. */
+/** Hex color with a native picker, quick swatches, and its hex code to copy or paste. */
 export function ColorField({
   label,
   value,
   onChange,
   onClear,
   swatches = SWATCHES,
+  palette,
   locked,
 }: {
   label: string;
@@ -120,6 +122,8 @@ export function ColorField({
   onChange: (hex: string) => void;
   onClear?: () => void;
   swatches?: string[];
+  /** A second row of colors, like the ones already on the board. */
+  palette?: { label: string; colors: string[] };
   locked?: boolean;
 }) {
   return (
@@ -161,6 +165,81 @@ export function ColorField({
           />
         ))}
       </div>
+      {palette && palette.colors.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-0.5 text-[0.6875rem] font-medium text-muted">{palette.label}</span>
+          {palette.colors.map((swatch) => (
+            <button
+              key={swatch}
+              type="button"
+              aria-label={`${label}: ${swatch}, ${palette.label.toLowerCase()}`}
+              aria-pressed={value?.toLowerCase() === swatch}
+              onClick={() => onChange(swatch)}
+              className="size-6 rounded-full border border-border shadow-soft transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-ocean aria-pressed:ring-offset-2 aria-pressed:ring-offset-surface"
+              style={{ background: swatch }}
+            />
+          ))}
+        </div>
+      )}
+      <HexCode label={label} value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+/** The color as a hex code: follows the picker live, copies in one click, takes a pasted code. */
+function HexCode({ label, value, onChange }: { label: string; value: string | undefined; onChange: (hex: string) => void }) {
+  // What's being typed; null = show the current color.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const shown = draft ?? value?.replace(/^#/, "").toUpperCase() ?? "";
+
+  async function copy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value.toUpperCase());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard blocked: the code is still there to select by hand.
+    }
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-1.5">
+      <label className="flex h-8 w-28 items-center gap-0.5 rounded-input border border-border bg-surface px-2 font-mono text-xs text-ink transition-colors focus-within:border-ocean">
+        <span aria-hidden className="text-muted">
+          #
+        </span>
+        <input
+          value={shown}
+          aria-label={`${label}: hex code`}
+          placeholder="Hex"
+          maxLength={9}
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(e) => {
+            setDraft(e.target.value.replace(/^#/, "").toUpperCase());
+            const hex = parseHex(e.target.value);
+            if (hex) onChange(hex);
+          }}
+          onBlur={() => {
+            const hex = draft !== null && parseHex(draft, { short: true });
+            if (hex) onChange(hex);
+            setDraft(null);
+          }}
+          className="w-full min-w-0 bg-transparent uppercase outline-none placeholder:normal-case placeholder:text-muted"
+        />
+      </label>
+      <button
+        type="button"
+        disabled={!value}
+        onClick={copy}
+        aria-label={`Copy ${label} hex code`}
+        className="inline-flex h-8 items-center gap-1 rounded-input px-2 text-xs font-semibold text-muted transition-colors hover:bg-ice hover:text-ink disabled:opacity-40 [&_svg]:size-3.5"
+      >
+        {copied ? <Check aria-hidden className="text-ocean" /> : <Copy aria-hidden />}
+        <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+      </button>
     </div>
   );
 }

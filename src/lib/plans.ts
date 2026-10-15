@@ -1,7 +1,7 @@
 /*
  * Paid plans. Prices decided by the project lead on 2026-10-10; checkout
  * doesn't exist yet (payments provider undecided), so the UI shows prices but
- * never pretends you can pay. Paid plans don't change the 10% platform fee.
+ * never pretends you can pay. Paid plans don't change the platform fee.
  */
 
 export type PlanId = "free" | "flow_plus" | "live";
@@ -16,7 +16,13 @@ export type Plan = {
   finish: string;
 };
 
-export const PLATFORM_FEE_PERCENT = 10;
+/**
+ * Artiflow's cut of every sale (commissions, adoptables), in percent. The one
+ * place it's set: /plans, the artist's queue and the back office read it.
+ * About 5% (project lead, 2026-10-15; it was 10%). Once checkout exists,
+ * store the fee charged on each payment, so changing this never rewrites the past.
+ */
+export const PLATFORM_FEE_PERCENT = 5;
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {

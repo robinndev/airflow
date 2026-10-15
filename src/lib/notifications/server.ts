@@ -8,7 +8,9 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   excerptOf,
   kindsOf,
+  ORDER_KINDS,
   type AppNotification,
+  type NoticeScope,
   type NotificationKind,
   type NotificationPage,
   type RequestStatus,
@@ -20,7 +22,8 @@ import {
  * Reading notifications, always as the signed-in recipient (row level
  * security: nobody else can see them). Never cached: they're private and
  * change all the time. The browser asks for them lazily (opening the bell,
- * the /notifications page); the badge comes from the pulse.
+ * the /notifications page, the order clipboard); the badges come from the
+ * pulse. Commission notices are their own scope (NoticeScope).
  */
 
 const PAGE_SIZE = 24;
@@ -59,6 +62,9 @@ const COLUMNS = [
   `source:posts!notifications_source_post_id_fkey(${POST})`,
   "comment:comments(body)",
 ].join(", ");
+
+/** The order clipboard's kinds as a PostgREST list, for the guest book's "everything else". */
+const ORDER_LIST = `(${ORDER_KINDS.join(",")})`;
 
 /** A database that predates the migration reads as an empty book, not a broken page. */
 const MISSING_TABLE = new Set(["42P01", "PGRST205"]);
@@ -181,10 +187,14 @@ function toNotification(row: Row): AppNotification | null {
   }
 }
 
-/** A page of the viewer's notifications, newest activity first, plus how many are unread. */
+/**
+ * A page of the viewer's notifications in one scope (the guest book, or the
+ * order clipboard's commission notices), newest activity first, plus how
+ * many in that scope are unread.
+ */
 export async function fetchNotifications(
   viewerId: string,
-  { show = "all", before }: { show?: Show; before?: string } = {},
+  { show = "all", before, scope = "book" }: { show?: Show; before?: string; scope?: NoticeScope } = {},
 ): Promise<NotificationPage & { unread: number }> {
   const empty = { items: [], more: false, unread: 0 };
   if (!configured()) return empty;
@@ -196,18 +206,19 @@ export async function fetchNotifications(
     .eq("recipient_id", viewerId)
     .order("updated_at", { ascending: false })
     .limit(PAGE_SIZE + 1);
-  const kinds = kindsOf(show);
+  query = scope === "orders" ? query.in("kind", ORDER_KINDS) : query.not("kind", "in", ORDER_LIST);
+  const kinds = scope === "book" ? kindsOf(show) : null;
   if (kinds) query = query.in("kind", kinds);
   if (before) query = query.lt("updated_at", before);
 
-  const [{ data, error }, unread] = await Promise.all([
-    query.returns<Row[]>(),
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("recipient_id", viewerId)
-      .is("read_at", null),
-  ]);
+  let unreadCount = supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", viewerId)
+    .is("read_at", null);
+  unreadCount = scope === "orders" ? unreadCount.in("kind", ORDER_KINDS) : unreadCount.not("kind", "in", ORDER_LIST);
+
+  const [{ data, error }, unread] = await Promise.all([query.returns<Row[]>(), unreadCount]);
   if (error) {
     if (MISSING_TABLE.has(error.code)) return empty;
     throw new Error(`Couldn't load notifications: ${error.message}`);
@@ -221,7 +232,7 @@ export async function fetchNotifications(
 
 /** What happened in the last seven days, for the tally marks on /notifications. */
 export async function fetchWeekTally(viewerId: string): Promise<WeekTally> {
-  const tally: WeekTally = { likes: 0, comments: 0, follows: 0, reposts: 0, requests: 0 };
+  const tally: WeekTally = { likes: 0, comments: 0, follows: 0, reposts: 0 };
   if (!configured()) return tally;
   const supabase = await createSupabaseServer();
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
@@ -241,20 +252,20 @@ export async function fetchWeekTally(viewerId: string): Promise<WeekTally> {
     else if (row.kind === "comment" || row.kind === "reply" || row.kind === "mention") tally.comments += 1;
     else if (row.kind === "follow" || row.kind === "invite_joined") tally.follows += 1;
     else if (row.kind === "repost") tally.reposts += 1;
-    else if (row.kind === "commission_request") tally.requests += 1;
   }
   return tally;
 }
 
-/** Marks every unread notice read (opening the bell or the page does this). */
-export async function markAllRead(viewerId: string): Promise<boolean> {
+/** Marks every unread notice in one scope read (opening the bell, the book or the order clipboard does this). */
+export async function markAllRead(viewerId: string, scope: NoticeScope = "book"): Promise<boolean> {
   if (!configured()) return true;
   const supabase = await createSupabaseServer();
-  const { error } = await supabase
+  const unread = supabase
     .from("notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("recipient_id", viewerId)
     .is("read_at", null);
+  const { error } = await (scope === "orders" ? unread.in("kind", ORDER_KINDS) : unread.not("kind", "in", ORDER_LIST));
   if (error && !MISSING_TABLE.has(error.code)) {
     console.error(`Couldn't mark notifications read: ${error.message}`);
     return false;

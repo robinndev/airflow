@@ -167,6 +167,9 @@ test("a collector uses a code from their profile and gets 2 to pass on", async (
   const used = holderPage.locator('[data-part="artist-code"][data-used]');
   await expect(used).toHaveCount(1);
   await expect(used).toContainText(`@${collector.handle}`);
+  // The rules say what a bad actor is, so nobody reads "consequences" as any small slip.
+  const rules = holderPage.getByRole("complementary", { name: "Before you hand out a code" });
+  await expect(rules).toContainText("scammers, AI artists, and art thieves");
   const { data: notes } = await admin().from("notifications").select("kind").eq("recipient_id", holder.id).eq("kind", "invite_joined");
   expect(notes?.length).toBe(1);
   await holderPage.close();

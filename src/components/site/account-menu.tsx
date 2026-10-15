@@ -1,16 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, Brush, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, Store, Ticket, UserRound, Wallet } from "lucide-react";
+import { Bookmark, Brush, ChartColumn, Frame, LogIn, LogOut, Mail, Menu, MessageCircle, Palette, Settings, Sparkles, Store, Ticket, UserRound, Wallet } from "lucide-react";
 import type { MouseEvent } from "react";
 import { signOut } from "@/app/(auth)/actions";
 import { UnreadMessages } from "@/components/messages/messages-menu";
 import { openInbox } from "@/components/messages/store";
 import { Avatar } from "@/components/ui/avatar";
+import { ThemeRow } from "./theme-menu";
 import type { ImageAsset } from "@/lib/profile/types";
 
 type AccountMenuProps = {
-  viewer: { handle: string; displayName: string; avatar: ImageAsset; isPro: boolean; isArtist: boolean; codesLeft: number } | null;
+  viewer: {
+    handle: string;
+    displayName: string;
+    avatar: ImageAsset;
+    isPro: boolean;
+    isArtist: boolean;
+    codesLeft: number;
+    /** On the team as an admin: the back office link. */
+    isAdmin?: boolean;
+  } | null;
 };
 
 const MENU_ID = "account-menu";
@@ -131,6 +141,15 @@ export function AccountMenu({ viewer }: AccountMenuProps) {
                 <Settings aria-hidden />
                 Settings
               </Link>
+              {viewer.isAdmin && (
+                <Link href="/admin" className={item}>
+                  <ChartColumn aria-hidden />
+                  Back office
+                  <span className="ml-auto rounded-full bg-ocean/12 px-2 py-0.5 text-[0.6875rem] font-semibold text-ocean-ink">Team</span>
+                </Link>
+              )}
+              {/* Phones under 440px: the header's theme button makes room for the order clipboard, so the theme lives here. */}
+              <ThemeRow className="min-[440px]:hidden" />
             </div>
             <form action={signOut} className="mt-2 border-t border-border pt-2">
               <button type="submit" className={item}>

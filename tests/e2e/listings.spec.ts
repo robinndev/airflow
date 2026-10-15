@@ -11,8 +11,9 @@ import { localSupabase } from "./support/local-supabase";
  * waitlist and search follows), and sees the adoptable's ready-made sheet (no
  * fake checkout). The artist quotes from the queue; the team marks it paid
  * (checkout doesn't exist yet); the artist starts, moves it to lineart and
- * delivers, and the buyer follows each step. A declined request gives its
- * slot back; marking the adoptable adopted takes it out of search.
+ * delivers (giving the slot back, which reopens the service), and the buyer
+ * follows each step. A declined request gives its slot back; marking the
+ * adoptable adopted takes it out of search.
  */
 
 function admin() {
@@ -214,8 +215,15 @@ test("the whole order: quote, paid (team), start, steps, delivery; the buyer fol
   await drawer.locator('input[type="file"]').setInputFiles({ name: "final.png", mimeType: "image/png", buffer: await art(240, 200, 120) });
   await expect(drawer.getByText("Uploading")).toHaveCount(0);
   await drawer.getByLabel(/A note for/).fill("Here she is! Thank you 💙");
+  // The service's only slot is this order's (it went to its waitlist when full): give it back as it's delivered.
+  expect(await service()).toMatchObject({ slots_taken: 1, status: "waitlist" });
+  const slotBack = drawer.getByRole("checkbox", { name: new RegExp(`Add 1 slot back to “${serviceTitle}”`) });
+  await expect(slotBack).not.toBeChecked();
+  await expect(drawer.getByText("1 of 1 slots taken now; it reopens for requests.")).toBeVisible();
+  await slotBack.check();
   await drawer.getByRole("button", { name: "Deliver", exact: true }).click();
   await expect.poll(async () => (await order()).status).toBe("delivered");
+  await expect.poll(service).toMatchObject({ slots_taken: 0, status: "open" });
   const delivered = (await order()).delivery as { images: { original?: { bytes: number } }[] };
   expect(delivered.images).toHaveLength(1);
   // The file as the artist uploaded it is kept (private bucket), for the buyer to download.
@@ -233,11 +241,8 @@ test("declining gives the slot back; adopted leaves search", async ({ browser })
   const artistPage = await signIn(browser, artist);
   const buyerPage = await signIn(browser, buyer);
 
-  // Delivered work keeps its slot; the artist frees it by hand to take the next one.
-  expect(await service()).toMatchObject({ slots_taken: 1, status: "waitlist" });
-  await artistPage.goto("/studio");
-  await artistPage.getByRole("button", { name: "Free a slot" }).first().click();
-  await expect.poll(async () => (await service()).status).toBe("open");
+  // The delivery gave its slot back, so the service is open again with nothing to free by hand.
+  expect(await service()).toMatchObject({ slots_taken: 0, status: "open" });
 
   // A second request, declined with a kind word.
   await buyerPage.goto(`/${artist.handle}/commissions`);

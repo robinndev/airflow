@@ -14,6 +14,7 @@ import { CssPanel } from "./css-panel";
 import { ButtonsPanel, FramePanel, NamePanel, ThemePanel } from "./design-panels";
 import { FlowBadge } from "./controls";
 import { ProfilePreview, type PreviewProfile } from "./profile-preview";
+import { isTextField, useShortcutLabel } from "./shortcuts";
 import { TABS, type TabId } from "./tabs";
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -60,6 +61,7 @@ export function Studio({
   const [highlight, setHighlight] = useState<string | null>(null);
   const [result, setResult] = useState<SaveResult | null>(null);
   const [saving, startSaving] = useTransition();
+  const shortcut = useShortcutLabel();
 
   // Board history: one entry per finished gesture or edit.
   const boardRef = useRef(board);
@@ -92,13 +94,15 @@ export function Studio({
   }, [commit]);
 
   const travel = useCallback((step: -1 | 1) => {
+    // An edit still in progress (a slider that still has focus) becomes its own step first.
+    commit();
     const target = cursor.current + step;
     if (target < 0 || target >= history.current.length) return;
     cursor.current = target;
     boardRef.current = history.current[target];
     setBoard(history.current[target]);
     syncHistory();
-  }, [syncHistory]);
+  }, [commit, syncHistory]);
 
   const dirty = !same(custom, saved.custom) || !same(board, saved.board);
 
@@ -112,10 +116,12 @@ export function Studio({
   useEffect(() => {
     if (tab !== "about") return;
     function onKey(event: KeyboardEvent) {
-      if ((event.target as HTMLElement).closest("input, textarea, select")) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+      if (!(event.metaKey || event.ctrlKey) || isTextField(event.target)) return;
+      const key = event.key.toLowerCase();
+      // ⌘Z / Ctrl+Z undo; ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y redo.
+      if (key === "z" || key === "y") {
         event.preventDefault();
-        travel(event.shiftKey ? 1 : -1);
+        travel(key === "y" || event.shiftKey ? 1 : -1);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -279,31 +285,35 @@ export function Studio({
               style={canvasStyle(custom)}
               className="rounded-panel border border-border p-4 shadow-lift sm:p-6"
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm text-muted">Drag to move · corner to resize · top handle to tilt</p>
-                <div className="flex gap-1">
+              {/* Undo / Redo float down a long board with you (no height of its own; it sits beside the hint at rest). */}
+              <div className="sticky top-20 z-20 flex h-0 justify-end">
+                <div role="toolbar" aria-label="Board history" className="flex h-10 items-center gap-0.5 rounded-full border border-border bg-surface/95 p-1 shadow-soft backdrop-blur">
                   <button
                     type="button"
-                    aria-label="Undo"
-                    title="Undo (⌘Z)"
+                    title={`Undo (${shortcut("Z")})`}
+                    aria-keyshortcuts="Control+Z Meta+Z"
                     disabled={!canUndo}
                     onClick={() => travel(-1)}
-                    className="grid size-9 place-items-center rounded-full text-ink transition-colors hover:bg-ice disabled:opacity-35"
+                    className={historyButton}
                   >
-                    <Undo2 aria-hidden className="size-4" />
+                    <Undo2 aria-hidden />
+                    Undo
                   </button>
+                  <span aria-hidden className="h-5 w-px bg-border" />
                   <button
                     type="button"
-                    aria-label="Redo"
-                    title="Redo (⇧⌘Z)"
+                    title={`Redo (${shortcut("Z", { shift: true })})`}
+                    aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
                     disabled={!canRedo}
                     onClick={() => travel(1)}
-                    className="grid size-9 place-items-center rounded-full text-ink transition-colors hover:bg-ice disabled:opacity-35"
+                    className={historyButton}
                   >
-                    <Redo2 aria-hidden className="size-4" />
+                    <Redo2 aria-hidden />
+                    Redo
                   </button>
                 </div>
               </div>
+              <p className="mb-3 flex min-h-10 items-center pr-48 text-sm text-muted">Drag to move · corner to resize · top handle to tilt</p>
               <BoardEditor
                 board={board}
                 selectedId={selectedId}
@@ -323,6 +333,9 @@ export function Studio({
     </div>
   );
 }
+
+const historyButton =
+  "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink transition-colors hover:bg-ice disabled:pointer-events-none disabled:opacity-35 [&_svg]:size-4";
 
 function SaveStatus({ dirty, saving, result }: { dirty: boolean; saving: boolean; result: SaveResult | null }) {
   const text = saving ? "Saving…" : dirty ? "Unsaved changes" : result?.ok ? "Saved — live on your page" : "All changes saved";

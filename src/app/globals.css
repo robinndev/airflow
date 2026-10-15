@@ -46,6 +46,12 @@
   --star: #f5b301;
   --danger: #c2334d;
 
+  /* Chart series (the back office), in a fixed order checked for color-blind separation: ocean, orange, green, lilac. */
+  --series-1: #0788f9;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #8b83f6;
+
   --display-font: var(--font-plus-jakarta-sans);
   /* Paper texture under hand-made surfaces (see the `grain` utility). */
   --grain-opacity: 0.5;
@@ -111,6 +117,12 @@
   --star: #ffb627;
   --danger: #ff6b78;
 
+  /* Chart series: Ember Red, blue, amber, violet (same check, against Charcoal). */
+  --series-1: #ff3948;
+  --series-2: #3987e5;
+  --series-3: #c98500;
+  --series-4: #9085e9;
+
   --display-font: var(--font-space-grotesk);
   --grain-opacity: 0.35;
   --grain-blend: screen;
@@ -172,6 +184,10 @@
   --color-like: var(--like);
   --color-star: var(--star);
   --color-danger: var(--danger);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
 
   --color-shelf: var(--shelf);
   --color-shelf-edge: var(--shelf-edge);

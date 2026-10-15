@@ -46,6 +46,8 @@ type Row = {
   answer_note: string | null;
   paused: boolean;
   archived_by_artist: boolean;
+  /** Holds one of its service's slots (released on decline, cancel, expiry, or a delivery that gives it back). */
+  holds_slot: boolean;
   /** Only on the artist's own read. */
   artist_note?: string | null;
   /** A demo artist (mock-db) instead of an account, and their service's id. */
@@ -53,15 +55,15 @@ type Row = {
   demo_service_id: string | null;
   buyer: AccountRow;
   artist: AccountRow | null;
-  service: { examples: StoredImage[] } | null;
+  service: { examples: StoredImage[]; title: string; slots_total: number | null; slots_taken: number } | null;
 };
 
 const BASE = `id, service_title, package, addons, estimate_usd, description, reference_links, deadline, usage, status, created_at, updated_at,
   quote_usd, quote_note, due_date, quoted_at, quote_expires_at, paid_at, started_at, step, delivered_at, delivery, answer_note, paused, archived_by_artist,
-  demo_artist, demo_service_id`;
+  holds_slot, demo_artist, demo_service_id`;
 const PEOPLE = `buyer:profiles!commission_requests_buyer_id_fkey(${ACCOUNT_COLUMNS}),
   artist:profiles!commission_requests_artist_id_fkey(${ACCOUNT_COLUMNS}),
-  service:services(examples)`;
+  service:services(examples, title, slots_total, slots_taken)`;
 
 const NOT_MIGRATED = new Set(["42P01", "PGRST205", "42703"]);
 
@@ -170,6 +172,9 @@ export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[
       ...(row.artist_note && { note: row.artist_note }),
       ...(row.quote_note && { quoteNote: row.quote_note }),
       ...(delivery && { delivery }),
+      // The slot it holds on a service with a limit, which delivering can give back.
+      ...(row.holds_slot &&
+        row.service?.slots_total && { slot: { service: row.service.title, taken: row.service.slots_taken, total: row.service.slots_total } }),
       real: true,
       orderStatus: row.status,
     } satisfies QueueOrder;

@@ -60,6 +60,8 @@ export type QueueOrder = {
   orderStatus?: OrderStatus;
   /** The artist's note on the quote they sent. */
   quoteNote?: string;
+  /** The service slot this order holds (services with a slot limit); delivering can give it back. */
+  slot?: { service: string; taken: number; total: number };
   /** Why the buyer cancelled (a real order), and what they added. */
   cancelReason?: CancelReason;
   cancelNote?: string;

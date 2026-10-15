@@ -263,12 +263,18 @@ function Answer({ order, today, pending, run }: { order: QueueOrder; today: stri
   );
 }
 
-/** The finished files (up to four) and a note; then it's delivered. */
+/**
+ * The finished files (up to four) and a note; then it's delivered. When the
+ * order holds a slot on its service, the artist can give that slot back as
+ * they deliver (optional, off by default).
+ */
 function Deliver({ order, pending, run }: { order: QueueOrder; pending: boolean; run: Run }) {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<EditableImage[]>([]);
   const [note, setNote] = useState("");
+  const [slotBack, setSlotBack] = useState(false);
   const name = order.client.name;
+  const slot = order.slot;
 
   if (!open) {
     return (
@@ -295,9 +301,10 @@ function Deliver({ order, pending, run }: { order: QueueOrder; pending: boolean;
             deliverOrder(order.id, {
               images: images.map(({ path, width, height, palette, thumb, original }) => ({ path, width, height, palette, thumb, original })),
               note,
+              slotBack: Boolean(slot && slotBack),
             }),
           { lane: "delivered", step: "render" },
-          `Delivered ${name}'s piece ✓`,
+          slot && slotBack ? `Delivered ${name}'s piece ✓ · 1 slot back on “${slot.service}”` : `Delivered ${name}'s piece ✓`,
           () => setOpen(false),
         );
       }}
@@ -314,6 +321,24 @@ function Deliver({ order, pending, run }: { order: QueueOrder; pending: boolean;
         aria-label={`A note for ${name}`}
         className={`${inputClass} resize-y py-2`}
       />
+      {slot && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-[12px] border border-border bg-surface px-3.5 py-3 text-sm transition-colors has-checked:border-ocean has-focus-visible:outline-2 has-focus-visible:outline-ocean">
+          <input
+            type="checkbox"
+            checked={slotBack}
+            onChange={(e) => setSlotBack(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-ocean"
+          />
+          <span>
+            <span className="font-semibold text-ink">Add 1 slot back to “{slot.service}”</span>{" "}
+            <span className="text-muted">(optional)</span>
+            <span className="mt-0.5 block text-xs text-muted">
+              {slot.taken} of {slot.total} slots taken now
+              {slot.taken >= slot.total ? "; it reopens for requests." : `; ${Math.max(0, slot.taken - 1)} of ${slot.total} after.`}
+            </span>
+          </span>
+        </label>
+      )}
       <div className="flex items-center justify-end gap-2">
         <button type="button" onClick={() => setOpen(false)} className={buttonClasses({ variant: "ghost", size: "sm" })}>
           Not yet

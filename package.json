@@ -16,6 +16,7 @@
     "invites": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/invites.ts",
     "plans": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plans.ts",
     "orders": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/orders.ts",
+    "team": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/team.ts",
     "ai-check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ai-check.ts",
     "images": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/images.ts",
     "test:e2e": "playwright test",

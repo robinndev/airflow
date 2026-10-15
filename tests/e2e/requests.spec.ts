@@ -61,7 +61,7 @@ test("a buyer sends a request and follows it; nothing here is a sample", async (
 
   await signIn(page);
   await page.getByRole("button", { name: "Account menu" }).click();
-  await page.getByRole("link", { name: "My requests" }).click();
+  await page.locator("#account-menu").getByRole("link", { name: "My requests" }).click();
   await expect(page).toHaveURL(/\/requests$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("On its way.");
   await expect(page.getByRole("complementary", { name: "Priority" })).toContainText(`Ship to@${account.handle}`);

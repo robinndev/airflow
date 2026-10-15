@@ -95,7 +95,7 @@ function NoteEntry({
       <li className={`relative ${roomy ? "py-6 pr-6 pl-[calc(var(--margin)+1.5rem)]" : "py-4 pr-4 pl-[calc(var(--margin)+1rem)]"}`}>
         <Bookplate name={owner.name} handle={owner.handle} since={owner.since} className="mx-auto max-w-[19rem]">
           <p className="mt-2.5 text-xs leading-relaxed text-pretty text-paper-muted">
-            Likes, comments, follows and commission requests get signed in here.
+            Likes, comments, follows and reposts get signed in here.
           </p>
           <Link
             href={note.href}

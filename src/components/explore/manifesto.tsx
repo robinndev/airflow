@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { PULSE, type ArtistRef } from "@/lib/explore";
 import { formatCompact } from "@/lib/format";
+import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
 import { HandNote, Sparkle, Tape } from "./doodles";
 import { HumanSeal } from "./human-seal";
 
@@ -109,7 +110,7 @@ export function Manifesto({ artists }: { artists: ArtistRef[] }) {
             </div>
             <div>
               <dt className="text-xs font-semibold tracking-[0.14em] text-white/60 uppercase">Platform fee</dt>
-              <dd className="font-display text-2xl font-extrabold">10% per sale</dd>
+              <dd className="font-display text-2xl font-extrabold">{PLATFORM_FEE_PERCENT}% per sale</dd>
             </div>
           </dl>
         </div>

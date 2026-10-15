@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Scaling, Shrink, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ImageAsset } from "@/lib/profile/types";
 
 // Single images are cropped into this range (no empty side bars); the
@@ -100,6 +100,8 @@ export function Lightbox({
 }) {
   const current = index === null ? null : media[index];
   const many = media.length > 1;
+  // Fit to the screen (default) or the picture's own size, one image pixel per CSS pixel.
+  const [actual, setActual] = useState(false);
 
   useEffect(() => {
     if (index === null || !many) return;
@@ -118,23 +120,41 @@ export function Lightbox({
     <dialog
       ref={dialogRef}
       aria-label="Image viewer"
-      onClose={() => setIndex(null)}
+      onClose={() => {
+        setIndex(null);
+        setActual(false);
+      }}
       onClick={(e) => e.target === e.currentTarget && dialogRef.current?.close()}
       className="m-0 h-dvh max-h-none w-screen max-w-none bg-scrim/92 p-0 outline-none backdrop:bg-transparent open:grid open:place-items-center"
     >
       {current && (
         <>
-          <div className="pointer-events-none relative h-[calc(100dvh-6rem)] w-[calc(100vw-2rem)] sm:w-[calc(100vw-10rem)]">
-            <Image
-              key={current.src}
-              src={current.src}
-              alt={current.alt}
-              fill
-              loading="eager"
-              sizes="100vw"
-              className="object-contain"
-            />
-          </div>
+          {actual ? (
+            <ActualSize key={current.src} image={current} onBackdrop={() => dialogRef.current?.close()} />
+          ) : (
+            <div className="pointer-events-none relative h-[calc(100dvh-8rem)] w-[calc(100vw-2rem)] sm:w-[calc(100vw-10rem)]">
+              <Image
+                key={current.src}
+                src={current.src}
+                alt={current.alt}
+                fill
+                loading="eager"
+                sizes="100vw"
+                className="object-contain"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setActual((on) => !on)}
+            className="absolute right-4 bottom-4 inline-flex h-11 items-center gap-2 rounded-full bg-white/15 px-4 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/25 [&_svg]:size-4"
+          >
+            {actual ? <Shrink aria-hidden /> : <Scaling aria-hidden />}
+            {actual ? "Fit to screen" : "View original size"}
+            <span className="hidden font-normal text-white/70 tabular-nums sm:inline">
+              {current.width} × {current.height}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
@@ -161,7 +181,7 @@ export function Lightbox({
               >
                 <ChevronRight aria-hidden />
               </button>
-              <p className="absolute bottom-5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white tabular-nums backdrop-blur-sm">
+              <p className="absolute top-7 rounded-full sm:top-auto sm:bottom-5 bg-white/15 px-3 py-1 text-xs font-semibold text-white tabular-nums backdrop-blur-sm">
                 {(index ?? 0) + 1} / {media.length}
               </p>
             </>
@@ -169,5 +189,64 @@ export function Lightbox({
         </>
       )}
     </dialog>
+  );
+}
+
+/**
+ * The picture at its own size: one image pixel per CSS pixel, centered,
+ * never stretched. Bigger than the screen, it scrolls, and drags with a mouse
+ * (touch pans natively). Clicking the dark around it closes, like the fit view.
+ */
+function ActualSize({ image, onBackdrop }: { image: ImageAsset; onBackdrop: () => void }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const dragged = useRef(false);
+
+  // Open on the middle of a big picture, not its top-left corner.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTo((el.scrollWidth - el.clientWidth) / 2, (el.scrollHeight - el.clientHeight) / 2);
+  }, []);
+
+  return (
+    <div
+      ref={scroller}
+      onPointerDown={(e) => {
+        dragged.current = false;
+        if (e.pointerType !== "mouse" || e.button !== 0) return;
+        drag.current = { x: e.clientX, y: e.clientY, left: e.currentTarget.scrollLeft, top: e.currentTarget.scrollTop };
+      }}
+      onPointerMove={(e) => {
+        const start = drag.current;
+        if (!start) return;
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        // Captured only once it's really a drag: a plain click must still reach the dark around the picture.
+        if (!dragged.current && Math.abs(dx) + Math.abs(dy) > 4) {
+          dragged.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        if (dragged.current) e.currentTarget.scrollTo(start.left - dx, start.top - dy);
+      }}
+      onPointerUp={() => (drag.current = null)}
+      onPointerCancel={() => (drag.current = null)}
+      className="absolute inset-0 cursor-grab overflow-auto overscroll-contain active:cursor-grabbing"
+    >
+      <div
+        onClick={(e) => e.target === e.currentTarget && !dragged.current && onBackdrop()}
+        className="grid min-h-full w-max min-w-full place-items-center p-6"
+      >
+        <Image
+          src={image.src}
+          alt={image.alt}
+          width={image.width}
+          height={image.height}
+          sizes={`${image.width}px`}
+          loading="eager"
+          draggable={false}
+          className="max-w-none select-none"
+        />
+      </div>
+    </div>
   );
 }

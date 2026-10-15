@@ -12,6 +12,7 @@ import {
   type MessageBroadcast,
   type ReadBroadcast,
 } from "@/lib/messages/types";
+import { scopeOfKind, type NoticeScope } from "@/lib/notifications/types";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { getAlertPrefs } from "./prefs";
 
@@ -101,15 +102,28 @@ const SOCKET_GRACE_MS = 30_000;
  */
 const LIVE_WHEN = process.env.NEXT_PUBLIC_MESSAGES_LIVE === "visible" ? "visible" : "chat";
 
-/** `notes_*`: the same pulse carries notifications (absent on a database before that migration). */
-type Pulse = { unread: number; latest: string | null; notes_unread?: number; notes_latest?: string | null };
+/**
+ * `notes_*`: the same pulse carries the guest book's notices, and `orders_*`
+ * the commission notices (each absent on a database before its migration).
+ */
+type Pulse = {
+  unread: number;
+  latest: string | null;
+  notes_unread?: number;
+  notes_latest?: string | null;
+  orders_unread?: number;
+  orders_latest?: string | null;
+};
 
 /**
- * What the notifications store hears from here, so the site never opens a
- * second channel: each pulse's notification half (this tab's or a sibling's),
- * and notices that arrive live on the open chat socket.
+ * What the notifications stores hear from here, so the site never opens a
+ * second channel: each pulse's notification halves (this tab's or a
+ * sibling's), and notices that arrive live on the open chat socket, each for
+ * its scope (the guest book, or the order clipboard).
  */
-export type NotificationSignal = { type: "pulse"; unread: number; latest: string | null } | { type: "live"; at: string };
+export type NotificationSignal =
+  | { type: "pulse"; scope: NoticeScope; unread: number; latest: string | null }
+  | { type: "live"; scope: NoticeScope; at: string };
 
 let state: State = {
   viewer: undefined,
@@ -275,7 +289,10 @@ async function pulse() {
 /** What a pulse says: load the inbox and announce arrivals only if something changed. */
 async function takePulse(data: Pulse) {
   if (typeof data.notes_unread === "number") {
-    signalNotes({ type: "pulse", unread: data.notes_unread, latest: data.notes_latest ?? null });
+    signalNotes({ type: "pulse", scope: "book", unread: data.notes_unread, latest: data.notes_latest ?? null });
+  }
+  if (typeof data.orders_unread === "number") {
+    signalNotes({ type: "pulse", scope: "orders", unread: data.orders_unread, latest: data.orders_latest ?? null });
   }
   const since = newestSeen;
   newestSeen = later(newestSeen, data.latest);
@@ -356,8 +373,8 @@ async function connect(viewer: ChatViewer) {
     .channel(inboxTopic(viewer.id), { config: { private: true } })
     .on("broadcast", { event: "message" }, ({ payload }: { payload: MessageBroadcast }) => onMessage(payload))
     .on("broadcast", { event: "read" }, ({ payload }: { payload: ReadBroadcast }) => onRead(payload))
-    .on("broadcast", { event: "notification" }, ({ payload }: { payload: { at: string } }) =>
-      signalNotes({ type: "live", at: payload.at }),
+    .on("broadcast", { event: "notification" }, ({ payload }: { payload: { at: string; kind: string } }) =>
+      signalNotes({ type: "live", scope: scopeOfKind(payload.kind), at: payload.at }),
     )
     .subscribe((status: string) => {
       if (state.viewer?.id !== viewer.id || !channel) return;

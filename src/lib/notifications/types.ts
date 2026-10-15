@@ -5,6 +5,7 @@ import type { ImageAsset } from "@/lib/profile/types";
  * `public.notifications`, written only by database triggers (likes,
  * comments, follows, reposts, mentions, invites, commission requests;
  * supabase/migrations/*_notifications*.sql) and shaped here by server.ts.
+ * Commission notices are read apart from the rest (see NoticeScope).
  */
 
 export type NotificationKind =
@@ -24,6 +25,19 @@ export type NotificationKind =
   | "artist_codes"
   /** You reached the goals (followers, sales): verified, with codes to invite artists. */
   | "verified";
+
+/**
+ * Where a notice lands. Commission notices (requests, quotes, answers,
+ * cancels, payments, deliveries) are work, so they get the header's order
+ * clipboard with a count of their own; everything else is the guest book
+ * (the bell and /notifications). The pulse counts the two apart.
+ */
+export type NoticeScope = "book" | "orders";
+
+export const ORDER_KINDS = ["commission_request", "request_update"] as const satisfies readonly NotificationKind[];
+
+export const scopeOfKind = (kind: string): NoticeScope =>
+  (ORDER_KINDS as readonly string[]).includes(kind) ? "orders" : "book";
 
 /** A commission request's state when the notice was written ("accepted" is from before quotes existed). */
 export type RequestStatus =
@@ -66,7 +80,7 @@ export type AppNotification = {
 export type NotificationPage = { items: AppNotification[]; more: boolean };
 
 /** The last seven days in numbers (the guest book's tally marks). */
-export type WeekTally = { likes: number; comments: number; follows: number; reposts: number; requests: number };
+export type WeekTally = { likes: number; comments: number; follows: number; reposts: number };
 
 /** /notifications filters (`?show=`), each a page flag on the guest book. */
 export const SHOWS = [
@@ -75,7 +89,6 @@ export const SHOWS = [
   { id: "likes", label: "Likes", kinds: ["like"] },
   { id: "follows", label: "Follows", kinds: ["follow", "invite_joined"] },
   { id: "reposts", label: "Reposts", kinds: ["repost"] },
-  { id: "requests", label: "Requests", kinds: ["commission_request", "request_update"] },
 ] as const satisfies readonly { id: string; label: string; kinds: readonly NotificationKind[] | null }[];
 
 export type Show = (typeof SHOWS)[number]["id"];

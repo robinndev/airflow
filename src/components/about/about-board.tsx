@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { artUrl } from "@/lib/art-storage";
-import { readingOrder, type Block, type Board } from "@/lib/customization/about";
+import { readingOrder, titleLook, type Block, type Board, type BoardFont } from "@/lib/customization/about";
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import { Sticker } from "./stickers";
 
@@ -11,7 +11,7 @@ import { Sticker } from "./stickers";
  * ones (phones) stack the blocks in reading order so nothing is microscopic.
  */
 
-const FONT: Record<string, string> = {
+export const FONT: Record<BoardFont, string> = {
   sans: "var(--font-inter), system-ui, sans-serif",
   display: "var(--display-font)",
   hand: "var(--font-caveat), 'Bradley Hand', cursive",
@@ -81,11 +81,15 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
   switch (block.type) {
     case "text":
     case "list": {
-      const size = scaled ? `calc(var(--u) * ${block.size})` : `${Math.min(block.size, 30)}px`;
+      // Stacked (phones): real pixels, capped so nothing shouts on a small screen.
+      const length = (units: number, cap: number) => (scaled ? `calc(var(--u) * ${units})` : `${Math.min(units, cap)}px`);
       const card = block.background && block.background !== "transparent" ? block.background : null;
       const style: CSSProperties = {
         fontFamily: FONT[block.font],
-        fontSize: size,
+        fontSize: length(block.size, 30),
+        fontWeight: block.bold ? 700 : undefined,
+        fontStyle: block.italic ? "italic" : undefined,
+        lineHeight: block.leading,
         color: block.color ?? (card ? readableOn(card) : undefined),
         textAlign: block.align,
         backgroundColor: block.background === "transparent" ? undefined : block.background,
@@ -95,20 +99,40 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
         boxed ? "rounded-[1em] p-[0.8em] shadow-soft" : ""
       } ${boxed && !block.background ? "border border-border bg-surface" : ""}`;
 
+      const look = titleLook(block);
+      const title = block.title && (
+        <p
+          data-part="block-title"
+          className="leading-snug break-words"
+          style={{
+            fontFamily: FONT[look.font],
+            fontSize: length(look.size, 36),
+            fontWeight: look.bold ? 800 : 400,
+            fontStyle: look.italic ? "italic" : "normal",
+            color: look.color,
+            textAlign: look.align,
+            marginBottom: length(look.gap, 48),
+          }}
+        >
+          {block.title}
+        </p>
+      );
+
       if (block.type === "text") {
         return (
-          <div className={`${shell} break-words whitespace-pre-wrap`} style={style}>
-            {block.text}
+          <div className={shell} style={style}>
+            {title}
+            <p className="break-words whitespace-pre-wrap">{block.text}</p>
           </div>
         );
       }
       return (
         <div className={shell} style={style}>
-          {block.title && <p className="mb-[0.4em] font-display text-[1.15em] font-extrabold">{block.title}</p>}
+          {title}
           <ul className="grid gap-[0.25em]">
             {block.items.map((item, i) => (
               <li key={i} className="flex gap-[0.45em]">
-                <span aria-hidden className="shrink-0 text-accent">
+                <span aria-hidden className="shrink-0 text-accent" style={{ color: block.markerColor }}>
                   {MARKER[block.marker]}
                 </span>
                 <span className="min-w-0 break-words">{item}</span>
@@ -129,7 +153,7 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
           alt={block.alt}
           fill
           sizes={`(min-width: 1184px) ${Math.ceil(block.w * 0.8)}px, (min-width: 640px) ${Math.ceil(block.w / 10)}vw, 100vw`}
-          className={`${crops ? "object-cover" : "object-contain"} ${block.frame === "round" ? "rounded-full" : ""}`}
+          className={`${crops ? "object-cover" : "object-contain"} ${block.frame === "round" ? "rounded-full" : ""} ${block.mirror ? "-scale-x-100" : ""}`}
         />
       );
       if (block.frame === "polaroid") {
@@ -153,7 +177,7 @@ export function BlockView({ block, scaled = false }: { block: Block; scaled?: bo
     }
 
     case "sticker":
-      return <Sticker id={block.sticker} color={block.color} className="drop-shadow-[0_3px_4px_rgb(0_0_0/0.18)]" />;
+      return <Sticker id={block.sticker} color={block.color} className={`drop-shadow-[0_3px_4px_rgb(0_0_0/0.18)] ${block.mirror ? "-scale-x-100" : ""}`} />;
 
     case "html":
       return <HtmlBlock html={block.html} />;

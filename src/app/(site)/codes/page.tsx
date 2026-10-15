@@ -10,7 +10,7 @@ import { CodeTickets } from "@/components/artists/code-tickets";
 import { Scribble } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
-import { ANSWERABLE, CODE_RULES, CODES_FOR_VERIFIED, progressOf, VERIFY_GOALS, WHY_CODES, type Progress } from "@/lib/artists/codes";
+import { ANSWERABLE, BAD_ACTORS, CODE_RULES, CODES_FOR_VERIFIED, progressOf, VERIFY_GOALS, WHY_CODES, type Progress } from "@/lib/artists/codes";
 import { formatUsd } from "@/lib/format";
 import { getViewerAccess, getViewerCodes, getViewerPass, getViewerProgress } from "@/lib/artists/server";
 
@@ -171,7 +171,7 @@ async function Codes() {
 
       <aside aria-labelledby="rules-heading" className="h-fit rounded-card border border-border bg-surface p-5 lg:sticky lg:top-24">
         <h2 id="rules-heading" className="font-display text-base font-bold text-ink">
-          Before you hand one on
+          Before you hand out a code
         </h2>
         <ul className="mt-3 space-y-2.5 text-sm">
           {CODE_RULES.map((rule) => (
@@ -186,7 +186,10 @@ async function Codes() {
             </li>
           ))}
         </ul>
-        <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">{ANSWERABLE}</p>
+        <div className="mt-4 space-y-1.5 border-t border-border pt-3 text-xs leading-relaxed text-muted">
+          <p>{ANSWERABLE}</p>
+          <p>{BAD_ACTORS}</p>
+        </div>
       </aside>
     </div>
   );

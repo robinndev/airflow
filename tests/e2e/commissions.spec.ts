@@ -70,7 +70,7 @@ const lane = (page: Page, name: string) => page.locator(`[data-lane="${name}"]`)
 test("no orders yet: an empty board that points at the studio", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Account menu" }).click();
-  await page.getByRole("link", { name: "My commissions" }).click();
+  await page.locator("#account-menu").getByRole("link", { name: "My commissions" }).click();
   await expect(page).toHaveURL(/\/commissions$/);
   await expect(page.getByText("No commissions yet.")).toBeVisible();
   await expect(page.getByRole("link", { name: "List a service" })).toHaveAttribute("href", "/studio");
@@ -147,13 +147,20 @@ test("a buyer who says no to the quote says why, and the artist reads it", async
   await expect(postcard).toContainText("You told");
   await buyer.close();
 
-  // The artist's notification says what happened and why, and opens the order.
+  // The artist's notice, on the header's order clipboard (not the bell), says what happened and why, and opens the order.
   const page = await browser.newPage();
   await signIn(page);
-  await page.goto("/notifications");
-  const note = page.getByRole("link", { name: /declined your quote for Custom piece/ });
+  const nav = page.getByRole("navigation", { name: "Main" });
+  const clipboard = nav.getByRole("button", { name: /^Commissions/ });
+  // The header streams in as a client island: click until it answers.
+  await expect(async () => {
+    if ((await clipboard.getAttribute("aria-expanded")) !== "true") await clipboard.click();
+    await expect(clipboard).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
+  }).toPass();
+  const pad = nav.locator('[data-open="true"]');
+  const note = pad.getByRole("link", { name: /declined your quote for Custom piece/ });
   await expect(note).toBeVisible();
-  await expect(page.getByText("It's more than they can spend right now · I'm saving up, I'd love to ask again next month.")).toBeVisible();
+  await expect(pad.getByText("It's more than they can spend right now · I'm saving up, I'd love to ask again next month.")).toBeVisible();
   await expect(note).toHaveAttribute("href", `/commissions?tab=archived&order=${quotedId}`);
   await note.click();
   await expect(page).toHaveURL(/tab=archived/);
