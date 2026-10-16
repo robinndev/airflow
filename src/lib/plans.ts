@@ -1,7 +1,7 @@
 /*
- * Paid plans. Prices decided by the project lead on 2026-10-10; checkout
- * doesn't exist yet (payments provider undecided), so the UI shows prices but
- * never pretends you can pay. Paid plans don't change the platform fee.
+ * Paid plans. Prices decided by the project lead on 2026-10-10. Plan checkout
+ * doesn't exist yet, so the UI shows prices but never pretends you can pay.
+ * Paid plans don't change the platform fee.
  */
 
 export type PlanId = "free" | "flow_plus" | "live";
@@ -23,6 +23,39 @@ export type Plan = {
  * store the fee charged on each payment, so changing this never rewrites the past.
  */
 export const PLATFORM_FEE_PERCENT = 5;
+
+/**
+ * The founding artists' offer (Robin, 2026-10-16): no platform fee on sales
+ * for the first 12 months, until `until` (inclusive, UTC). Only Artiflow's own
+ * fee: the payment processor (Stripe) still takes its processing fee on every
+ * payment, which never reaches us. Sales are charged on each artist's own
+ * Stripe account, and Stripe can't take a fee on artists abroad for our
+ * Brazilian company: bringing the fee back needs the company abroad
+ * (docs/roadmap.md, payments brief). Change the date in one place: here.
+ */
+export const FEE_FREE = { until: "2027-10-31", months: 12 } as const;
+
+/** "October 31, 2027" */
+export const FEE_FREE_UNTIL_LABEL = new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(
+  new Date(`${FEE_FREE.until}T12:00:00Z`),
+);
+
+/** The platform fee in force on a day (YYYY-MM-DD or a date): 0 during the offer, then PLATFORM_FEE_PERCENT. */
+export function platformFeePercent(on: string | Date): number {
+  const day = typeof on === "string" ? on.slice(0, 10) : on.toISOString().slice(0, 10);
+  return day <= FEE_FREE.until ? 0 : PLATFORM_FEE_PERCENT;
+}
+
+/**
+ * Stripe's own processing fee, for copy that explains it (Stripe's US price
+ * list; other countries differ, and cards from abroad or in another currency
+ * cost a little more). Stripe charges it, not Artiflow.
+ */
+export const PROCESSOR_FEE_US = { percent: 2.9, fixedUsd: 0.3, label: "2.9% + 30¢ per card payment in the US" } as const;
+
+/** What Stripe takes from a US card payment of `priceUsd` to a US artist. */
+export const processorFeeUs = (priceUsd: number) =>
+  Math.round((priceUsd * PROCESSOR_FEE_US.percent + PROCESSOR_FEE_US.fixedUsd * 100)) / 100;
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {

@@ -8,6 +8,7 @@ import { Postcard } from "@/components/commissions/requests/postcard";
 import { RequestFilters } from "@/components/commissions/requests/request-filters";
 import { ShippingLabel, ShippingLabelSkeleton } from "@/components/commissions/requests/shipping-label";
 import { Scribble, Sparkle, Wash } from "@/components/explore/doodles";
+import { CheckoutNotice } from "@/components/payments/checkout-notice";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonClasses } from "@/components/ui/button";
 import { getViewerRequests } from "@/lib/commissions/queries";
@@ -84,6 +85,9 @@ export default function RequestsPage({ searchParams }: PageProps<"/requests">) {
             <Postbox searchParams={searchParams} />
           </Suspense>
         </section>
+        <Suspense>
+          <CheckoutNotice param="payment" />
+        </Suspense>
       </main>
     </>
   );

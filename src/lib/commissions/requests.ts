@@ -1,4 +1,5 @@
 import type { ImageAsset } from "@/lib/profile/types";
+import type { PayCurrency } from "../payments/rules.ts";
 import type { CancelReason } from "./cancel.ts";
 import { daysUntil, type Step } from "./queue.ts";
 
@@ -20,7 +21,9 @@ export type RequestStatus =
   | "delivered"
   | "declined"
   | "expired"
-  | "cancelled";
+  | "cancelled"
+  /** Paid, then the artist gave the money back. */
+  | "refunded";
 
 export type MyRequest = {
   id: string;
@@ -58,6 +61,18 @@ export type MyRequest = {
   cancelNote?: string;
   /** Sent to one of the demo artists: stored, but nobody answers. */
   demo?: boolean;
+  /** When it was refunded, by whom (the artist, the team, the artist from Stripe), and what they said. */
+  refundedAt?: string;
+  refundNote?: string;
+  refundedBy?: "artist" | "team" | "dashboard";
+  /** The refund is waiting on the artist's Stripe balance (it goes through on its own when it can). */
+  refundPending?: boolean;
+  /**
+   * A quote you can pay, and how: one button per currency the artist takes
+   * (artists in Brazil take reais for Brazilian cards), the likely one first.
+   * Not ready: the artist hasn't finished setting up payouts.
+   */
+  pay?: { ready: true; options: { currency: PayCurrency; amount: string }[]; test?: boolean } | { ready: false };
 };
 
 /** The stops on the route, each stamped with its date once it's reached. */
@@ -85,6 +100,7 @@ export function stopOf(request: MyRequest): Stop {
     case "cancelled":
       return request.paidAt ? "paid" : request.quotedAt ? "quoted" : "sent";
     case "paid":
+    case "refunded":
       return request.step ? "making" : "paid";
     case "delivered":
       return "delivered";
@@ -109,7 +125,7 @@ export function stampOf(request: MyRequest, stop: Stop): string | undefined {
 }
 
 export const isClosed = (request: MyRequest) =>
-  request.status === "declined" || request.status === "expired" || request.status === "cancelled";
+  request.status === "declined" || request.status === "expired" || request.status === "cancelled" || request.status === "refunded";
 
 export type Show = "all" | "yours" | "waiting" | "making" | "delivered" | "closed";
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { AdoptShelf } from "@/components/listings/adopt-shelf";
+import { CheckoutNotice } from "@/components/payments/checkout-notice";
 import { SectionHeader } from "@/components/profile/section-header";
 import { FeedSkeleton } from "@/components/profile/skeletons";
 import { buttonClasses } from "@/components/ui/button";
@@ -36,6 +37,7 @@ async function Adoptables({ params }: Pick<PageProps<"/[handle]/adoptables">, "p
       />
       <Suspense>
         <OwnerNote handle={handle} />
+        <CheckoutNotice param="adoption" />
       </Suspense>
       {adoptables.length === 0 ? (
         <div className="rounded-card border border-dashed border-border bg-surface px-6 py-14 text-center">

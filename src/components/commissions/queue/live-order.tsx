@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, PackageCheck, Send } from "lucide-react";
+import { LoaderCircle, PackageCheck, Send, Undo2 } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { refundOrder } from "@/app/(site)/payment-actions";
 import {
   declineRequest,
   deliverOrder,
@@ -45,8 +47,8 @@ export function useLiveAction() {
 
 /**
  * What to do next with a real order, by where it stands: answer a request
- * (quote, waitlist, decline), wait for the buyer to pay, start, deliver.
- * Paying is stubbed until checkout exists: the team marks orders paid.
+ * (quote, waitlist, decline), wait for the buyer to pay (through Stripe, into
+ * the artist's own account), start, deliver; refund before delivering.
  */
 export function LiveNextStep({ order, today }: { order: QueueOrder; today: string }) {
   const [pending, run] = useLiveAction();
@@ -62,6 +64,22 @@ export function LiveNextStep({ order, today }: { order: QueueOrder; today: strin
         </p>
         {order.cancelNote && <p className="mt-2 rounded-[10px] bg-surface px-3 py-2 text-ink/85">&ldquo;{order.cancelNote}&rdquo;</p>}
         <p className="mt-2 text-muted">The slot went back to the service. Nothing was charged.</p>
+      </div>
+    );
+  }
+
+  if (status === "refunded") {
+    return (
+      <div className="rounded-[18px] bg-ice p-4 text-sm">
+        <p className="font-semibold">
+          {order.refundedBy === "team" ? "Artiflow refunded it" : "Refunded"}
+          {order.refundedAt && <> {formatDay(order.refundedAt)}</>}.{" "}
+          {order.charged?.refundPending
+            ? `It's waiting on your Stripe balance: it goes back to ${name} as soon as your balance covers it.`
+            : `${name} gets the money back on their card.`}
+        </p>
+        {order.refundNote && <p className="mt-2 rounded-[10px] bg-surface px-3 py-2 text-ink/85">&ldquo;{order.refundNote}&rdquo;</p>}
+        <p className="mt-2 text-muted">The slot went back to the service.</p>
       </div>
     );
   }
@@ -83,9 +101,18 @@ export function LiveNextStep({ order, today }: { order: QueueOrder; today: strin
           {order.dueAt && <>, due {formatDay(order.dueAt)}</>}
         </p>
         <p className="mt-0.5 text-muted">
-          Waiting on {name} to pay. Checkout opens soon; until then the order waits here.
+          Waiting on {name} to pay. They pay with Stripe, and the money lands in your own Stripe account.
           {order.proposalExpiresAt && <> The quote expires {formatLongDate(order.proposalExpiresAt)}, and the slot comes back if it does.</>}
         </p>
+        {order.payouts && order.payouts !== "active" && (
+          <p className="mt-2 rounded-[10px] bg-star/25 px-3 py-2 text-ink">
+            <span className="font-semibold">{name} can&apos;t pay yet:</span>{" "}
+            {order.payouts === "none" ? "set up payouts first." : "finish setting up payouts first."}{" "}
+            <Link href="/studio#payouts" className="font-semibold underline underline-offset-4">
+              {order.payouts === "none" ? "Set up payouts" : "Open payouts"}
+            </Link>
+          </p>
+        )}
         {order.quoteNote && <p className="mt-2 rounded-[10px] bg-surface px-3 py-2 text-ink/85">&ldquo;{order.quoteNote}&rdquo;</p>}
         <button
           type="button"
@@ -113,11 +140,21 @@ export function LiveNextStep({ order, today }: { order: QueueOrder; today: strin
           {pending && <LoaderCircle aria-hidden className="animate-spin" />}
           Start sketching
         </button>
+        <Refund order={order} />
       </div>
     );
   }
 
-  if (status === "in_progress") return <Deliver order={order} pending={pending} run={run} />;
+  if (status === "in_progress") {
+    return (
+      <>
+        <Deliver order={order} pending={pending} run={run} />
+        <div className="px-4">
+          <Refund order={order} />
+        </div>
+      </>
+    );
+  }
 
   if (status === "delivered" && order.delivery) {
     return (
@@ -142,6 +179,78 @@ export function LiveNextStep({ order, today }: { order: QueueOrder; today: strin
 }
 
 type Run = ReturnType<typeof useLiveAction>[1];
+
+/**
+ * Gives the buyer's money back before delivering (can't make it, ran out of
+ * time, they asked): the order closes, the slot comes back, the buyer is told
+ * with your note. Stripe keeps its processing fee.
+ */
+function Refund({ order }: { order: QueueOrder }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [pending, start] = useTransition();
+  const name = order.client.name;
+  const amount = order.charged?.amount ?? formatUsdExact(order.priceUsd);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-muted underline-offset-4 hover:text-danger hover:underline"
+      >
+        <Undo2 aria-hidden className="size-3.5" />
+        Refund {name}
+      </button>
+    );
+  }
+  return (
+    <div className="mt-3 grid gap-2 rounded-[14px] border border-dashed border-border bg-surface p-3 text-sm">
+      <p className="font-semibold">Refund {amount} to {name}?</p>
+      <p className="text-muted">
+        The order closes and the slot goes back to the service. Stripe keeps its processing fee, and the refund comes out of your Stripe
+        balance.
+      </p>
+      <textarea
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder={`A word for ${name} (optional)`}
+        className={`${inputClass} resize-none py-2`}
+      />
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const result = await refundOrder(order.id, note);
+              if (!result.ok) showToast({ message: result.error });
+              else {
+                showToast({
+                  message: result.pending
+                    ? `Refund requested: your Stripe balance can't cover it yet, so it goes through as soon as it can.`
+                    : `Refunded ${name}`,
+                });
+                setOpen(false);
+              }
+              router.refresh();
+            })
+          }
+          className="inline-flex h-9 items-center gap-2 rounded-action bg-danger px-3.5 text-sm font-bold text-white transition-[filter,opacity] hover:brightness-105 disabled:opacity-50"
+        >
+          {pending && <LoaderCircle aria-hidden className="animate-spin" />}
+          Refund {amount}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className={buttonClasses({ variant: "ghost", size: "sm" })}>
+          Keep the order
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** Yes (a quote), later (waitlist) or no (decline, with an optional word). */
 function Answer({ order, today, pending, run }: { order: QueueOrder; today: string; pending: boolean; run: Run }) {

@@ -6,9 +6,11 @@ import type { ReactNode } from "react";
 import { openCommentsAt } from "@/components/social/events";
 import { useFollow } from "@/components/social/store";
 import { Avatar } from "@/components/ui/avatar";
+import { formatUsdExact } from "@/lib/format";
 import type { AppNotification } from "@/lib/notifications/types";
 import {
   AdmitOne,
+  AdoptedStamp,
   Bookplate,
   DateStamp,
   HeartStamps,
@@ -215,6 +217,8 @@ function Keepsake({ note, wobble, box }: { note: AppNotification; wobble: number
       return note.commission && <RequestTicket estimateUsd={note.commission.estimateUsd} status={note.commission.status} rotate={wobble} />;
     case "request_update":
       return note.commission && <StatusStamp status={note.commission.status} rotate={wobble * 2 - 4} />;
+    case "adoption":
+      return <AdoptedStamp rotate={wobble * 2 - 4} />;
     default:
       return note.piece?.image ? <Print image={note.piece.image} framed={note.kind === "repost"} rotate={wobble} box={box} /> : null;
   }
@@ -310,9 +314,19 @@ function Sentence({ note }: { note: AppNotification }) {
       if (status === "in_progress") return <>{who} started your {service}</>;
       if (status === "delivered") return <>{who} delivered your {service}</>;
       if (status === "expired") return <>Your quote for {service} from {who} expired</>;
+      if (status === "refunded") {
+        return note.commission?.refundedByTeam ? <>Artiflow refunded your {service} from {who}</> : <>{who} refunded your {service}</>;
+      }
       if (note.commission?.declinedQuote) return <>{who} declined your quote for {service}</>;
       return <>{who} cancelled their request for {service}</>;
     }
+    case "adoption":
+      return (
+        <>
+          {who} adopted <b className="font-semibold text-on-paper">{note.adoption?.name}</b>
+          {note.adoption?.priceUsd ? <> for {formatUsdExact(note.adoption.priceUsd)}</> : null}. Send them the files
+        </>
+      );
     case "welcome":
       return <>Welcome to Artiflow</>;
   }

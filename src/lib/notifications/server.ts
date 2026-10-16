@@ -154,12 +154,21 @@ function toNotification(row: Row): AppNotification | null {
         thread: { postId: about.id, authorName: about.name.split(" ")[0], excerpt: about.excerpt },
       };
     }
+    case "adoption": {
+      if (!actor) return null;
+      const price = Number(row.data?.price_usd);
+      return {
+        ...base,
+        adoption: { name: text(row.data?.name) || "your character", ...(Number.isFinite(price) && price > 0 && { priceUsd: price }) },
+        href: "/studio#adoptables",
+      };
+    }
     case "commission_request":
     case "request_update": {
       if (!actor) return null;
       const status = (text(row.data?.status) || "pending") as RequestStatus;
       const estimate = Number(row.data?.estimate_usd);
-      // The artist hears about new, cancelled and paid requests; the buyer about everything the artist does.
+      // The artist hears about new, cancelled and paid requests; the buyer about everything the artist does (a refund too).
       const toArtist = row.kind === "commission_request" || status === "cancelled" || status === "paid";
       // A cancel says why (the buyer's reason and note), and opens that order in the artist's archive.
       const reason = status === "cancelled" ? text(row.data?.cancel_reason) : "";
@@ -173,9 +182,11 @@ function toNotification(row: Row): AppNotification | null {
           status,
           ...(Number.isFinite(estimate) && estimate > 0 && { estimateUsd: estimate }),
           ...(status === "cancelled" && row.data?.was_quoted === true && { declinedQuote: true }),
+          ...(status === "refunded" && row.data?.refunded_by === "team" && { refundedByTeam: true }),
         },
         ...(row.kind === "commission_request" && text(row.data?.brief) && { quote: text(row.data?.brief) }),
         ...(why && { quote: why }),
+        ...(status === "refunded" && text(row.data?.refund_note) && { quote: text(row.data?.refund_note) }),
         href:
           status === "cancelled" && row.request_id
             ? `/commissions?tab=archived&order=${row.request_id}`

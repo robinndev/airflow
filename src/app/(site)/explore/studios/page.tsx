@@ -5,6 +5,7 @@ import { Scribble, Wash } from "@/components/explore/doodles";
 import { ExploreSearch } from "@/components/explore/explore-search";
 import { HeroCollage } from "@/components/explore/hero-collage";
 import { Manifesto } from "@/components/explore/manifesto";
+import { FeeFreeBanner } from "@/components/payments/fee-free-banner";
 import { ResidentFeature } from "@/components/explore/resident-feature";
 import { RotatingWord } from "@/components/explore/rotating-word";
 import { SectionHeading } from "@/components/explore/section-heading";
@@ -187,6 +188,11 @@ export default async function ExplorePage() {
             ))}
           </Link>
         </section>
+
+        {/* For artists: the founding offer, said plainly (only Artiflow's fee is off; Stripe's isn't). */}
+        <div className={`${container} mt-24 sm:mt-28`}>
+          <FeeFreeBanner action={{ href: "/studio", label: "Open your studio" }} />
+        </div>
 
         <div className={`${container} mt-24 sm:mt-28`}>
           <Manifesto artists={data.crowd} />

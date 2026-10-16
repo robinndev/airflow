@@ -156,7 +156,7 @@ test("a buyer finds it, requests a package, and the slot is taken", async ({ bro
   await page.goto("/requests");
   await expect(page.getByText(serviceTitle).first()).toBeVisible();
 
-  // Ready-made: its own sheet, no request, and no button that pretends to charge.
+  // Ready-made: its own sheet, no request, and no button that can't charge (the artist has no payouts yet).
   await page.goto(`/${artist.handle}/adoptables`);
   await expect(async () => {
     await page.getByRole("link", { name: adoptName, exact: true }).click();
@@ -164,7 +164,7 @@ test("a buyer finds it, requests a package, and the slot is taken", async ({ bro
   }).toPass();
   const sheet = page.getByRole("dialog", { name: `${adoptName}, ready-made` });
   await expect(sheet.getByText("No request, no quote")).toBeVisible();
-  await expect(sheet.getByRole("button", { name: /Adopt for \$30 · checkout opens soon/ })).toBeDisabled();
+  await expect(sheet.getByRole("button", { name: /Adopt for \$30 once Comet sets up payouts/ })).toBeDisabled();
 });
 
 test("the whole order: quote, paid (team), start, steps, delivery; the buyer follows it", async ({ browser }) => {
@@ -191,12 +191,12 @@ test("the whole order: quote, paid (team), start, steps, delivery; the buyer fol
   expect(Number((await order()).quote_usd)).toBe(40);
   await expect(drawer.getByText("Quote sent: $40")).toBeVisible();
 
-  // The buyer sees the quote, and can't pay yet.
+  // The buyer sees the quote, and can't pay until the artist sets up payouts.
   await buyerPage.goto("/requests");
   await expect(buyerPage.getByText("sent a quote:").first()).toBeVisible();
-  await expect(buyerPage.getByText("Pay $40 · checkout opens soon").first()).toBeVisible();
+  await expect(buyerPage.getByText("Pay $40 once Comet sets up payouts").first()).toBeVisible();
 
-  // Checkout doesn't exist yet: the team marks it paid (npm run orders -- paid <id>).
+  // No payouts here: the team marks the test order paid (npm run orders -- paid <id>). Paying through Stripe: payments.spec.ts.
   await admin().from("commission_requests").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", request!.id);
 
   // Up next → on the easel → lineart → delivered.

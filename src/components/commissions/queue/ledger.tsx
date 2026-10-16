@@ -227,6 +227,7 @@ function Stage({ order }: { order: QueueOrder }) {
   let extra: ReactNode = null;
   if (order.orderStatus === "cancelled") extra = <Stamp tone="like">Cancelled</Stamp>;
   else if (order.declined) extra = <Stamp tone="like">Declined</Stamp>;
+  else if (order.orderStatus === "refunded") extra = <Stamp tone="muted">Refunded</Stamp>;
   else if (order.paused) extra = <Stamp tone="muted">Paused</Stamp>;
   else if (order.waitlist) extra = <Stamp tone="lilac">Waitlist</Stamp>;
 

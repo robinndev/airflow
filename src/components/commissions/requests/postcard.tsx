@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { MessageIconButton } from "@/components/messages/message-button";
+import { PayButton } from "@/components/payments/pay-button";
 import { Tape } from "@/components/explore/doodles";
 import { Swatches, tiltOf } from "@/components/commissions/queue/parts";
 import { StepTrack } from "@/components/commissions/queue/step-track";
@@ -42,6 +43,8 @@ function postmarkOf(request: MyRequest): { word: string; date: string; tone: Pos
       return { word: "Expired", date: date(request.closedAt), tone: "like" };
     case "cancelled":
       return { word: "Cancelled", date: date(request.closedAt), tone: "like" };
+    case "refunded":
+      return { word: "Refunded", date: date(request.refundedAt ?? request.closedAt), tone: "muted" };
   }
 }
 
@@ -158,10 +161,17 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
               </span>
             )}
           </p>
-          {/* No checkout yet: say so, never pretend to charge. */}
-          <span className="inline-flex h-9 items-center rounded-full border-2 border-dashed border-on-paper/20 px-3.5 text-[0.8125rem] font-semibold text-paper-muted">
-            Pay {formatUsdExact(request.priceUsd)} · checkout opens soon
-          </span>
+          {request.pay?.ready ? (
+            <PayButton kind="commission" id={request.id} options={request.pay.options} test={request.pay.test} />
+          ) : (
+            // The artist can't take payments yet: say so, never a button that can't charge.
+            <span className="inline-flex h-9 items-center rounded-full border-2 border-dashed border-on-paper/20 px-3.5 text-[0.8125rem] font-semibold text-paper-muted">
+              {request.demo ? "Demo artists can't be paid" : `Pay ${formatUsdExact(request.priceUsd)} once ${first} sets up payouts`}
+            </span>
+          )}
+          {request.pay?.ready && (
+            <p className="w-full text-xs text-paper-muted">Secure checkout by Stripe. The money goes straight to {first}.</p>
+          )}
           {request.real && request.artistNote && (
             <p className="w-full text-paper-muted">
               <span className="font-semibold text-on-paper">{first}:</span> &ldquo;{request.artistNote}&rdquo;
@@ -234,6 +244,30 @@ function NextStep({ request, today, first }: { request: MyRequest; today: string
           <p className="text-xs text-paper-muted">Returned to you. Nothing was charged.</p>
         </div>
       );
+    case "refunded": {
+      // Refunded by the artist, or by Artiflow's team (an artist who vanished).
+      const who = request.refundedBy === "team" ? "Artiflow" : first;
+      return (
+        <div className="grid gap-2">
+          <p>
+            <span className="font-semibold">
+              {who} refunded {formatUsdExact(request.priceUsd)}
+              {request.refundedAt && <> {relativeDay(daysUntil(request.refundedAt, today))}</>}.
+            </span>{" "}
+            <span className="text-paper-muted">
+              {request.refundPending
+                ? `It's waiting on ${first}'s Stripe balance and goes through on its own as soon as it can. Still waiting after 10 days? Your bank can return it: ask them for a chargeback.`
+                : "It reaches your card in 5 to 10 days, depending on your bank."}
+            </span>
+          </p>
+          {request.refundNote && (
+            <p>
+              <span className="font-semibold">{who}:</span> <span className="text-paper-muted">&ldquo;{request.refundNote}&rdquo;</span>
+            </p>
+          )}
+        </div>
+      );
+    }
     case "expired":
     case "cancelled":
       return (

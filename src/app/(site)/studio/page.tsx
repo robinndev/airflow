@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { HandNote, Scribble } from "@/components/explore/doodles";
 import { SiteHeader } from "@/components/site/site-header";
 import { CodeSheet } from "@/components/artists/code-sheet";
+import { FeeFreeBanner } from "@/components/payments/fee-free-banner";
+import { PayoutsCard } from "@/components/payments/payouts-card";
 import { StudioDesk } from "@/components/studio/studio-desk";
 import { getAdoptables, getProfile, getServices } from "@/lib/profile/queries";
 import { getViewerAccess } from "@/lib/artists/server";
@@ -102,8 +104,12 @@ async function Desk() {
         <Link href="/explore/search" className="font-semibold text-ink underline-offset-4 hover:underline">
           search
         </Link>{" "}
-        as soon as you save. Checkout opens soon: until then buyers can request and save, not pay.
+        as soon as you save. Buyers pay on Artiflow, straight into your own Stripe account.
       </p>
+      <div className="mt-6 grid gap-6">
+        <PayoutsCard userId={viewer.id} />
+        <FeeFreeBanner className="mt-2" />
+      </div>
       <StudioDesk
         artist={{ handle: profile.handle, name: profile.displayName, avatar: profile.avatar }}
         services={services}

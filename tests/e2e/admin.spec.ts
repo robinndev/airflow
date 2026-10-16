@@ -129,7 +129,8 @@ test("an admin reads the back office and tries another fee", async ({ browser })
   const receipt = page.getByRole("complementary", { name: "What we kept" });
   await expect(receipt).toBeVisible();
   await expect(page.getByRole("link", { name: /Count the team/ })).toBeVisible();
-  await expect(receipt.getByText(/^5% of \$\S+ · \d+ orders? paid/)).toBeVisible();
+  // No platform fee during the founding artists' offer (src/lib/plans.ts).
+  await expect(receipt.getByText(/^0% of \$\S+ · \d+ orders? paid/)).toBeVisible();
 
   // The paid commission shows up among the top artists.
   await expect(page.getByRole("link", { name: new RegExp(`Comet ${id}`) })).toBeVisible();

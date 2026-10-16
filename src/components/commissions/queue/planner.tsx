@@ -4,7 +4,7 @@ import { HandNote, Tape } from "@/components/explore/doodles";
 import type { ViewerQueue } from "@/lib/commissions/queries";
 import { daysAhead, dueState, sortOrders, tally, type QueueOrder } from "@/lib/commissions/queue";
 import { formatUsd, formatUsdExact } from "@/lib/format";
-import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { platformFeePercent } from "@/lib/plans";
 import { DueLabel, tapeOf } from "./parts";
 import { openOrder } from "./open-order";
 import { useQueue } from "./store";
@@ -28,7 +28,7 @@ export function Planner({ queue }: { queue: ViewerQueue }) {
   const live = orders.filter((order) => !order.archived && !order.paused && order.lane !== "delivered");
   const late = live.filter((order) => dueState(order, today).tone === "late");
   const next = sortOrders(live.filter(dateOf), "due").slice(0, 3);
-  const totals = tally(orders, today, PLATFORM_FEE_PERCENT);
+  const totals = tally(orders, today, platformFeePercent(today));
   const todayDate = new Date(`${today}T12:00:00Z`);
 
   return (

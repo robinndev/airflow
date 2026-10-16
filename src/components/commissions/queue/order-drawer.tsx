@@ -16,7 +16,7 @@ import {
   type Step,
 } from "@/lib/commissions/queue";
 import { formatLongDate, formatUsdExact } from "@/lib/format";
-import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { platformFeePercent } from "@/lib/plans";
 import { LiveNextStep } from "./live-order";
 import { DueLabel, LANE_TONE, tapeOf } from "./parts";
 import { StepTrack } from "./step-track";
@@ -91,7 +91,9 @@ function Folder({
   onStep: (id: string, step: Step) => void;
   onPatch: (order: QueueOrder, patch: OrderPatch, label: string) => void;
 }) {
-  const fee = (order.priceUsd * PLATFORM_FEE_PERCENT) / 100;
+  // The fee in force when it was paid (0% during the founding artists' offer, src/lib/plans.ts).
+  const feePercent = platformFeePercent(order.paidAt ?? today);
+  const fee = (order.priceUsd * feePercent) / 100;
   const name = `${order.client.name}'s ${order.service.toLowerCase()}`;
 
   return (
@@ -253,14 +255,32 @@ function Folder({
               </>
             )}
             <Line label="Price">{formatUsdExact(order.priceUsd)}</Line>
-            <Line label={`Artiflow fee (${PLATFORM_FEE_PERCENT}%)`}>
-              <span className="text-muted">−{formatUsdExact(fee)}</span>
+            {order.charged && order.charged.amount !== formatUsdExact(order.priceUsd) && (
+              <Line label="Paid">{order.charged.amount}</Line>
+            )}
+            <Line label={feePercent === 0 ? "Artiflow fee (0%, founding artists)" : `Artiflow fee (${feePercent}%)`}>
+              <span className="text-muted">{fee === 0 ? "$0" : `−${formatUsdExact(fee)}`}</span>
+            </Line>
+            <Line label="Stripe's processing fee">
+              <span className="text-muted">{order.charged?.stripeFee ? `−${order.charged.stripeFee}` : "taken by Stripe"}</span>
             </Line>
             <div className="my-1 border-t border-dashed border-border" />
-            <Line label="You get">
-              <span className="font-display text-lg font-extrabold">{formatUsdExact(order.priceUsd - fee)}</span>
+            <Line label={order.charged?.refunded ? "Refunded" : "You get"}>
+              {order.charged?.net ? (
+                <span className={`font-display text-lg font-extrabold ${order.charged.refunded ? "text-muted line-through" : ""}`}>{order.charged.net}</span>
+              ) : (
+                <span>
+                  <span className="font-display text-lg font-extrabold">{formatUsdExact(order.priceUsd - fee)}</span>{" "}
+                  <span className="text-xs text-muted">before Stripe&apos;s fee</span>
+                </span>
+              )}
             </Line>
           </dl>
+          )}
+          {order.charged?.disputed && (
+            <p className="mt-3 rounded-[10px] bg-star/25 px-3 py-2 text-sm">
+              The buyer disputed this charge with their bank. Stripe emails you what it needs; answer from your Stripe Dashboard.
+            </p>
           )}
         </Section>
 

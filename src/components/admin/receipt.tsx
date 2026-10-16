@@ -2,7 +2,7 @@ import Link from "next/link";
 import { adminHref, FEE_PRESETS, type AdminQuery } from "@/lib/admin/range";
 import { formatValue } from "@/lib/admin/format";
 import type { Change, ReceiptLine } from "@/lib/admin/metrics";
-import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { FEE_FREE_UNTIL_LABEL, PLATFORM_FEE_PERCENT, platformFeePercent } from "@/lib/plans";
 import { ChangeNote } from "./parts";
 
 /*
@@ -31,8 +31,10 @@ export function Receipt({
   feePercent: number;
   query: AdminQuery;
 }) {
-  const fees = [...new Set([...FEE_PRESETS, PLATFORM_FEE_PERCENT, feePercent])].sort((a, b) => a - b);
-  const trying = feePercent !== PLATFORM_FEE_PERCENT;
+  // The fee the site charges today: 0% during the founding artists' offer, then PLATFORM_FEE_PERCENT.
+  const siteFee = platformFeePercent(new Date());
+  const fees = [...new Set([...FEE_PRESETS, siteFee, PLATFORM_FEE_PERCENT, feePercent])].sort((a, b) => a - b);
+  const trying = feePercent !== siteFee;
 
   return (
     <aside
@@ -73,8 +75,9 @@ export function Receipt({
           <p className="text-xs text-paper-muted">
             {trying ? (
               <>
-                Trying a <span className="font-semibold text-on-paper">{feePercent}%</span> fee. The site charges{" "}
-                {PLATFORM_FEE_PERCENT}% (<code className="text-[0.6875rem]">src/lib/plans.ts</code>).
+                Trying a <span className="font-semibold text-on-paper">{feePercent}%</span> fee. The site charges {siteFee}%
+                {siteFee === 0 && <> until {FEE_FREE_UNTIL_LABEL}, then {PLATFORM_FEE_PERCENT}%</>} (
+                <code className="text-[0.6875rem]">src/lib/plans.ts</code>).
               </>
             ) : (
               <>What if the fee were…</>
@@ -86,7 +89,7 @@ export function Receipt({
               return (
                 <li key={fee}>
                   <Link
-                    href={adminHref(query, { fee: fee === PLATFORM_FEE_PERCENT ? null : fee })}
+                    href={adminHref(query, { fee: fee === siteFee ? null : fee })}
                     scroll={false}
                     aria-current={current ? "true" : undefined}
                     className={`inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold tabular-nums transition-colors ${
@@ -95,7 +98,7 @@ export function Receipt({
                         : "border-on-paper/25 text-on-paper hover:border-on-paper/60"
                     }`}
                   >
-                    {fee}%{fee === PLATFORM_FEE_PERCENT && <span className="font-medium opacity-70">set</span>}
+                    {fee}%{fee === siteFee && <span className="font-medium opacity-70">set</span>}
                   </Link>
                 </li>
               );
@@ -104,7 +107,7 @@ export function Receipt({
         </div>
 
         <p className="mt-5 text-center text-[0.6875rem] leading-snug text-paper-muted">
-          Estimated: no checkout yet. Orders the team marked paid, adoptables marked sold, plans the team gave.
+          Estimated: orders paid (through Stripe or marked by the team), adoptables sold, plans the team gave.
         </p>
         {/* A barcode, for the look of it. */}
         <div aria-hidden className="mx-auto mt-4 h-8 w-40 bg-[repeating-linear-gradient(90deg,currentColor_0_2px,transparent_2px_4px,currentColor_4px_5px,transparent_5px_8px,currentColor_8px_11px,transparent_11px_12px)] opacity-80" />

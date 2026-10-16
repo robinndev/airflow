@@ -35,6 +35,7 @@ export const KIND_INK: Record<NotificationKind, string> = {
   invite_joined: "text-lilac-ink dark:text-lilac",
   commission_request: "text-ocean-ink dark:text-ocean",
   request_update: "text-ocean-ink dark:text-ocean",
+  adoption: "text-lilac-ink dark:text-lilac",
   became_artist: "text-lilac-ink dark:text-lilac",
   artist_codes: "text-lilac-ink dark:text-lilac",
   verified: "text-mint-ink dark:text-mint",
@@ -144,7 +145,19 @@ const STATUS_STAMP: Record<RequestStatus, { label: string; tone: "mint" | "lilac
   in_progress: { label: "Started", tone: "ocean" },
   delivered: { label: "Delivered", tone: "mint" },
   expired: { label: "Expired", tone: "muted" },
+  refunded: { label: "Refunded", tone: "muted" },
 };
+
+/** One of your adoptables found a home: the shelf's "Adopted" stamp. */
+export function AdoptedStamp({ rotate = -8 }: { rotate?: number }) {
+  return (
+    <span aria-hidden className="block shrink-0" style={{ rotate: `${rotate}deg` }}>
+      <Stamp tone="lilac" onPaper>
+        Adopted ♥
+      </Stamp>
+    </span>
+  );
+}
 
 /** A commission request, tucked into the book as a perforated ticket stub. */
 export function RequestTicket({ estimateUsd, status, rotate = 0 }: { estimateUsd?: number; status: RequestStatus; rotate?: number }) {

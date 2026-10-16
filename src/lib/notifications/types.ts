@@ -5,7 +5,7 @@ import type { ImageAsset } from "@/lib/profile/types";
  * `public.notifications`, written only by database triggers (likes,
  * comments, follows, reposts, mentions, invites, commission requests;
  * supabase/migrations/*_notifications*.sql) and shaped here by server.ts.
- * Commission notices are read apart from the rest (see NoticeScope).
+ * Commission and adoption notices are read apart from the rest (see NoticeScope).
  */
 
 export type NotificationKind =
@@ -19,6 +19,8 @@ export type NotificationKind =
   | "invite_joined"
   | "commission_request"
   | "request_update"
+  /** Someone paid for one of your adoptables (it's theirs now). */
+  | "adoption"
   /** You got artist access (from someone's artist code, or the team). */
   | "became_artist"
   /** Artist codes arrived to hand on (from the team, or Flow+'s weekly one). */
@@ -34,7 +36,7 @@ export type NotificationKind =
  */
 export type NoticeScope = "book" | "orders";
 
-export const ORDER_KINDS = ["commission_request", "request_update"] as const satisfies readonly NotificationKind[];
+export const ORDER_KINDS = ["commission_request", "request_update", "adoption"] as const satisfies readonly NotificationKind[];
 
 export const scopeOfKind = (kind: string): NoticeScope =>
   (ORDER_KINDS as readonly string[]).includes(kind) ? "orders" : "book";
@@ -50,7 +52,8 @@ export type RequestStatus =
   | "paid"
   | "in_progress"
   | "delivered"
-  | "expired";
+  | "expired"
+  | "refunded";
 
 export type NoteActor = { handle: string; name: string; avatar: ImageAsset };
 
@@ -66,7 +69,9 @@ export type AppNotification = {
   /** What they wrote: a comment, a mention, a repost's note, a request's brief. */
   quote?: string;
   /** `declinedQuote`: the buyer cancelled after the artist's quote (said no to it). */
-  commission?: { service: string; status: RequestStatus; estimateUsd?: number; declinedQuote?: boolean };
+  commission?: { service: string; status: RequestStatus; estimateUsd?: number; declinedQuote?: boolean; refundedByTeam?: boolean };
+  /** An adoption: the character and what it sold for. */
+  adoption?: { name: string; priceUsd?: number };
   /** Artist access and codes: your artist number, how many codes arrived, whether it's Flow+'s weekly one. */
   artist?: { number?: number; codes?: number; weekly?: boolean };
   href: string;

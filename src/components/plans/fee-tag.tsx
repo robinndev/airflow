@@ -1,8 +1,8 @@
-import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { FEE_FREE_UNTIL_LABEL, PLATFORM_FEE_PERCENT } from "@/lib/plans";
 
 const HOLE = "radial-gradient(circle at 50% 17px, transparent 5.5px, black 6px)";
 
-/** The platform fee as a paper price tag pinned to the wall; swings on hover. */
+/** The platform fee as a paper price tag pinned to the wall (0% during the founding artists' offer); swings on hover. */
 export function FeeTag({ className = "" }: { className?: string }) {
   return (
     <div className={`group/tag flex w-40 flex-col items-center ${className}`}>
@@ -16,10 +16,13 @@ export function FeeTag({ className = "" }: { className?: string }) {
           style={{ maskImage: HOLE, WebkitMaskImage: HOLE }}
         >
           <span className="text-[0.625rem] font-bold tracking-[0.18em] text-paper-muted uppercase">Platform fee</span>
-          <span className="mt-1 font-display text-[2.75rem] leading-none font-extrabold tabular-nums">
+          {/* The founding artists' offer: the usual fee struck out in pencil. */}
+          <span className="relative mt-1 font-display text-lg leading-none font-extrabold text-paper-muted tabular-nums">
             {PLATFORM_FEE_PERCENT}%
+            <span aria-hidden className="absolute top-1/2 -left-1.5 h-[2.5px] w-[calc(100%+0.75rem)] -rotate-[12deg] rounded-full bg-like/80" />
           </span>
-          <span className="mt-1.5 text-xs leading-tight text-paper-muted">on every sale, every finish</span>
+          <span className="font-display text-[2.75rem] leading-none font-extrabold tabular-nums">0%</span>
+          <span className="mt-1.5 text-xs leading-tight text-paper-muted">until {FEE_FREE_UNTIL_LABEL}, every finish</span>
         </span>
       </span>
     </div>

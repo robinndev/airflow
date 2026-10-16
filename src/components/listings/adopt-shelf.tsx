@@ -6,7 +6,10 @@ import { Check, MessageCircle, ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { AdoptCard, PaletteDots } from "@/components/explore/adopt-card";
 import { Stamp } from "@/components/explore/stamp";
+import { getAdoptionOptions } from "@/app/(site)/payment-actions";
 import { openChat } from "@/components/messages/store";
+import { PayButton } from "@/components/payments/pay-button";
+import type { AdoptionOptions } from "@/lib/payments/checkout";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
 import { ADOPT_STATUS } from "@/lib/listings/catalog";
@@ -147,7 +150,6 @@ export function AdoptShelf({ artist, adoptables }: { artist: Artist; adoptables:
 
 function AdoptDetails({ adopt, artist, onClose }: { adopt: Adoptable; artist: Artist; onClose: () => void }) {
   const router = useRouter();
-  const sold = adopt.status === "sold";
   const firstName = artist.name.split(" ")[0];
 
   return (
@@ -200,13 +202,7 @@ function AdoptDetails({ adopt, artist, onClose }: { adopt: Adoptable; artist: Ar
       </ol>
 
       <div className="mt-auto grid gap-3">
-        {sold ? (
-          <p className="rounded-[14px] bg-ice px-4 py-3 text-sm text-muted">{adopt.name} already has a new home.</p>
-        ) : (
-          <button type="button" disabled className={buttonClasses({ size: "lg", className: "h-12 w-full" })}>
-            {adopt.status === "reserved" ? "On hold for someone" : `Adopt for ${formatUsdExact(adopt.priceUsd)} · checkout opens soon`}
-          </button>
-        )}
+        <AdoptAction adopt={adopt} firstName={firstName} />
         <div className="flex items-center gap-3">
           <Avatar image={{ ...artist.avatar, alt: "" }} size={36} className="size-9" />
           <p className="min-w-0 flex-1 truncate text-sm text-muted">
@@ -226,9 +222,47 @@ function AdoptDetails({ adopt, artist, onClose }: { adopt: Adoptable; artist: Ar
         </div>
         <p className="flex items-start gap-2 text-xs text-muted">
           <ShieldCheck aria-hidden className="mt-px size-4 shrink-0 text-mint-strong" />
-          Pay on Artiflow only. Anyone asking you to pay elsewhere isn&apos;t protected by us.
+          Pay on Artiflow only: secure checkout by Stripe, straight to {firstName}. Anyone asking you to pay elsewhere isn&apos;t protected by us.
         </p>
       </div>
     </div>
   );
+}
+
+/**
+ * The sheet's main button, asked for when the sheet opens: whether the
+ * artist can be paid right now, someone else is mid-checkout, and the day's
+ * price in reais (artists in Brazil). Never a button that can't charge.
+ */
+function AdoptAction({ adopt, firstName }: { adopt: Adoptable; firstName: string }) {
+  const [answer, setAnswer] = useState<{ id: string; options: AdoptionOptions } | null>(null);
+  useEffect(() => {
+    let live = true;
+    getAdoptionOptions(adopt.id).then((options) => live && setAnswer({ id: adopt.id, options }));
+    return () => {
+      live = false;
+    };
+  }, [adopt.id, adopt.status]);
+
+  const options = answer?.id === adopt.id ? answer.options : null;
+  const state = adopt.status === "sold" && options?.state !== "mine" ? "sold" : options?.state;
+  const price = formatUsdExact(adopt.priceUsd);
+  const note = (text: string) => <p className="rounded-[14px] bg-ice px-4 py-3 text-sm text-muted">{text}</p>;
+  const idle = (text: string) => (
+    <button type="button" disabled className={buttonClasses({ size: "lg", className: "h-12 w-full" })}>
+      {text}
+    </button>
+  );
+
+  if (state === "mine") return note(`${adopt.name} is yours ♥ ${firstName} will send you the files.`);
+  if (state === "sold") return note(`${adopt.name} already has a new home.`);
+  if (adopt.status === "reserved" || state === "held") return idle("On hold for someone");
+  if (state === "yours") return note("This one is yours to sell.");
+  if (state === "gone") return note("This one isn't listed anymore.");
+  if (state === "in_checkout") return idle("Someone is paying for this one right now");
+  if (state === "no_payouts") return idle(`Adopt for ${price} once ${firstName} sets up payouts`);
+  if (options?.state === "open") {
+    return <PayButton kind="adoption" id={adopt.id} options={options.options} verb="Adopt for" size="lg" test={options.test} />;
+  }
+  return idle(`Adopt for ${price}`);
 }

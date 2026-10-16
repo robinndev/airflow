@@ -31,6 +31,13 @@ function CornerStamp({ order }: { order: QueueOrder }) {
       </Stamp>
     );
   }
+  if (order.orderStatus === "refunded") {
+    return (
+      <Stamp tone="muted" onPaper className="rotate-[5deg] bg-paper">
+        Refunded
+      </Stamp>
+    );
+  }
   if (order.lane === "delivered") {
     return (
       <Stamp tone="ocean" onPaper className="rotate-[6deg] bg-paper">

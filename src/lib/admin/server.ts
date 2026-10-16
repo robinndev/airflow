@@ -1,5 +1,5 @@
 import "server-only";
-import { PLATFORM_FEE_PERCENT } from "@/lib/plans";
+import { platformFeePercent } from "@/lib/plans";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildDashboard, type Dashboard, type RawDashboard } from "./metrics";
 import { windowOf, type AdminQuery } from "./range";
@@ -24,5 +24,6 @@ export async function getAdminDashboard(query: AdminQuery): Promise<Dashboard> {
     p_without_team: query.withoutTeam,
   });
   if (error) throw new Error(`The back office couldn't load: ${error.message}`);
-  return buildDashboard(data as RawDashboard, window, query.fee ?? PLATFORM_FEE_PERCENT);
+  // The fee in force today (0% during the founding artists' offer); `?fee=` tries another.
+  return buildDashboard(data as RawDashboard, window, query.fee ?? platformFeePercent(new Date()));
 }

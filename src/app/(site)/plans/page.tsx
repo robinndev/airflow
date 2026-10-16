@@ -10,7 +10,7 @@ import { HoloTilt } from "@/components/plans/holo-tilt";
 import { PlanCard } from "@/components/plans/plan-card";
 import { YourCard } from "@/components/plans/your-card";
 import { SiteHeader } from "@/components/site/site-header";
-import { PLANS, PLAN_ORDER, PLATFORM_FEE_PERCENT, type PlanId } from "@/lib/plans";
+import { FEE_FREE, FEE_FREE_UNTIL_LABEL, PLANS, PLAN_ORDER, PLATFORM_FEE_PERCENT, type PlanId } from "@/lib/plans";
 
 // The artist's handwriting, for the asides.
 const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
@@ -169,8 +169,10 @@ export default function PlansPage() {
                 The finish changes the look, never your cut.
               </h2>
               <p className="mt-3 max-w-xl text-base leading-relaxed text-pretty text-muted">
-                Every plan pays the same {PLATFORM_FEE_PERCENT}% on sales, and no plan changes that. Prices in USD,
-                billed monthly. Checkout opens soon.
+                No plan changes the platform fee. Founding artists pay 0% on sales for {FEE_FREE.months} months, until{" "}
+                {FEE_FREE_UNTIL_LABEL}; then it&apos;s {PLATFORM_FEE_PERCENT}%, whatever the finish. Stripe&apos;s own processing fee is
+                separate: it&apos;s Stripe&apos;s, taken from each card payment. Plan prices in USD, billed monthly. Plan checkout opens
+                soon.
               </p>
             </div>
           </div>

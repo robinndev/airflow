@@ -1,5 +1,11 @@
 import "server-only";
+import { headers } from "next/headers";
 import { toImageAsset, type StoredImage } from "@/lib/art-storage";
+import { recordMissingFees } from "@/lib/payments/checkout";
+import { usdToBrl } from "@/lib/payments/fx";
+import { getPayoutAccount, payableArtists } from "@/lib/payments/payouts";
+import { amountIn, currenciesFor, formatMoney } from "@/lib/payments/rules";
+import { stripeTestMode } from "@/lib/payments/stripe";
 import { ACCOUNT_COLUMNS, toArtistProfile, type AccountRow } from "@/lib/profile/accounts";
 import { db } from "@/lib/profile/mock-db";
 import type { Viewer } from "@/lib/session";
@@ -14,8 +20,9 @@ import type { MyRequest, RequestStatus } from "./requests";
  * *_commission_orders.sql migration), as the artist's tickets (/commissions)
  * and the buyer's postcards (/requests). The order runs
  * pending | waitlisted → quoted → paid → in_progress → delivered, or ends
- * declined / cancelled / expired. Paying is stubbed until checkout exists:
- * only the team marks an order paid (`npm run orders`). Requests to the demo
+ * declined / cancelled / expired, or refunded after paying. Buyers pay a quote
+ * through Stripe, on the artist's own account (src/lib/payments/); the team
+ * can still mark test orders paid (`npm run orders`). Requests to the demo
  * artists are stored too (`demo_artist`), so the buyer's side is all real;
  * nobody answers those.
  */
@@ -46,8 +53,12 @@ type Row = {
   answer_note: string | null;
   paused: boolean;
   archived_by_artist: boolean;
-  /** Holds one of its service's slots (released on decline, cancel, expiry, or a delivery that gives it back). */
+  /** Holds one of its service's slots (released on decline, cancel, expiry, refund, or a delivery that gives it back). */
   holds_slot: boolean;
+  /** From refundsOf(), only for refunded orders. */
+  refunded_at?: string | null;
+  refund_note?: string | null;
+  refunded_by?: "artist" | "team" | "dashboard" | null;
   /** Only on the artist's own read. */
   artist_note?: string | null;
   /** A demo artist (mock-db) instead of an account, and their service's id. */
@@ -86,6 +97,24 @@ async function cancelReasons(client: Client, rows: Pick<Row, "id" | "status">[])
   return reasons;
 }
 
+/**
+ * When refunded orders were refunded, and what the artist said. Only orders
+ * already `refunded` (a status from *_payments.sql) are asked for, so a
+ * database without that migration never reads the missing columns.
+ */
+async function withRefunds(client: Client, rows: Row[]): Promise<Row[]> {
+  const ids = rows.filter((row) => row.status === "refunded").map((row) => row.id);
+  if (ids.length === 0) return rows;
+  // `refunded_by` came later (*_refunds_and_team_money.sql): read without it if it isn't there yet.
+  type Refund = { id: string } & Pick<Row, "refunded_at" | "refund_note" | "refunded_by">;
+  const full = await client.from("commission_requests").select("id, refunded_at, refund_note, refunded_by").in("id", ids).returns<Refund[]>();
+  const data = full.error
+    ? (await client.from("commission_requests").select("id, refunded_at, refund_note").in("id", ids).returns<Refund[]>()).data
+    : full.data;
+  const byId = new Map((data ?? []).map((row) => [row.id, row]));
+  return rows.map((row) => (byId.has(row.id) ? { ...row, ...byId.get(row.id) } : row));
+}
+
 /** Quotes past their expiry close (and give their slots back) before anyone reads them. */
 async function expireQuotes() {
   await createSupabaseAdmin().rpc("expire_commission_quotes").then(
@@ -118,9 +147,47 @@ const LANE: Record<OrderStatus, Lane> = {
   declined: "request",
   cancelled: "request",
   expired: "proposal",
+  refunded: "queued",
 };
 
-const CLOSED: OrderStatus[] = ["declined", "cancelled", "expired"];
+const CLOSED: OrderStatus[] = ["declined", "cancelled", "expired", "refunded"];
+
+type Charge = {
+  request_id: string;
+  amount_cents: number;
+  currency: string;
+  processor_fee_cents: number | null;
+  net_cents: number | null;
+  settlement_currency: string | null;
+  status: "paid" | "refund_pending" | "refunded" | "disputed";
+};
+
+/** What was paid through Stripe for these orders (latest payment that went through, per order). */
+async function chargesFor(ids: string[]): Promise<Map<string, Charge>> {
+  const charges = new Map<string, Charge>();
+  if (ids.length === 0) return charges;
+  await recordMissingFees(ids).catch(() => undefined);
+  const { data, error } = await createSupabaseAdmin()
+    .from("payments")
+    .select("request_id, amount_cents, currency, processor_fee_cents, net_cents, settlement_currency, status")
+    .in("request_id", ids)
+    .in("status", ["paid", "refund_pending", "refunded", "disputed"])
+    .order("created_at", { ascending: true })
+    .returns<Charge[]>();
+  if (error) return charges;
+  for (const row of data) charges.set(row.request_id, row);
+  return charges;
+}
+
+const chargedOf = (charge?: Charge) =>
+  charge && {
+    amount: formatMoney(charge.amount_cents, charge.currency),
+    ...(charge.processor_fee_cents !== null && charge.settlement_currency && { stripeFee: formatMoney(charge.processor_fee_cents, charge.settlement_currency) }),
+    ...(charge.net_cents !== null && charge.settlement_currency && { net: formatMoney(charge.net_cents, charge.settlement_currency) }),
+    ...(charge.status === "refunded" && { refunded: true }),
+    ...(charge.status === "refund_pending" && { refundPending: true }),
+    ...(charge.status === "disputed" && { disputed: true }),
+  };
 
 /** Requests to the signed-in artist, as tickets in their queue (newest first). */
 export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[]> {
@@ -135,9 +202,15 @@ export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[
     .returns<Row[]>();
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your commissions: ${error.message}`);
-  const reasons = await cancelReasons(createSupabaseAdmin(), data);
+  const rows = await withRefunds(createSupabaseAdmin(), data);
+  const [reasons, charges, payouts] = await Promise.all([
+    cancelReasons(createSupabaseAdmin(), rows),
+    chargesFor(rows.filter((row) => row.paid_at).map((row) => row.id)),
+    getPayoutAccount(viewer.id).catch(() => null),
+  ]);
 
-  return data.map((row) => {
+  return rows.map((row) => {
+    const charged = chargedOf(charges.get(row.id));
     const why = reasons.get(row.id);
     const client = toArtistProfile(row.buyer);
     const closed = CLOSED.includes(row.status);
@@ -155,6 +228,11 @@ export async function fetchIncomingRequests(viewer: Viewer): Promise<QueueOrder[
       ...(row.status === "in_progress" && { step: row.step ?? "sketch" }),
       ...(row.status === "delivered" && { step: "render" as const }),
       payment: row.status === "quoted" ? "invoiced" : ["paid", "in_progress", "delivered"].includes(row.status) ? "paid" : "unpaid",
+      payouts: payouts?.status ?? "none",
+      ...(charged && { charged }),
+      ...(row.refunded_at && { refundedAt: row.refunded_at }),
+      ...(row.refund_note && { refundNote: row.refund_note }),
+      ...(row.refunded_by && { refundedBy: row.refunded_by }),
       usage: row.usage,
       ...(row.status === "waitlisted" && { waitlist: true }),
       ...(row.paused && { paused: true }),
@@ -195,7 +273,45 @@ const STATUS: Record<OrderStatus, RequestStatus> = {
   declined: "declined",
   cancelled: "cancelled",
   expired: "expired",
+  refunded: "refunded",
 };
+
+/**
+ * How the buyer can pay each quote: the artists whose payouts are on, in the
+ * currencies they take (reais first for buyers in Brazil, by where the
+ * request comes from).
+ */
+async function payOptions(rows: Row[]): Promise<Map<string, MyRequest["pay"]>> {
+  const options = new Map<string, MyRequest["pay"]>();
+  const quoted = rows.filter((row) => row.status === "quoted" && row.artist && !row.demo_artist);
+  if (quoted.length === 0) return options;
+  const ready = await payableArtists(quoted.map((row) => row.artist!.id));
+  const needsReais = quoted.some((row) => ready.get(row.artist!.id)?.country === "BR");
+  const [fx, h] = await Promise.all([needsReais ? usdToBrl() : null, headers()]);
+  const inBrazil = h.get("x-vercel-ip-country")?.toUpperCase() === "BR";
+  for (const row of quoted) {
+    const account = ready.get(row.artist!.id);
+    if (!account) {
+      options.set(row.id, { ready: false });
+      continue;
+    }
+    const price = priceOf(row);
+    const choices = currenciesFor(account.country)
+      .filter((currency) => currency === "usd" || fx)
+      .map((currency) => ({ currency, amount: formatMoney(amountIn(price, currency, fx?.rate), currency) }));
+    // Reais first for buyers in Brazil; dollars first for everyone else.
+    choices.sort((a, b) => (a.currency === b.currency ? 0 : (a.currency === "brl") === inBrazil ? -1 : 1));
+    options.set(row.id, { ready: true, options: choices, ...(stripeTestMode() && { test: true }) });
+  }
+  return options;
+}
+
+/** Refunded orders whose money is still waiting on the artist's Stripe balance. */
+async function pendingRefunds(ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const { data, error } = await createSupabaseAdmin().from("payments").select("request_id").in("request_id", ids).eq("status", "refund_pending");
+  return new Set(error ? [] : (data ?? []).map((row) => row.request_id as string));
+}
 
 /** Requests the signed-in buyer sent to real artists, as postcards. */
 export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
@@ -210,9 +326,14 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
     .returns<Row[]>();
   if (error && NOT_MIGRATED.has(error.code)) return [];
   if (error) throw new Error(`Couldn't load your requests: ${error.message}`);
-  const reasons = await cancelReasons(supabase, data);
+  const rows = await withRefunds(supabase, data);
+  const [reasons, pay, waiting] = await Promise.all([
+    cancelReasons(supabase, rows),
+    payOptions(rows).catch(() => new Map<string, MyRequest["pay"]>()),
+    pendingRefunds(rows.filter((row) => row.status === "refunded").map((row) => row.id)),
+  ]);
 
-  return data.flatMap((row) => {
+  return rows.flatMap((row) => {
     const why = reasons.get(row.id);
     const demo = row.demo_artist ? db.profiles.find((p) => p.handle === row.demo_artist) : undefined;
     const artist = demo ?? (row.artist && toArtistProfile(row.artist));
@@ -239,7 +360,12 @@ export async function fetchSentRequests(viewer: Viewer): Promise<MyRequest[]> {
       ...(row.paid_at && { paidAt: row.paid_at }),
       ...(row.due_date && { dueAt: `${row.due_date}T23:59:00Z` }),
       ...(row.delivered_at && { deliveredAt: row.delivered_at }),
-      ...(closed && { closedAt: row.updated_at }),
+      ...(closed && { closedAt: row.refunded_at ?? row.updated_at }),
+      ...(row.refunded_at && { refundedAt: row.refunded_at }),
+      ...(row.refund_note && { refundNote: row.refund_note }),
+      ...(row.refunded_by && { refundedBy: row.refunded_by }),
+      ...(waiting.has(row.id) && { refundPending: true }),
+      ...(pay.has(row.id) && { pay: pay.get(row.id) }),
       ...(note && { artistNote: note }),
       ...(why && { cancelReason: why.reason, ...(why.note && { cancelNote: why.note }) }),
       ...(delivery && { delivery: delivery.images[0] }),

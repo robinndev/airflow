@@ -1,4 +1,5 @@
 import type { ImageAsset } from "@/lib/profile/types";
+import type { PayoutStatus } from "../payments/rules.ts";
 import type { CancelReason } from "./cancel.ts";
 
 /*
@@ -67,6 +68,14 @@ export type QueueOrder = {
   cancelNote?: string;
   /** What the artist delivered. */
   delivery?: { images: ImageAsset[]; note?: string };
+  /** Real orders: where the artist's payouts stand ("none": not set up). Buyers can pay only once they're on. */
+  payouts?: PayoutStatus | "none";
+  /** What the buyer paid through Stripe, as Stripe counted it (the fee and the net once Stripe settled it). */
+  charged?: { amount: string; stripeFee?: string; net?: string; refunded?: boolean; refundPending?: boolean; disputed?: boolean };
+  /** Refunded by the artist (here or from their Stripe Dashboard) or by the team, with what they said. */
+  refundedAt?: string;
+  refundNote?: string;
+  refundedBy?: "artist" | "team" | "dashboard";
 };
 
 /** A real order's state (`commission_requests.status`). */
@@ -79,7 +88,8 @@ export type OrderStatus =
   | "delivered"
   | "declined"
   | "cancelled"
-  | "expired";
+  | "expired"
+  | "refunded";
 
 export const LANES: Lane[] = ["request", "proposal", "queued", "wip", "delivered"];
 

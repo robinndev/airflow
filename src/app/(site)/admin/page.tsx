@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Caveat } from "next/font/google";
-import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Suspense } from "react";
 import { BackOffice } from "@/components/admin/back-office";
 import { Scribble, Wash } from "@/components/explore/doodles";
@@ -66,6 +67,13 @@ async function Admin({ searchParams }: Pick<PageProps<"/admin">, "searchParams">
             Who joined, who came back, what was commissioned, adopted and bought, and what Artiflow keeps. Hi,{" "}
             <span className="font-semibold text-ink">@{viewer.handle}</span>.
           </p>
+          <Link
+            href="/admin/payments"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ocean underline-offset-4 hover:underline"
+          >
+            Payments and refunds
+            <ArrowRight aria-hidden className="size-4" />
+          </Link>
         </div>
       </section>
 

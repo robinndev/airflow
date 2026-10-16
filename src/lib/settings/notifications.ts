@@ -45,9 +45,9 @@ export const NOTICE_GROUPS: { title: string; items: Choice[] }[] = [
 /** Always written, whatever the settings say. */
 export const ALWAYS_ON: { label: string; hint: string; kinds: NotificationKind[] }[] = [
   {
-    label: "Commissions",
-    hint: "Requests, quotes, cancellations and every step of an order, on the order clipboard beside the bell. Someone is waiting on you.",
-    kinds: ["commission_request", "request_update"],
+    label: "Commissions and adoptions",
+    hint: "Requests, quotes, payments, refunds, every step of an order and your adopted characters, on the order clipboard beside the bell. Someone is waiting on you.",
+    kinds: ["commission_request", "request_update", "adoption"],
   },
   {
     label: "Notes from Artiflow",

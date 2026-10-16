@@ -11,6 +11,9 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type TeamRole = "admin" | "moderator";
 
+/** Money powers, given to people by name (`npm run team -- grant @handle money.refund`). */
+export type TeamPermission = "money.refund" | "money.hold";
+
 export const TEAM_TAG = "team";
 
 async function fetchRole(userId: string): Promise<TeamRole | null> {
@@ -18,6 +21,13 @@ async function fetchRole(userId: string): Promise<TeamRole | null> {
   // A database without the team table has no team.
   if (error) return null;
   return (data?.role as TeamRole | undefined) ?? null;
+}
+
+/** A team member's money permissions, read fresh (a database without them has none). */
+export async function teamPermissions(userId: string): Promise<TeamPermission[]> {
+  const { data, error } = await createSupabaseAdmin().from("team_members").select("permissions").eq("user_id", userId).maybeSingle();
+  if (error || !data) return [];
+  return ((data.permissions as string[] | null) ?? []).filter((p): p is TeamPermission => p === "money.refund" || p === "money.hold");
 }
 
 /**
