@@ -16,13 +16,15 @@ import {
   priceFrom,
   sortPackages,
   turnaroundLabel,
+  turnaroundUnit,
+  type TurnaroundUnit,
   type ServiceCategory,
   type StyleTag,
 } from "@/lib/listings/catalog";
 import { classicLadder, serviceInputOf, slugId, type ServiceDraft } from "@/lib/listings/editable";
 import { serviceInput } from "@/lib/listings/schema";
 import type { AddonPrice, CommissionService, ImageAsset, UsageRights } from "@/lib/profile/types";
-import { Block, ChipInput, Field, MoneyInput, Segmented, inputClass } from "./fields";
+import { Block, ChipInput, Field, MoneyInput, NumberInput, Segmented, inputClass } from "./fields";
 import { ListingImages } from "./listing-images";
 
 type Artist = { handle: string; name: string; avatar: ImageAsset };
@@ -222,14 +224,13 @@ export function ServiceEditor({
                 {draft.slotsTotal !== null && (
                   <div className="grid gap-5 sm:grid-cols-[10rem_minmax(0,1fr)]">
                     <Field label="Slots" htmlFor={`${titleId}-slots`}>
-                      <input
+                      <NumberInput
                         id={`${titleId}-slots`}
-                        type="number"
+                        label="Slots"
+                        value={draft.slotsTotal}
                         min={1}
                         max={LIMITS.slots}
-                        value={draft.slotsTotal}
-                        onChange={(e) => set("slotsTotal", Math.max(1, Math.min(LIMITS.slots, Number(e.target.value) || 1)))}
-                        className={`${inputClass} h-10 tabular-nums`}
+                        onChange={(slots) => set("slotsTotal", slots)}
                       />
                     </Field>
                     <Field label="When they run out">
@@ -322,13 +323,16 @@ function previewOf(draft: ServiceDraft, ownerHandle: string, taken: number): Com
   };
 }
 
-/** "Delivered in 5 to 7 days" — days or weeks, stored as days. */
+/** "Delivered in 2 to 4 weeks": days, weeks or months (30 days), stored as days. */
 function Turnaround({ value, onChange }: { value: { min: number; max: number }; onChange: (v: { min: number; max: number }) => void }) {
   const id = useId();
-  const [unit, setUnit] = useState<1 | 7>(value.min % 7 === 0 && value.max % 7 === 0 ? 7 : 1);
-  const show = (days: number) => Math.max(1, Math.round(days / unit));
+  const [unit, setUnit] = useState<TurnaroundUnit>(turnaroundUnit(value));
+  // The most of this unit that fits in a year (12 months, 52 weeks, 365 days).
+  const most = Math.floor(LIMITS.turnaroundDays.max / unit);
+  const show = (days: number) => Math.min(most, Math.max(1, Math.round(days / unit)));
+  // One end moving past the other takes it along.
   const update = (key: "min" | "max", n: number) => {
-    const days = Math.max(1, Math.min(LIMITS.turnaroundDays.max, Math.round(n) * unit));
+    const days = n * unit;
     const next = { ...value, [key]: days };
     if (key === "min" && next.max < days) next.max = days;
     if (key === "max" && next.min > days) next.min = days;
@@ -337,36 +341,23 @@ function Turnaround({ value, onChange }: { value: { min: number; max: number }; 
   return (
     <Field label="Turnaround" hint={`Shown as “${turnaroundLabel(value)}”.`} htmlFor={`${id}-min`}>
       <div className="flex items-center gap-2 text-sm text-muted">
-        <input
-          id={`${id}-min`}
-          type="number"
-          min={1}
-          aria-label="Shortest"
-          value={show(value.min)}
-          onChange={(e) => update("min", Number(e.target.value) || 1)}
-          className={`${inputClass} h-10 w-16 tabular-nums`}
-        />
+        <NumberInput id={`${id}-min`} label="Shortest" value={show(value.min)} min={1} max={most} live={false} onChange={(n) => update("min", n)} className="flex-1" />
         to
-        <input
-          type="number"
-          min={1}
-          aria-label="Longest"
-          value={show(value.max)}
-          onChange={(e) => update("max", Number(e.target.value) || 1)}
-          className={`${inputClass} h-10 w-16 tabular-nums`}
-        />
+        <NumberInput label="Longest" value={show(value.max)} min={1} max={most} live={false} onChange={(n) => update("max", n)} className="flex-1" />
         <select
           aria-label="Unit"
           value={unit}
           onChange={(e) => {
-            const next = Number(e.target.value) as 1 | 7;
+            const next = Number(e.target.value) as TurnaroundUnit;
+            const fit = (days: number) => Math.min(Math.floor(LIMITS.turnaroundDays.max / next), Math.max(1, Math.round(days / unit))) * next;
             setUnit(next);
-            onChange({ min: Math.max(1, Math.round(value.min / unit)) * next, max: Math.max(1, Math.round(value.max / unit)) * next });
+            onChange({ min: fit(value.min), max: fit(value.max) });
           }}
           className={`${inputClass} h-10 w-auto`}
         >
           <option value={1}>days</option>
           <option value={7}>weeks</option>
+          <option value={30}>months</option>
         </select>
       </div>
     </Field>
@@ -499,20 +490,15 @@ function PriceKind({
         <MoneyInput label={`${label} price`} value={value.usd} onChange={(usd) => onChange({ kind: "fixed", usd })} className="w-24" />
       )}
       {value?.kind === "percent" && (
-        <span className="relative">
-          <input
-            aria-label={`${label} share of the price`}
-            type="number"
-            min={1}
-            max={500}
-            value={value.percent}
-            onChange={(e) => onChange({ kind: "percent", percent: Math.max(1, Math.min(500, Math.round(Number(e.target.value) || 1))) })}
-            className={`${inputClass} h-9 w-24 pr-7 tabular-nums`}
-          />
-          <span aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted">
-            %
-          </span>
-        </span>
+        <NumberInput
+          label={`${label} share of the price`}
+          value={value.percent}
+          min={1}
+          max={500}
+          suffix="%"
+          onChange={(percent) => onChange({ kind: "percent", percent })}
+          className="w-24 shrink-0"
+        />
       )}
     </div>
   );

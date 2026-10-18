@@ -84,6 +84,78 @@ export function MoneyInput({
 }
 
 /**
+ * A whole number typed freely: digits only, so it can be cleared and retyped
+ * (a number input that snaps back to its minimum on every keystroke can't).
+ * It settles into `min`–`max` when the field is left. `live` reports values in
+ * range while typing (a price preview follows); otherwise only on leaving or
+ * Enter (when the value moves another field, like a range's other end).
+ * `suffix` sits inside on the right ("%").
+ */
+export function NumberInput({
+  value,
+  onChange,
+  label,
+  min,
+  max,
+  live = true,
+  suffix,
+  id,
+  className = "",
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label: string;
+  min: number;
+  max: number;
+  live?: boolean;
+  suffix?: string;
+  id?: string;
+  className?: string;
+}) {
+  const [text, setText] = useState(String(value));
+  // Follow outside changes (a unit switch, a preset) without fighting the person typing.
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setText(String(value));
+  }
+  /** Settles the typed number into range; true if that changed the value. */
+  const settle = () => {
+    const n = Math.min(max, Math.max(min, Math.round(Number(text)) || value));
+    setText(String(n));
+    if (n !== value) onChange(n);
+    return n !== value;
+  };
+  return (
+    <span className={`relative block ${className}`}>
+      <input
+        id={id}
+        aria-label={label}
+        inputMode="numeric"
+        value={text}
+        onChange={(e) => {
+          const next = e.target.value.replace(/\D/g, "").slice(0, String(max).length);
+          setText(next);
+          const n = Number(next);
+          if (live && next !== "" && n >= min && n <= max) onChange(n);
+        }}
+        onBlur={settle}
+        // Enter commits a changed number first (a form would otherwise send the old one); the next Enter submits.
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && settle()) e.preventDefault();
+        }}
+        className={`${inputClass} h-10 tabular-nums ${suffix ? "pr-7" : ""}`}
+      />
+      {suffix && (
+        <span aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted">
+          {suffix}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * One-click choice drawn as a row of options (a radio group underneath, so
  * arrows and screen readers work).
  */

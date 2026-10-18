@@ -13,7 +13,13 @@ describe("turnaroundLabel", () => {
     assert.equal(turnaroundLabel({ min: 14, max: 14 }), "2 weeks");
     assert.equal(turnaroundLabel({ min: 1, max: 1 }), "1 day");
     assert.equal(turnaroundLabel({ min: 10, max: 10 }), "10 days");
-    assert.equal(turnaroundLabel({ min: 56, max: 84 }), "2–3 months");
+    // Weeks read as weeks (what the artist typed); months are 30 days.
+    assert.equal(turnaroundLabel({ min: 56, max: 84 }), "8–12 weeks");
+    assert.equal(turnaroundLabel({ min: 30, max: 30 }), "1 month");
+    assert.equal(turnaroundLabel({ min: 60, max: 120 }), "2–4 months");
+    assert.equal(turnaroundLabel({ min: 360, max: 360 }), "12 months");
+    // Ends that don't share a unit fall back to the finer one.
+    assert.equal(turnaroundLabel({ min: 14, max: 30 }), "14–30 days");
   });
 });
 

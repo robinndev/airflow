@@ -75,11 +75,24 @@ export const LIMITS = {
 
 /* ------------------------------------------------------------- turnaround */
 
-/** "5 days", "5–7 days", "1–2 weeks", "3 weeks", "1–2 months". */
+/** Days a turnaround unit stands for. A month is 30 days (12 fit in the 365-day cap). */
+export type TurnaroundUnit = 1 | 7 | 30;
+
+/**
+ * The unit a turnaround reads in: months when both ends are whole months,
+ * else weeks when both are whole weeks, else days. The editor stores what the
+ * artist typed in that unit, so it reads back the same way.
+ */
+export function turnaroundUnit({ min, max }: { min: number; max: number }): TurnaroundUnit {
+  if (min % 30 === 0 && max % 30 === 0) return 30;
+  if (min % 7 === 0 && max % 7 === 0) return 7;
+  return 1;
+}
+
+/** "5 days", "5–7 days", "1–2 weeks", "3 weeks", "1 month", "2–4 months". */
 export function turnaroundLabel({ min, max }: { min: number; max: number }) {
-  const unit = (days: number) => (days >= 56 && days % 28 === 0 ? 28 : days % 7 === 0 ? 7 : 1);
-  const step = Math.min(unit(min), unit(max));
-  const name = step === 28 ? "month" : step === 7 ? "week" : "day";
+  const step = turnaroundUnit({ min, max });
+  const name = step === 30 ? "month" : step === 7 ? "week" : "day";
   const [a, b] = [Math.round(min / step), Math.round(max / step)];
   if (a === b) return `${a} ${name}${a === 1 ? "" : "s"}`;
   return `${a}–${b} ${name}s`;

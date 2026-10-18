@@ -88,6 +88,24 @@ test("an artist lists a service with packages and slots, and an adoptable", asyn
   await editor.getByRole("button", { name: "Cel-shaded" }).click();
   await editor.getByRole("button", { name: /Use Sketch · Lineart · Full color/ }).click();
   await editor.getByLabel("Slots", { exact: true }).fill("1");
+  // Turnaround in months (a month is 30 days); each end settles when it's left.
+  await editor.getByLabel("Unit", { exact: true }).selectOption({ label: "months" });
+  await editor.getByLabel("Shortest", { exact: true }).fill("2");
+  await editor.getByLabel("Longest", { exact: true }).fill("4");
+  await editor.getByLabel("Longest", { exact: true }).press("Tab");
+  await expect(editor.getByText("Shown as “2–4 months”.")).toBeVisible();
+  // An add-on priced as a share of the package: the % can be cleared and retyped.
+  await editor.getByRole("button", { name: "Add an extra" }).click();
+  await editor.getByLabel("Add-on 1 name", { exact: true }).fill("Extra character");
+  await editor.getByLabel("Extra character: how it's priced").selectOption({ label: "Extra %" });
+  const share = editor.getByLabel("Extra character share of the price");
+  await expect(share).toHaveValue("50");
+  await share.selectText();
+  await share.press("Backspace");
+  // Cleared, it stays empty (it used to snap back to 1) until the new number is typed.
+  await expect(share).toHaveValue("");
+  await share.pressSequentially("75");
+  await expect(share).toHaveValue("75");
   // The live sheet shows the ladder as buyers will.
   const preview = editor.getByRole("complementary", { name: "Preview" });
   await expect(preview.getByText("Lineart")).toBeVisible();
@@ -101,6 +119,8 @@ test("an artist lists a service with packages and slots, and an adoptable", asyn
   expect(listed.slots_total).toBe(1);
   expect((listed.packages as { label: string }[]).map((p) => p.label)).toEqual(["Sketch", "Lineart", "Full color"]);
   expect(Number(listed.price_from_usd)).toBe(20);
+  const { data: extra } = await admin().from("services").select("turnaround_min_days, turnaround_max_days, addons").eq("title", serviceTitle).single();
+  expect(extra).toMatchObject({ turnaround_min_days: 60, turnaround_max_days: 120, addons: [{ label: "Extra character", price: { kind: "percent", percent: 75 } }] });
 
   // Ready-made.
   await page.getByRole("button", { name: "New adoptable" }).first().click();
