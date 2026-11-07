@@ -81,6 +81,18 @@ export function payoutStatusOf(capability: string | undefined, awaitingArtist: b
 }
 
 /**
+ * Whether to ask Stripe about an account again. Our row can't be trusted to
+ * catch up by itself: Stripe announces a v2 account's card payments turning on
+ * only as a thin event, not as the `account.updated` our webhook gets. Active
+ * rows are left to the check at payment time; a review usually ends within seconds.
+ */
+export function needsRecheck(account: { status: PayoutStatus; checkedAt: string }, now = Date.now()): boolean {
+  if (account.status === "active") return false;
+  const wait = account.status === "review" ? 15_000 : 60_000;
+  return now - new Date(account.checkedAt).getTime() >= wait;
+}
+
+/**
  * The currencies a buyer can pay an artist in. Stripe only charges cards
  * issued in Brazil in reais when the artist is in Brazil ("You can only
  * charge Brazilian cards in BRL in Brazil"), so artists there take reais

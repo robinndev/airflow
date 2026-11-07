@@ -1,6 +1,6 @@
 import "server-only";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { payoutStatusOf, type PayoutCountry, type PayoutStatus } from "./rules";
+import { needsRecheck, payoutStatusOf, type PayoutCountry, type PayoutStatus } from "./rules";
 import { stripe } from "./stripe";
 
 /*
@@ -39,7 +39,10 @@ export async function payableArtists(userIds: string[]): Promise<Map<string, Pay
   if (unique.length === 0) return ready;
   const { data, error } = await createSupabaseAdmin().from("payout_accounts").select("*").in("user_id", unique).returns<Row[]>();
   if (error) return ready;
-  for (const row of data) if (row.status === "active") ready.set(row.user_id, toAccount(row));
+  const accounts = await Promise.all(
+    data.map(toAccount).map((account) => (needsRecheck(account) ? refreshPayoutAccount(account).catch(() => account) : account)),
+  );
+  for (const account of accounts) if (account.status === "active") ready.set(account.userId, account);
   return ready;
 }
 
@@ -59,6 +62,9 @@ export async function refreshPayoutAccountById(accountId: string): Promise<void>
   const { data } = await createSupabaseAdmin().from("payout_accounts").select("*").eq("account_id", accountId).maybeSingle<Row>();
   if (data) await refreshPayoutAccount(toAccount(data));
 }
+
+/** What buyers read on their card statement. Left to Stripe, it's cut from the profile's address. */
+const STATEMENT_NAME = "ARTIFLOW";
 
 const isPublic = (origin: string) => origin.startsWith("https://") && !/\/\/(localhost|127\.0\.0\.1)(:|$)/.test(origin);
 
@@ -80,7 +86,9 @@ export async function createPayoutAccount(input: {
     display_name: input.name.slice(0, 100),
     dashboard: "full",
     identity: { country: input.country.toLowerCase(), entity_type: "individual" },
-    configuration: { merchant: { mcc: "7333", capabilities: { card_payments: { requested: true } } } },
+    configuration: {
+      merchant: { mcc: "7333", statement_descriptor: { descriptor: STATEMENT_NAME }, capabilities: { card_payments: { requested: true } } },
+    },
     defaults: {
       // Stripe bills its processing fee to the artist's account and covers losses it can't recover (Managed Risk).
       responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },

@@ -9,6 +9,7 @@ import {
   currenciesFor,
   formatMoney,
   isPayoutCountry,
+  needsRecheck,
   payoutStatusOf,
   refundState,
   settleAdoption,
@@ -101,4 +102,16 @@ test("a refund waits while the artist's balance can't cover it", () => {
     status: "refund_pending",
     refundedCents: 1000,
   });
+});
+
+test("accounts not active yet are checked with Stripe again, a review sooner", () => {
+  const now = Date.parse("2026-11-07T01:15:30Z");
+  const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
+  assert.equal(needsRecheck({ status: "review", checkedAt: ago(14) }, now), false);
+  assert.equal(needsRecheck({ status: "review", checkedAt: ago(15) }, now), true);
+  assert.equal(needsRecheck({ status: "incomplete", checkedAt: ago(59) }, now), false);
+  assert.equal(needsRecheck({ status: "incomplete", checkedAt: ago(60) }, now), true);
+  assert.equal(needsRecheck({ status: "unsupported", checkedAt: ago(60) }, now), true);
+  // Active accounts are checked when someone pays (readyPayouts).
+  assert.equal(needsRecheck({ status: "active", checkedAt: ago(100_000) }, now), false);
 });

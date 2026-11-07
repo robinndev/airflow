@@ -145,6 +145,10 @@ test("no payouts yet: the buyer can't pay, the artist is asked to set them up", 
   await expect(page.getByRole("heading", { name: "No platform fee for your first 12 months." })).toBeVisible();
   await expect(page.getByText("Stripe's processing fee: still applies")).toBeVisible();
 
+  // Test mode: the exact values Stripe's form passes with, since made-up ones leave it stuck.
+  await expect(page.getByText("address_full_match")).toBeVisible();
+  await expect(page.getByText("01/01/1901")).toBeVisible();
+
   await page.getByLabel("Country you live in").selectOption("US");
   await page.getByRole("button", { name: "Set up payouts with Stripe" }).click();
   await page.waitForURL(/connect\.stripe\.com|stripe\.com/, { timeout: 30_000 });

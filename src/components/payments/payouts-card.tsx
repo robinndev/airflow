@@ -1,10 +1,12 @@
 import { headers } from "next/headers";
+import type { ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
 import { Stamp } from "@/components/explore/stamp";
 import { getPayoutAccount, refreshPayoutAccount, type PayoutAccount } from "@/lib/payments/payouts";
-import { countryName, isPayoutCountry } from "@/lib/payments/rules";
+import { countryName, isPayoutCountry, needsRecheck } from "@/lib/payments/rules";
 import { stripeConfigured, stripeTestMode } from "@/lib/payments/stripe";
 import { ContinuePayouts, SetUpPayouts } from "./payouts-buttons";
+import { PayoutsWatch } from "./payouts-watch";
 
 /*
  * "Getting paid" on /studio: where the artist's payouts stand, and the one
@@ -12,13 +14,10 @@ import { ContinuePayouts, SetUpPayouts } from "./payouts-buttons";
  * Stripe account; Stripe asks what it needs on its own pages.
  */
 
-const MINUTE = 60_000;
-
 /** The artist's payout account, checked with Stripe again when it isn't active yet. */
 async function currentAccount(userId: string): Promise<PayoutAccount | null> {
   const account = await getPayoutAccount(userId);
-  if (!account || account.status === "active") return account;
-  if (Date.now() - new Date(account.checkedAt).getTime() < MINUTE) return account;
+  if (!account || !needsRecheck(account)) return account;
   return refreshPayoutAccount(account).catch(() => account);
 }
 
@@ -26,6 +25,7 @@ export async function PayoutsCard({ userId }: { userId: string }) {
   if (!stripeConfigured()) return null;
   const [account, h] = await Promise.all([currentAccount(userId), headers()]);
   const guess = h.get("x-vercel-ip-country")?.toUpperCase();
+  const test = stripeTestMode();
 
   return (
     <section
@@ -50,10 +50,10 @@ export async function PayoutsCard({ userId }: { userId: string }) {
         {account && <StatusStamp status={account.status} />}
       </div>
 
-      {stripeTestMode() && (
+      {test && account && account.status !== "incomplete" && (
         <p className="mt-3 max-w-2xl rounded-[12px] bg-star/25 px-3 py-2 text-sm text-ink">
-          <span className="font-semibold">Test mode:</span> nothing here is real yet. On Stripe&apos;s form, use its test data (the phone
-          code is 000 000, and the form offers test values). When payments go live, you&apos;ll set up again with your real details.
+          <span className="font-semibold">Test mode:</span> nothing here is real yet. When payments go live, you&apos;ll set up again with your
+          real details.
         </p>
       )}
 
@@ -62,8 +62,10 @@ export async function PayoutsCard({ userId }: { userId: string }) {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             Buyers pay on Artiflow and the money goes straight to your own Stripe account; Stripe sends it on to your bank. Setting up
             takes 5 to 10 minutes on Stripe&apos;s pages: who you are and where to send the money (anyone taking card payments is asked
-            this). Until then, buyers can request and save, but not pay you.
+            this). Stripe may ask for a photo of your ID and a selfie: that goes straight to Stripe, and Artiflow doesn&apos;t collect or store
+            it. Until then, buyers can request and save, but not pay you.
           </p>
+          {test && <TestFormValues />}
           <SetUpPayouts defaultCountry={isPayoutCountry(guess) ? guess : undefined} />
         </>
       )}
@@ -73,6 +75,7 @@ export async function PayoutsCard({ userId }: { userId: string }) {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             Stripe still needs a few details before buyers can pay you. It picks up where you left off.
           </p>
+          {test && <TestFormValues />}
           <ContinuePayouts label="Continue on Stripe" />
         </>
       )}
@@ -80,8 +83,9 @@ export async function PayoutsCard({ userId }: { userId: string }) {
       {account?.status === "review" && (
         <>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            Usually a few minutes, sometimes a day or two. Buyers can pay you as soon as Stripe is done; this card updates itself.
+            Usually a minute or two, sometimes a day or two. Buyers can pay you as soon as Stripe is done, even with this page closed.
           </p>
+          <PayoutsWatch />
           <ContinuePayouts label="Check what Stripe asked" variant="secondary" />
         </>
       )}
@@ -111,6 +115,51 @@ export async function PayoutsCard({ userId }: { userId: string }) {
         </>
       )}
     </section>
+  );
+}
+
+const Value = ({ children }: { children: string }) => <code className="font-mono font-semibold select-all">{children}</code>;
+
+/** Stripe's test mode only passes its own values: a made-up date or address fails its checks and leaves the form stuck. */
+const TEST_FORM: [label: string, value: ReactNode][] = [
+  ["Email taken?", "If Stripe says the email already has an account, choose another one: add +artist before the @."],
+  ["Phone code", <Value key="code">000000</Value>],
+  ["Name", "Anything."],
+  ["Date of birth", <Value key="born">01/01/1901</Value>],
+  ["Address, line 1", <Value key="address">address_full_match</Value>],
+  [
+    "ID number",
+    <>
+      Brazil, CPF <Value>000.000.000-00</Value>. US, SSN <Value>000-00-0000</Value>.
+    </>,
+  ],
+  ["Document", "Pick any document type, start the verification, then choose Simulate. Upload nothing."],
+  [
+    "Bank",
+    <>
+      The &ldquo;test account&rdquo; button. Or Brazil, <Value>110-0000</Value> and <Value>0001234</Value>. US, <Value>110000000</Value> and{" "}
+      <Value>000123456789</Value>.
+    </>,
+  ],
+  ["Fraud protection", "The free one (Radar Lite)."],
+];
+
+function TestFormValues() {
+  return (
+    <div className="mt-3 max-w-2xl rounded-[12px] bg-star/25 px-3 py-2.5 text-sm text-ink">
+      <p>
+        <span className="font-semibold">Test mode:</span> nothing here is real yet, so Stripe&apos;s form only passes with these values. Never
+        enter your real details or documents. When payments go live, you&apos;ll set up again for real.
+      </p>
+      <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+        {TEST_FORM.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="mt-1 font-semibold sm:mt-0">{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 

@@ -172,7 +172,7 @@ function NoteEntry({
         </span>
         {roomy && (note.kind === "follow" || note.kind === "invite_joined") && note.actor && <Signature name={note.actor.name} tilt={wobble} />}
         {note.kind === "commission_request" && (
-          <span className="mt-2.5 inline-flex h-8 items-center rounded-full bg-ocean px-3.5 text-xs font-semibold text-white transition-[filter] group-hover/note:brightness-105">
+          <span className="pointer-events-none mt-2.5 inline-flex h-8 items-center rounded-full bg-ocean px-3.5 text-xs font-semibold text-white transition-[filter] group-hover/note:brightness-105">
             View request
           </span>
         )}

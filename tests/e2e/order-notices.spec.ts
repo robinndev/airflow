@@ -141,6 +141,20 @@ test("commission notices get their own count and clipboard, and only they are re
   await expect(book.getByRole("link", { name: "Requests", exact: true })).toHaveCount(0);
 });
 
+test("the request notice's View request button opens My commissions", async ({ browser }) => {
+  const page = await signedIn(browser, artist);
+  await openWithPulse(page, "/explore/studios");
+  await clipboard(page).click();
+
+  // With a real mouse: hovering restyles the button, and that used to swallow the click.
+  const button = panel(page).getByText("View request", { exact: true });
+  await expect(button).toBeVisible();
+  const box = (await button.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page).toHaveURL(/\/commissions/);
+});
+
 test("collectors get the clipboard with My requests only", async ({ browser }) => {
   const page = await signedIn(browser, buyer);
   await openWithPulse(page, "/explore/studios");
